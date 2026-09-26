@@ -1,0 +1,54 @@
+achievements:
+  # 캠페인
+  - id: first_clear
+    name: "첫 방어 성공"
+    desc: "스테이지 1을 깨세요"
+  - id: boss_1
+    name: "모함 격침"
+    desc: "스테이지 5에서 외계 모함을 격추하세요"
+  - id: boss_2
+    name: "운석 분쇄"
+    desc: "스테이지 10에서 거대 운석 핵을 부수세요"
+  - id: boss_3
+    name: "모선 추락"
+    desc: "스테이지 15에서 UFO 모선을 격추하세요"
+  - id: boss_4
+    name: "적 본성 함락"
+    desc: "스테이지 20에서 최종 기함을 격침하세요"
+  - id: three_star
+    name: "흠집 하나 없이"
+    desc: "별 3개로 스테이지를 깨세요"
+  - id: all_stars
+    name: "만점 사령관"
+    desc: "20스테이지 모두 별 3개를 받으세요"
+  # 합체
+  - id: gold_unit
+    name: "금빛 기체"
+    desc: "기체를 Lv5까지 합치세요"
+  - id: transcend
+    name: "한계 돌파"
+    desc: "Lv5 두 대를 합쳐 초월하세요"
+  - id: rainbow
+    name: "무지갯빛 함대"
+    desc: "기체를 초월 III(Lv8)까지 올리세요"
+  # 전투
+  - id: cancel_attack
+    name: "선제 격추"
+    desc: "공격을 예고한 적을 먼저 격추해 공격을 취소하세요"
+  - id: combo_20
+    name: "연쇄 폭발"
+    desc: "콤보 20을 달성하세요"
+  - id: workshop_max
+    name: "정비 완료"
+    desc: "정비소에서 한 줄을 3단계까지 강화하세요"
+  # 무한 방어선
+  - id: endless_10
+    name: "첫 고비"
+    desc: "무한 방어선 10웨이브를 막아 내세요"
+  - id: endless_30
+    name: "쌍둥이 보스"
+    desc: "무한 방어선 30웨이브를 막아 내세요"
+  # 연구소
+  - id: mk_max
+    name: "연구 완료"
+    desc: "연구소에서 기체 하나를 Mk.10까지 강화하세요"
