@@ -9,6 +9,6 @@
 ## 에셋
 
 - 스프라이트, 효과음, 폰트: [Kenney](https://kenney.nl) — Space Shooter Remastered, Space Shooter Extension (CC0). 라이선스는 `assets/LICENSE-kenney.txt`.
-- 효과음: [Kenney](https://kenney.nl) — Sci-Fi Sounds, Impact Sounds (CC0).
+- 효과음: [Kenney](https://kenney.nl) — Sci-Fi Sounds, Impact Sounds, Interface Sounds, UI Audio, Digital Audio (CC0). 일부는 ffmpeg로 섞고 다듬었어요.
 - 음악: OpenGameArt의 CC0 곡 — MintoDog, wipics, Deva. 곡별 출처는 `assets/bgm/CREDITS.txt`.
 - 폰트: Orbitron, Chakra Petch, Do Hyeon (SIL OFL, Google Fonts).
