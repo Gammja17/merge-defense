@@ -1,0 +1,11 @@
+# Merge Defense
+
+세로형 머지 타워디펜스. 내려오는 캡슐을 쏴서 기체를 얻고, 같은 기체를 합쳐 스킬을 진화시키며 외계 함대를 막는 게임.
+
+- 플레이: https://gammja17.github.io/merge-defense/
+- 4개 구역, 20 스테이지, 보스 4종
+- 기체 레벨마다 새 스킬 (쌍발 → 확산 → 관통 → 대형 빔 등)
+
+## 에셋
+
+- 스프라이트, 효과음, 폰트: [Kenney](https://kenney.nl) — Space Shooter Remastered, Space Shooter Extension (CC0). 라이선스는 `assets/LICENSE-kenney.txt`.
