@@ -181,11 +181,11 @@ function spr(name, x, y, w, h, rot = 0, alpha = 1) {
 const UNIT = {
   f: { name: '레이저 전투기', role: '연사', img: 'f1', iw: 66, ih: 50, air: true, hp: 3, dmg: 6, cd: 0.35, sp: 950, turn: 9, shape: 1, cost: 8, col: '#48c8ff', stat: [2, 5, 1],
        desc: '빠르게 레이저를 쏘는 기본 기체예요. 캡슐을 까는 데 강해요.', unlock: 'base' },
-  t: { name: '미사일 포탑', role: '범위 폭발', img: 't1', iw: 60, ih: 60, hp: 5, dmg: 22, cd: 1.3, sp: 520, turn: 5, splash: 70, shape: 1, cost: 18, col: '#ff9a3c', stat: [3, 2, 3],
+  t: { name: '미사일 포탑', role: '범위 폭발', img: 't1', iw: 60, ih: 60, hp: 4, dmg: 22, cd: 1.3, sp: 520, turn: 5, splash: 70, shape: 1, cost: 18, col: '#ff9a3c', stat: [3, 2, 3],
        desc: '느리지만 폭발로 몰려오는 적을 쓸어요.', unlock: 'base' },
   s: { name: '저격기', role: '보스 저격', img: 'u_s', iw: 66, ih: 44, air: true, hp: 3, dmg: 45, cd: 1.7, sp: 1700, turn: 30, shape: 1, cost: 14, col: '#7dff7a', stat: [4, 1, 1],
        desc: '가장 튼튼한 적을 골라 강한 한 방을 꽂아요.', unlock: 'base' },
-  g: { name: '방패 드론', role: '보호', img: 'u_g', iw: 66, ih: 31, hp: 10, dmg: 5, cd: 0.6, sp: 950, turn: 9, shape: 1, cost: 14, col: '#6ad0ff', stat: [1, 3, 5],
+  g: { name: '방패 드론', role: '보호', img: 'u_g', iw: 66, ih: 31, hp: 7, dmg: 5, cd: 0.6, sp: 950, turn: 9, shape: 1, cost: 14, col: '#6ad0ff', stat: [1, 3, 5],
        desc: '주변 8칸의 기체가 받는 공격을 대신 맞아 줘요.', unlock: 'base' },
   m: { name: '수리 드론', role: '회복', img: 'u_m', iw: 52, ih: 34, hp: 4, dmg: 5, cd: 0.6, sp: 950, turn: 9, shape: 1, cost: 14, col: '#6dff8a', stat: [1, 3, 2],
        desc: '다친 기체를 주기적으로 고쳐요.', unlock: 'base' },
@@ -195,13 +195,13 @@ const UNIT = {
        desc: '드론을 띄워 캡슐을 먼저 까요. 캡슐이 없으면 적을 쏴요.', unlock: { stage: 5 } },
   c: { name: '빙결포', role: '감속 · 빙결', img: 'u_c2', iw: 44, ih: 52, hp: 4, dmg: 7, cd: 0.7, sp: 800, turn: 8, shape: 1, cost: 14, col: '#9ff0ff', stat: [1, 4, 2],
        desc: '냉기로 적을 느리게 하고, 레벨이 오르면 얼려요.', unlock: { stage: 7 } },
-  a: { name: '방공포', role: '산탄 · 요격', img: 'u_a', iw: 52, ih: 53, rot: true, hp: 5, dmg: 4, cd: 0.75, sp: 1000, turn: 10, shape: 1, cost: 14, col: '#d0d8e8', stat: [2, 3, 3],
+  a: { name: '방공포', role: '산탄 · 요격', img: 'u_a', iw: 52, ih: 53, rot: true, hp: 4, dmg: 4, cd: 0.75, sp: 1000, turn: 10, shape: 1, cost: 14, col: '#d0d8e8', stat: [2, 3, 3],
        desc: '산탄을 뿌리고, 레벨이 오르면 날아오는 공격을 요격해요.', unlock: { stage: 10 } },
-  b: { name: '전함', role: '대형 · 가로 2칸', img: 'u_b2', iw: 130, ih: 80, air: true, hp: 14, dmg: 34, cd: 1.0, sp: 680, turn: 4, splash: 62, shape: 'h2', cost: 36, col: '#7fe8ff', stat: [4, 3, 5],
+  b: { name: '전함', role: '대형 · 가로 2칸', img: 'u_b2', iw: 130, ih: 80, air: true, hp: 9, dmg: 34, cd: 1.0, sp: 680, turn: 4, splash: 62, shape: 'h2', cost: 36, col: '#7fe8ff', stat: [4, 3, 5],
        desc: '두 칸을 차지하지만 튼튼하고 화력이 강해요.', unlock: { stage: 12 } },
-  r: { name: '요새포', role: '대형 · 세로 2칸', img: 'u_r', iw: 76, ih: 150, hp: 12, dmg: 120, cd: 2.6, sp: 430, turn: 3, splash: 90, shape: 'v2', cost: 34, col: '#ffb0a0', stat: [5, 1, 5],
+  r: { name: '요새포', role: '대형 · 세로 2칸', img: 'u_r', iw: 76, ih: 150, hp: 8, dmg: 120, cd: 2.6, sp: 430, turn: 3, splash: 90, shape: 'v2', cost: 34, col: '#ffb0a0', stat: [5, 1, 5],
        desc: '사거리 밖의 적까지 포격하는 초장거리 포대예요.', unlock: { stage: 15 } },
-  h: { name: '화염방사기', role: '근거리 화력', img: 'u_h', iw: 48, ih: 48, rot: true, hp: 6, dmg: 55, cd: 0.1, shape: 1, cost: 16, col: '#ff7a2a', stat: [5, 5, 3],
+  h: { name: '화염방사기', role: '근거리 화력', img: 'u_h', iw: 48, ih: 48, rot: true, hp: 5, dmg: 55, cd: 0.1, shape: 1, cost: 16, col: '#ff7a2a', stat: [5, 5, 3],
        desc: '가까이 온 적을 불길로 녹여요. 사거리가 짧아요.', unlock: { shop: 300 } },
   n: { name: '기뢰 부설기', role: '함정', img: 'u_n', iw: 60, ih: 38, hp: 4, dmg: 75, cd: 2.5, shape: 1, cost: 16, col: '#ff4a6a', stat: [4, 1, 2],
        desc: '전장에 기뢰를 깔아 지나가는 적을 터뜨려요.', unlock: { shop: 400 } },
@@ -233,7 +233,7 @@ const SKILLS = {
   v: [['중력장', '맞은 자리에 적을 끌어당기고 느리게 하는 중력장을 만들어요.'], ['넓은 중력장', '중력장이 더 넓어져요.'], ['압착', '중력장 안의 적이 계속 피해를 받아요.'], ['쌍중력장', '중력탄 두 발을 쏴요.'], ['특이점', '중력장이 끝날 때 안쪽으로 붕괴하며 큰 피해를 줘요.']],
   k: [['해킹', '7초마다 적 하나를 4초 동안 아군으로 만들어요.'], ['빠른 해킹', '해킹 간격이 짧아져요.'], ['자폭 명령', '해킹이 끝나면 그 적이 자폭해요.'], ['다중 해킹', '한 번에 두 기를 해킹해요.'], ['시스템 장악', '해킹이 6초로 길어지고 간격도 짧아져요.']],
 };
-const unitMaxHp = (type, lv) => Math.round(UNIT[type].hp * (1 + 0.5 * (lv - 1))) + Math.floor(mkOf(type) / 3) + (S && S.pk ? S.pk.hp : 0);
+const unitMaxHp = (type, lv) => Math.round(UNIT[type].hp * (1 + 0.3 * (lv - 1))) + Math.floor(mkOf(type) / 3) + (S && S.pk ? S.pk.hp : 0);
 // 레벨별 대표 수치: 공격 기체는 DPS(초당 피해, 단일 대상 기준), 지원 기체는 핵심 효과
 function levelStat(type, lv) {
   const d = UNIT[type], m = LV_MUL[lv - 1];
@@ -662,13 +662,14 @@ function resolveAttack(a) {
     // 방패 드론이 주변 기체 대신 맞는다
     let taker = u, dmg = a.dmg;
     if (u.type !== 'g') {
-      const g = [...neighborsOf(u)].find(o => o.type === 'g' && o.hp > 0);
+      const g = [...neighborsOf(u)].find(o => o.type === 'g' && o.hp > 0 && o.cells);
       if (g) {
         taker = g; dmg = Math.max(1, Math.round(a.dmg * (g.lv >= 4 ? 0.4 : 0.7)));
         const p1 = unitPos(u), p2 = unitPos(g);
         S.fx.push({ kind: 'bolt', pts: [p1, p2], t: 0, life: 0.3, col: '#6ad0ff' });
       }
     }
+    if (!u.cells) continue;
     damageUnit(taker, dmg);
     if (taker.type === 'g' && taker.lv >= 3 && a.src && !a.src.dead) {
       hitEnemy(a.src, UNIT.g.dmg * LV_MUL[taker.lv - 1] * 12, 'blast');
@@ -685,6 +686,7 @@ function resolveAttack(a) {
   play('shieldDown', 0.3);
 }
 function damageUnit(u, dmg) {
+  if (!u.cells && u.res == null) return;   // 이미 파괴된 기체
   const p = unitPos(u);
   u.hp -= dmg; u.hurt = 0.35;
   play('base_hit', 0.35, 1.3);
@@ -1431,10 +1433,18 @@ function update(dt) {
   } else if (S.mode === 'play') {
     S.waveT += dt;
     while (S.events.length && S.events[0].t <= S.waveT) runEvent(S.events.shift());
+  } else if (S.mode === 'clearing') {
+    // 소탕: 남은 적을 차례로 터뜨리고, 화면이 가라앉으면 클리어
+    S.clearT += dt; S.clearK = (S.clearK || 0) + dt;
+    while (S.clearK > 0.08) { S.clearK -= 0.08; const e = S.enemies.find(x => !x.dead); if (!e) break; killEnemy(e); }
+    for (const c of S.caps) if (!c.dead) { c.dead = true; S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.4, color: '#8899aa' }); }
+    const calm = !S.enemies.some(x => !x.dead) && !S.fx.some(f => f.kind === 'boom' || f.kind === 'debris' || f.kind === 'pillar') && !S.shots.length;
+    if ((S.clearT > 1.1 && calm) || S.clearT > 3.2) { S.enemies = S.enemies.filter(x => !x.dead); endStage(true); return; }
   }
 
   for (const e of S.enemies) {
     if (e.dead) continue;
+    if (S.mode === 'clearing') continue;
     updateEnemy(e, dt);
     if (e.heal) e.heal = Math.max(0, e.heal - dt);
     if (!e.dead && e.y + (e.boss ? e.h * 0.35 : 0) >= LINE_Y) {
@@ -1488,6 +1498,7 @@ function update(dt) {
     if (u.res != null) continue;
     if (u.hp < u.maxHp * 0.5 && Math.random() < 0.08) { const p = unitPos(u); smoke(p.x + (Math.random() - .5) * 20, p.y - 10); }
     if (drag && drag.unit === u) continue;
+    if (S.mode === 'clearing') continue;
     u.cd -= dt * (1 + u.buffSpd) * S.pk.spd;
     if (u.cd <= 0) {
       const cd = u.type === 'k' ? [7, 6, 5, 4.5, 4][u.lv - 1] : u.type === 'n' ? [2.5, 2.5, 2.2, 2, 1.8][u.lv - 1] : UNIT[u.type].cd;
@@ -1614,9 +1625,9 @@ function update(dt) {
 
   if (S.hp <= 0) { S.hp = 0; endStage(false); return; }
   const st = S.stage;
-  if (bossDead) { S.boss = null; if (!st.endless) { endStage(true); return; } }
+  if (bossDead) { S.boss = null; if (!st.endless) { beginClear(); return; } }
   const cleared = !S.events.length && !S.enemies.some(e => !(e.hacked > 0));
-  if (S.mode === 'play' && !st.boss && S.wave === st.waves && cleared) { endStage(true); return; }
+  if (S.mode === 'play' && !st.boss && S.wave === st.waves && cleared) { beginClear(); return; }
   if (S.mode === 'play' && S.wave < st.waves && cleared) {
     S.mode = 'break'; S.breakT = 3;
     S.attacks = [];
@@ -1671,6 +1682,10 @@ function impact(s, t) {
       hitEnemy(t, s.dmg, 'laser');
       S.fx.push({ kind: 'hit', x: s.x, y: s.y, t: 0, life: 0.15, color: s.type === 'f' ? LV_COL[s.lv - 1] : UNIT[s.type] ? UNIT[s.type].col : '#7fe0ff' });
   }
+}
+function beginClear() {
+  if (S.mode === 'clearing') return;
+  S.mode = 'clearing'; S.clearT = 0; S.attacks = []; S.focus = null; S.banner = null;
 }
 function endStage(win) {
   S.endT = performance.now() / 1000; S.introDur = S.stage.endless ? 0 : 1.4;
