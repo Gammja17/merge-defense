@@ -2218,9 +2218,11 @@ function drawUnit(u, x, y, alpha = 1, big = 1) {
   drawUnitArt(u.type, u.lv, x, y, s, alpha, u);
   if (u.hurt > 0) drawGlow('#ff2a3a', x, y, 40 * wide, u.hurt * 2 * alpha, 0.8);
   const bot = y + (tall > 1 ? CH * 0.95 : 26);
-  const pipW = u.lv > 5 ? 7.5 : 9, sx = x - (u.lv - 1) * pipW / 2;
-  ctx.fillStyle = LV_COL[u.lv - 1]; ctx.globalAlpha = alpha;
-  for (let k = 0; k < u.lv; k++) { const px = sx + k * pipW; if (u.lv >= 8) ctx.fillStyle = RAINBOW[(k + Math.floor(t * 6)) % 6]; ctx.beginPath(); ctx.moveTo(px, bot - 4); ctx.lineTo(px + 3.5, bot); ctx.lineTo(px, bot + 4); ctx.lineTo(px - 3.5, bot); ctx.closePath(); ctx.fill(); }
+  // 레벨 = 금색 별 개수. 어두운 받침판 위에 그려 기체 그림·체력 바에 묻히지 않게. 초월 III(Lv8)만 무지개
+  const sp = u.lv > 5 ? 8 : 10, sx = x - (u.lv - 1) * sp / 2;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(0,6,20,.75)'; chamfer(sx - 7, bot - 6, (u.lv - 1) * sp + 14, 12, 4); ctx.fill();
+  for (let k = 0; k < u.lv; k++) drawStar(sx + k * sp, bot, 4.6, u.lv >= 8 ? RAINBOW[(k + Math.floor(t * 6)) % 6] : '#ffd24a');
   ctx.globalAlpha = 1;
   if (u.maxHp) {
     const bw = wide > 1 ? 110 : 48, bx = x - bw / 2, by = bot + 7, r = Math.max(0, u.hp / u.maxHp);
