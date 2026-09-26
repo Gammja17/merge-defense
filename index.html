@@ -4078,7 +4078,8 @@ function setupShot(k) {
   } else if (k === 'merge') {
     PROG.deck = ['f', 't', 'e', 'b', 'c'];
     startStage(7); shotArmy(army); S.wave = 1; startWave(2); shotRun(60 * 7);
-    const a = makeUnit('f', 3), b = makeUnit('f', 3); place(a, [2]); place(b, [5]); doMerge(a, b); S.skillPop.t = 0.3;
+    const a = makeUnit('f', 5), b = makeUnit('f', 5); place(a, [2]); place(b, [5]); doMerge(a, b); S.skillPop.t = 0.3; S.hint = null; S.hintQueue = [];
+    for (const f of S.fx) f.t = Math.max(f.t, 0.12); S.whiteFlash = 0.05; S.punch = 0; S.frozen = true;   // 초월 팝업이 떠 있는 순간에 멈춘다
   } else if (k === 'hangar') {
     S = { mode: 'hangar' }; UI.card = { type: 'b' };
     UI.upFx = { type: 'b', mk: 5, t0: performance.now() / 1000 - 0.35, milestone: false, max: false }; PROG.mk.b = 5;
