@@ -49,7 +49,8 @@ const IMG_NAMES = ['f1','f2','f3','tbase','t1','t2','t3','laser','hit','missile'
   'e_grunt','e_tank','e_minion','e_rock1','e_rock2','e_boss','e_rusher','e_split','e_splitS','e_shield',
   'e_heal','e_thief','b_rock','b_ufo','b_flag','cap_f','cap_t','cap_up','cap_heal',
   'puff','aura1','aura2','star','wall','life',
-  'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b'];
+  'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b',
+  ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl'].map(n => 'fx/' + n)];
 const IMG = {};
 function loadImages() {
   return Promise.all(IMG_NAMES.map(n => new Promise(res => {
@@ -72,6 +73,10 @@ function makeTint(src, color, key, amount = 0.5, flip = false) {
   });
 }
 function buildTints() {
+  const lvImgs = ['f1', 'f2', 'f3', 'tbase', 't1', 't2', 't3', ...Object.values(UNIT).map(d => d.img)];
+  setTimeout(() => { for (const n of lvImgs) { makeTint(n, '#c07bff', n + '_l4', 0.32); makeTint(n, '#ffc83a', n + '_l5', 0.4); } }, 0);
+  const enemyImgs = [...new Set(Object.values(ENEMY).map(d => d.img).concat(['e_rock1', 'e_rock2']))];
+  setTimeout(() => { for (const n of enemyImgs) makeTint(n, '#000000', n + '_sh', 1); }, 0);
   makeTint('e_grunt', '#ff3cc8', 't_sniper', 0.55);
   makeTint('e_tank', '#ff2a3a', 't_gunship', 0.5);
   makeTint('e_rusher', '#ffa020', 't_bomber', 0.45);
@@ -103,10 +108,11 @@ const mkCost = t => Math.round(100 * Math.pow(1.5, mkOf(t)));
 const SET = () => PROG.settings;
 
 const SFX_FILES = ['laser1', 'zap', 'twoTone', 'shieldDown', 'shieldUp', 'lose', 'shot_a', 'shot_b', 'shot_c', 'shot_big', 'shot_retro',
-  'boom_s1', 'boom_s2', 'boom_low', 'boom_big', 'hit_1', 'hit_2', 'shield_hit', 'shield_break', 'upgrade', 'ui_open', 'coin_1', 'coin_2', 'base_hit'];
+  'boom_s1', 'boom_s2', 'boom_low', 'boom_big', 'hit_1', 'hit_2', 'shield_hit', 'shield_break', 'upgrade', 'ui_open', 'coin_1', 'coin_2', 'coin_3', 'base_hit',
+  'pick', 'drop', 'latch', 'swap', 'deny', 'click', 'open', 'close', 'confirm', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule', 'levelup', 'unlock', 'scrap', 'scrap_low'];
 // 같은 소리의 최소 재생 간격(초). 연사가 많아도 귀가 따갑지 않게
 const SFX_GAP = { shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.045, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08 };
-const VARIANTS = { shot: ['shot_a', 'shot_b', 'shot_c'], boom_s: ['boom_s1', 'boom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2'] };
+const VARIANTS = { shot: ['shot_a', 'shot_b', 'shot_c'], boom_s: ['boom_s1', 'boom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2', 'coin_3'] };
 let AC = null, MASTER = null;
 const BUF = {}, lastPlay = {};
 function loadSfx() {
@@ -114,7 +120,7 @@ function loadSfx() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return;
   AC = new Ctx(); MASTER = AC.createGain(); MASTER.gain.value = 0.9; MASTER.connect(AC.destination);
-  for (const n of SFX_FILES) fetch('assets/sfx/' + n + '.ogg').then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b)).then(buf => { BUF[n] = buf; }).catch(() => {});
+  for (const n of SFX_FILES) fetch('assets/sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b)).then(buf => { BUF[n] = buf; }).catch(() => {});
 }
 function play(n, vol = 0.4, rate = 1, jitter = 0.06) {
   if (!SET().sfxVol || !AC) return;
@@ -482,6 +488,7 @@ function cellAt(x, y) {
   if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return -1;
   return r * COLS + c;
 }
+const scrapAt = (x, y) => x >= RES_X && x <= RES_X + RES_W && y >= GRID_Y && y < GRID_Y + CH;
 function resAt(x, y) {
   if (x < RES_X || x > RES_X + RES_W) return -1;
   const k = Math.floor((y - GRID_Y) / CH) - 1;
@@ -581,8 +588,10 @@ function runEvent(ev) {
   }
 }
 function makeCap(rw, x, mul) {
-  const hits = Math.max(1, rw.heal ? Math.round(12 * mul * S.pk.cap) : Math.round(UNIT[rw.type].cost * rw.n * [1, 3.2, 5.5][rw.lv - 1] * mul * S.pk.cap));
-  const c = { rw, x, y: -40, hits, maxHits: hits, pending: 0, r: 34, speed: 34, pair: null, bob: Math.random() * 6, carrier: null };
+  let hits = Math.max(1, rw.heal ? Math.round(12 * mul * S.pk.cap) : Math.round(UNIT[rw.type].cost * rw.n * [1, 3.2, 5.5][rw.lv - 1] * mul * S.pk.cap));
+  const mh = hits;
+  if (S.scrapBank) { const use = Math.min(S.scrapBank, hits - 1); hits -= use; S.scrapBank -= use; }
+  const c = { rw, x, y: -40, hits, maxHits: mh, pending: 0, r: 34, speed: 34, pair: null, bob: Math.random() * 6, carrier: null };
   S.caps.push(c);
   return c;
 }
@@ -1108,7 +1117,7 @@ function giveUnit(type, lv, fromX, fromY, col) {
 function claimCap(c) {
   c.dead = true;
   const rw = c.rw, look = capLook(rw), col = look.col;
-  play('zap', 0.35);
+  play('capsule', 0.5);
   boom(c.x, c.y, 0.8, col);
   S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.5, color: col });
   sparks(c.x, c.y, col, 20, 280);
@@ -1158,7 +1167,7 @@ function mergeInto(t, from) {
 
 // ── 이펙트 ────────────────────────────────────────────────
 function boom(x, y, size = 1, color = '#ffb347') {
-  S.fx.push({ kind: 'boom', x, y, t: 0, life: 0.5, size, color });
+  S.fx.push({ kind: 'boom', x, y, t: 0, life: 0.62, size, color, rot0: Math.random() * 6 });
   sparks(x, y, color, Math.round(6 + 8 * size), 160 + 120 * size);
 }
 function impactSparks(x, y, vx, vy, color, n = 5) {
@@ -1735,6 +1744,28 @@ function glowTex(color) {
   });
   return glowCache[color];
 }
+// 흰색 텍스처에 색을 입혀 캐시
+const texCache = {};
+function texTint(name, color) {
+  const key = name + color;
+  if (!texCache[key]) {
+    const im = IMG['fx/' + name];
+    if (!im || !im.width) return null;
+    texCache[key] = offscreen(im.width, im.height, g => { g.drawImage(im, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = color; g.fillRect(0, 0, im.width, im.height); });
+  }
+  return texCache[key];
+}
+function drawTex(name, color, x, y, size, rot = 0, alpha = 1, add = true, sy = 1) {
+  if (alpha <= 0) return;
+  const tx = texTint(name, color);
+  if (!tx) return;
+  ctx.save();
+  if (add) ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha *= Math.min(1, alpha);
+  ctx.translate(x, y); if (rot) ctx.rotate(rot); if (sy !== 1) ctx.scale(1, sy);
+  ctx.drawImage(tx, -size / 2, -size / 2, size, size);
+  ctx.restore();
+}
 function drawGlow(color, x, y, r, alpha = 1, sy = 1) {
   if (alpha <= 0) return;
   ctx.save();
@@ -1896,6 +1927,20 @@ const HEX = offscreen(30, 52, g => {
 let SCAN_PAT = null, HEX_PAT = null;
 
 let nebY = 0, gridY = 0;
+const BGX = SECTORS.map(() => [...Array(8)].map(() => ({ x: Math.random() * W, y: Math.random() * H, r: 20 + Math.random() * 50, sp: 6 + Math.random() * 12, rot: Math.random() * 6, vr: (Math.random() - .5) * 0.3, k: Math.random() })));
+function drawSectorLayer(s, dt, t) {
+  const list = BGX[s];
+  for (const o of list) { o.y += o.sp * dt; o.rot += o.vr * dt; if (o.y > H + 120) { o.y = -120; o.x = Math.random() * W; } }
+  if (s === 1) for (const o of list) spr(o.k < 0.5 ? 'e_split' : 'e_rock1', o.x, o.y, o.r * 1.4, o.r * 1.2, o.rot, 0.28);
+  if (s === 2) for (const o of list) drawTex(o.k < 0.5 ? 'p_smoke2' : 'p_smoke1', o.k < 0.33 ? '#c060ff' : o.k < 0.66 ? '#ff5ab8' : '#6a5aff', o.x, o.y, o.r * 7, o.rot, 0.13, true);
+  if (s === 3) {
+    const g = ctx.createRadialGradient(W / 2, 0, 20, W / 2, 0, H * 0.7);
+    g.addColorStop(0, 'rgba(255,40,70,.18)'); g.addColorStop(1, 'rgba(255,40,70,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    list.slice(0, 3).forEach((o, i) => spr(i % 2 ? 'b_flag_sh' : 'e_boss_sh', o.x, o.y * 0.6 + 80, 150 + o.r * 2, 130 + o.r * 2, 0, 0.35));
+  }
+  if (s === 0) for (const o of list.slice(0, 4)) drawTex('p_light', '#48c8ff', o.x, o.y, o.r * 3, o.rot, 0.06, true);
+}
 function drawBg(dt, planetIdx = 0) {
   const t = performance.now() / 1000;
   const gr = ctx.createLinearGradient(0, 0, 0, H);
@@ -1906,6 +1951,7 @@ function drawBg(dt, planetIdx = 0) {
   ctx.globalAlpha = 0.85;
   ctx.drawImage(PLANETS[planetIdx], W - 190, 110 + Math.sin(t * 0.2) * 8);
   ctx.globalAlpha = 1;
+  if (S.stage && S.mode !== 'map') drawSectorLayer(planetIdx, dt, t);
   for (const s of STARS) {
     s.y += s.sp * dt;
     if (s.y > H) { s.y -= H; s.x = Math.random() * W; }
@@ -1920,6 +1966,21 @@ function drawBg(dt, planetIdx = 0) {
   for (let y = 60 + gridY; y < LINE_Y; y += 48) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
   for (let x = 30; x < W; x += 80) { ctx.moveTo(x, 60); ctx.lineTo(x, LINE_Y); }
   ctx.stroke();
+}
+// 블룸: 밝은 부분만 흐리게 번져 보이게 한다 (화면 효과를 끄면 꺼짐)
+const BLOOM = document.createElement('canvas'), bctx = BLOOM.getContext('2d');
+function applyBloom() {
+  if (!SET().fx || !('filter' in ctx)) return;
+  const bw = Math.max(1, cv.width >> 2), bh = Math.max(1, cv.height >> 2);
+  if (BLOOM.width !== bw || BLOOM.height !== bh) { BLOOM.width = bw; BLOOM.height = bh; }
+  bctx.globalCompositeOperation = 'copy';
+  bctx.filter = 'brightness(0.62) contrast(3.2) blur(3px)';
+  bctx.drawImage(cv, 0, 0, bw, bh);
+  bctx.filter = 'none';
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.32;
+  ctx.drawImage(BLOOM, 0, 0, cv.width, cv.height);
+  ctx.restore();
 }
 function drawOverlay() {
   if (!SET().fx) return;
@@ -1963,24 +2024,27 @@ function drawFlame(x, y, len, wid, color, alpha = 1) {
 // 기체 그림 (칸 위, 대기함, 격납고 카드 공통)
 function drawUnitArt(type, lv, x, y, s, alpha, u) {
   const def = UNIT[type], m = Math.min(lv, 3), t = performance.now() / 1000;
+  const L = n => lv >= 5 && IMG[n + '_l5'] ? n + '_l5' : lv >= 4 && IMG[n + '_l4'] ? n + '_l4' : n;
+  const shine = lv >= 4 ? (lv >= 5 ? 0.22 : 0.14) + 0.12 * Math.sin(t * 3 + x * 0.1) : 0;
   const ang = u ? u.ang : -Math.PI / 2, kick = u ? (u.kick || 0) : 0, flash = u ? (u.flash || 0) : 0;
   const col = type === 'f' ? LV_COL[lv - 1] : lv >= 5 ? '#ffd24a' : def.col;
   if (type === 'f') {
     const ky = kick * 40, w = [66, 72, 70][m - 1] * s, h = [50, 52, 52][m - 1] * s;
     drawFlame(x, y - 12 + ky + h / 2, (12 + lv * 5) * (0.8 + Math.random() * 0.35) * s, 4 + lv, col, alpha);
-    spr('f' + m, x, y - 6 + ky, w, h, 0, alpha);
-    if (flash > 0) drawGlow('#ffffff', x, y - 8 - h / 2, 20, flash * 12 * alpha);
+    spr(L('f' + m), x, y - 6 + ky, w, h, 0, alpha);
+    if (shine > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; spr(L('f' + m), x, y - 6 + ky, w, h, 0, shine * alpha); ctx.restore(); }
+    if (flash > 0) { drawTex('p_muzzle', col, x, y - 16 - h / 2, 34 * s, 0, flash * 13 * alpha); drawGlow('#ffffff', x, y - 8 - h / 2, 16, flash * 10 * alpha); }
     return;
   }
   if (type === 't') {
-    spr('tbase', x, y, 62 * s, 62 * s, 0, alpha);
+    spr(L('tbase'), x, y, 62 * s, 62 * s, 0, alpha);
     const bw = [17, 27, 26][m - 1] * 1.4 * s, bh = [38, 41, 41][m - 1] * 1.4 * s;
     ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.rotate(ang + Math.PI / 2);
-    const im = IMG['t' + m];
+    const im = IMG[L('t' + m)];
     if (im && im.width) ctx.drawImage(im, -bw / 2, -bh * 0.8 + kick * 60, bw, bh);
     ctx.restore();
     if (lv >= 3) drawGlow(lv >= 5 ? '#ffd24a' : '#ff6a3a', x, y, 16, (0.5 + 0.3 * Math.sin(t * 6)) * alpha);
-    if (flash > 0) { const tip = bh * 0.85; drawGlow('#ffc070', x + Math.cos(ang) * tip, y + Math.sin(ang) * tip, 26, flash * 12 * alpha); }
+    if (flash > 0) { const tip = bh * 0.9; drawTex('p_muzzle', '#ffb060', x + Math.cos(ang) * tip, y + Math.sin(ang) * tip, 40 * s, ang + Math.PI / 2, flash * 13 * alpha); drawGlow('#ffc070', x + Math.cos(ang) * tip, y + Math.sin(ang) * tip, 20, flash * 10 * alpha); }
     return;
   }
   const w = def.iw * s, h = def.ih * s, ky = kick * 30;
@@ -1997,9 +2061,9 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
     ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 44 * s, -0.4, 0.4); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
-  spr(def.img, x, y - 4 + ky, w, h, def.rot ? ang + Math.PI / 2 : 0, alpha);
-  if (lv >= 4) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; spr(def.img, x, y - 4 + ky, w, h, def.rot ? ang + Math.PI / 2 : 0, 0.22 * alpha); ctx.restore(); }
-  if (flash > 0) drawGlow(col, x + Math.cos(ang) * h * 0.4, y + Math.sin(ang) * h * 0.4, 20, flash * 10 * alpha);
+  spr(L(def.img), x, y - 4 + ky, w, h, def.rot ? ang + Math.PI / 2 : 0, alpha);
+  if (shine > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; spr(L(def.img), x, y - 4 + ky, w, h, def.rot ? ang + Math.PI / 2 : 0, shine * alpha); ctx.restore(); }
+  if (flash > 0) { drawTex('p_flare', col, x + Math.cos(ang) * h * 0.45, y + Math.sin(ang) * h * 0.45, 44 * s, 0.5, flash * 12 * alpha); }
   if (type === 'e' || type === 'k') drawGlow(col, x, y, 22, (0.3 + 0.2 * Math.sin(t * 9)) * alpha);
 }
 function drawUnit(u, x, y, alpha = 1, big = 1) {
@@ -2008,10 +2072,14 @@ function drawUnit(u, x, y, alpha = 1, big = 1) {
   const def = UNIT[u.type], col = u.type === 'f' ? LV_COL[u.lv - 1] : u.lv >= 5 ? '#ffd24a' : def.col;
   const wide = def.shape === 'h2' ? 1.9 : 1, tall = def.shape === 'v2' ? 1.9 : 1;
   drawGlow(col, x, y + 6, (40 + u.lv * 6) * Math.max(wide, tall), (0.16 + 0.06 * Math.sin(t * 2 + x)) * alpha * (0.6 + u.lv * 0.22), 0.55 * tall / wide);
-  if (u.lv >= 4) spr(u.lv >= 5 ? 'aura2' : 'aura1', x, y - 4, 92 * s * wide, 90 * s * tall, t * 1.2, 0.5 * alpha);
-  if (u.lv >= 5) for (let k = 0; k < 3; k++) {
-    const a = t * 2 + k * Math.PI * 2 / 3;
-    drawGlow('#ffe27a', x + Math.cos(a) * 34 * s * wide, y - 4 + Math.sin(a) * 30 * s * tall, 7, 0.9 * alpha);
+  // 발밑 그림자, 비행 기체는 살짝 둥실거린다
+  ctx.fillStyle = `rgba(0,0,0,${0.35 * alpha})`; ctx.beginPath(); ctx.ellipse(x, y + 18 * tall, 26 * s * wide, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
+  if (def.air && u.cells) y += Math.sin(t * 2.2 + x * 0.07) * 1.8;
+  // Lv4 보라, Lv5 금색 회전 링 (기절 표시와 헷갈리지 않게 발밑에 눕힌다)
+  if (u.lv >= 4) {
+    const rc = u.lv >= 5 ? '#ffd24a' : '#c07bff';
+    drawTex('p_ring', rc, x, y + 14 * tall, 84 * s * wide, t * 1.5, (0.55 + 0.2 * Math.sin(t * 3)) * alpha, true, 0.36);
+    drawTex('p_light', rc, x, y + 12 * tall, 70 * s * wide, -t, 0.3 * alpha, true, 0.4);
   }
   if (u.type === 'g' && u.cells) {
     // 방패 드론이 지키는 범위
@@ -2028,7 +2096,9 @@ function drawUnit(u, x, y, alpha = 1, big = 1) {
   if (u.hurt > 0) drawGlow('#ff2a3a', x, y, 40 * wide, u.hurt * 2 * alpha, 0.8);
   const bot = y + (tall > 1 ? CH * 0.95 : 26);
   const pipW = 9, sx = x - (u.lv - 1) * pipW / 2;
-  for (let k = 0; k < u.lv; k++) spr('star', sx + k * pipW, bot, 10, 10, 0, alpha);
+  ctx.fillStyle = LV_COL[u.lv - 1]; ctx.globalAlpha = alpha;
+  for (let k = 0; k < u.lv; k++) { const px = sx + k * pipW; ctx.beginPath(); ctx.moveTo(px, bot - 4); ctx.lineTo(px + 3.5, bot); ctx.lineTo(px, bot + 4); ctx.lineTo(px - 3.5, bot); ctx.closePath(); ctx.fill(); }
+  ctx.globalAlpha = 1;
   if (u.maxHp) {
     const bw = wide > 1 ? 110 : 48, bx = x - bw / 2, by = bot + 7, r = Math.max(0, u.hp / u.maxHp);
     ctx.globalAlpha = alpha;
@@ -2106,6 +2176,7 @@ function drawEnemy(e) {
     drawGlow(ENGINE_COL[e.k], e.x, e.y - e.h / 2 + 6, 14 + e.w * 0.12, 0.5 + 0.25 * Math.sin(S.time * 20 + e.x), 1.3);
   }
   const jx = e.jit > 0 ? (Math.random() - .5) * 7 * (e.boss ? 0.4 : 1) : 0, jy = e.jit > 0 ? (Math.random() - .5) * 5 * (e.boss ? 0.4 : 1) : 0;
+  spr(e.img + '_sh', e.x + jx + 10, e.y + jy + 18, e.w * 0.92, e.h * 0.92, e.rot, 0.32);
   spr(e.img, e.x + jx, e.y + jy, e.w, e.h, e.rot, 1);
   if (e.flash > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const fa = Math.min(1, e.flash * 12); spr(e.img, e.x + jx, e.y + jy, e.w, e.h, e.rot, fa); spr(e.img, e.x + jx, e.y + jy, e.w, e.h, e.rot, fa * 0.6); ctx.restore(); }
   if (e.heal > 0) drawGlow('#6dff8a', e.x, e.y, e.r * 1.4, e.heal * 1.5);
@@ -2125,6 +2196,7 @@ function drawEnemy(e) {
     if (!HEX_PAT) HEX_PAT = ctx.createPattern(HEX, 'repeat');
     const r = e.shield / e.maxShield, rad = e.r * 1.35 + 6;
     drawGlow('#4ab8ff', e.x, e.y, rad * 1.1, 0.18 + 0.2 * r + (e.sflash > 0 ? 0.45 : 0));
+    if (e.sflash > 0) drawTex('p_spark', '#9fe4ff', e.x, e.y, rad * 2.3, Math.random() * 6, e.sflash * 8);
     ctx.save();
     ctx.beginPath(); ctx.arc(e.x, e.y, rad, 0, Math.PI * 2); ctx.clip();
     ctx.globalCompositeOperation = 'lighter';
@@ -2245,10 +2317,21 @@ function drawPads() {
   ctx.fillStyle = 'rgba(30,10,40,.55)'; chamfer(rx, ry, rw, rh, 9); ctx.fill();
   ctx.strokeStyle = 'rgba(255,90,200,.35)'; ctx.lineWidth = 1.2; ctx.stroke();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = FU(9); ctx.fillStyle = 'rgba(255,140,220,.8)'; ctx.fillText('RESERVE', rx + rw / 2, ry + 18);
-  ctx.font = FK(15); ctx.fillStyle = '#ffd0f0'; ctx.fillText('대기함', rx + rw / 2, ry + 38);
-  ctx.font = FT(11); ctx.fillStyle = 'rgba(255,200,240,.8)';
-  ctx.fillText(`${S.reserve.filter(Boolean).length}/${RES_N}`, rx + rw / 2, ry + 58);
+  // 해체 칸 (맨 위)
+  const hot = drag && drag.moved && scrapAt(drag.x, drag.y), cy0 = GRID_Y + CH / 2, tt = S.time;
+  ctx.fillStyle = hot ? 'rgba(255,100,50,.4)' : 'rgba(60,24,16,.75)'; chamfer(rx + 3, ry + 3, rw - 6, CH - 14, 8); ctx.fill();
+  ctx.strokeStyle = hot ? '#ffb347' : 'rgba(255,150,80,.45)'; ctx.lineWidth = hot ? 2 : 1.2;
+  if (drag && drag.moved && !hot) { ctx.setLineDash([4, 4]); ctx.lineDashOffset = -tt * 20; }
+  ctx.stroke(); ctx.setLineDash([]);
+  if (hot) drawTex('p_spark', '#ffb347', rx + rw / 2, cy0 - 6, 60, tt * 4, 0.8);
+  ctx.save(); ctx.translate(rx + rw / 2, cy0 - 12); ctx.rotate(tt * (hot ? 3 : 0.6));
+  ctx.strokeStyle = '#ffb347'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.stroke();
+  for (let k = 0; k < 6; k++) { ctx.rotate(Math.PI / 3); ctx.fillStyle = '#ffb347'; ctx.fillRect(-2, -13, 4, 5); }
+  ctx.restore();
+  ctx.font = FK(14); ctx.fillStyle = '#ffd6b0'; ctx.fillText('해체', rx + rw / 2, cy0 + 12);
+  ctx.font = FU(8); ctx.fillStyle = 'rgba(255,180,120,.75)'; ctx.fillText(S.scrapBank ? `부품 ${S.scrapBank}` : 'SCRAP', rx + rw / 2, cy0 + 27);
+  ctx.font = FU(8); ctx.fillStyle = 'rgba(255,140,220,.8)';
+  ctx.fillText(`RESERVE ${S.reserve.filter(Boolean).length}/${RES_N}`, rx + rw / 2, GRID_Y + CH + 1);
   for (let k = 0; k < RES_N; k++) {
     const q = resPos(k);
     ctx.strokeStyle = 'rgba(255,120,220,.3)'; ctx.setLineDash([3, 4]);
@@ -2276,6 +2359,8 @@ function drawFieldStuff() {
     const hole = S.holes.includes(f), p = f.t / f.life, a = Math.min(1, f.t * 5) * Math.min(1, (1 - p) * 4);
     const col = hole ? '#8a3aff' : '#b86bff';
     drawGlow(col, f.x, f.y, f.r * 1.2, 0.35 * a);
+    drawTex('p_twirl', col, f.x, f.y, f.r * 2.4, -f.t * (hole ? 7 : 4), 0.55 * a);
+    drawTex('p_twirl', '#ffffff', f.x, f.y, f.r * 1.4, -f.t * (hole ? 9 : 5) + 2, 0.3 * a);
     ctx.save(); ctx.translate(f.x, f.y); ctx.globalAlpha = a;
     for (let k = 0; k < 3; k++) {
       const rr = f.r * (1 - ((f.t * 0.8 + k / 3) % 1));
@@ -2331,6 +2416,7 @@ function drawBeams() {
     for (let k = 0; k < 8; k++) { const x = ((b.t * 900 + k * 150) % len); ctx.fillStyle = 'rgba(255,245,200,.6)'; ctx.fillRect(x, -wid * 0.55, 30, wid * 1.1); }
     ctx.restore();
     drawGlow('#ffd24a', b.x, b.y, 50, a);
+    drawTex('p_flare', '#ffe27a', b.x, b.y, 130, b.t * 3, a);
     drawGlow('#ffffff', b.x, b.y, 22, a);
     if (Math.random() < 0.6) sparks(b.x, b.y, '#ffe27a', 1, 200);
   }
@@ -2359,22 +2445,23 @@ function drawFx() {
     switch (f.kind) {
       case 'hit': {
         const c = f.color || '#7fe0ff', big = f.big || 1;
-        drawGlow(c, f.x, f.y, 30 * big, (1 - p) * 1.1);
-        drawGlow('#ffffff', f.x, f.y, 12 * big, (1 - p) * 1.4);
-        spr('hit', f.x, f.y, (26 + 30 * p) * big, (26 + 30 * p) * big, p * 2, 1 - p);
+        drawGlow(c, f.x, f.y, 26 * big, (1 - p) * 1.0);
+        drawTex('p_star2', c, f.x, f.y, (34 + 40 * p) * big, p * 1.5, (1 - p) * 1.2);
+        drawTex('p_flare', '#ffffff', f.x, f.y, (20 + 26 * p) * big, 0.6, (1 - p) * 1.2);
         ctx.strokeStyle = c; ctx.globalAlpha = (1 - p) * 0.8; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(f.x, f.y, (6 + 26 * p) * big, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
         break;
       }
       case 'boom': {
-        const r = (22 + 46 * p) * f.size;
-        drawGlow(f.color, f.x, f.y, r * 1.4, (1 - p) * 0.9);
-        if (p < 0.35) drawGlow('#ffffff', f.x, f.y, r * 0.6, (0.35 - p) * 3);
-        spr('puff', f.x, f.y, r * 1.3, r * 1.3, p * 2, (1 - p) * 0.55);
-        const rr = (12 + 64 * p) * f.size;
-        ctx.lineWidth = 3 * (1 - p) + 0.5;
-        ctx.strokeStyle = `rgba(255,60,120,${(1 - p) * 0.45})`; ctx.beginPath(); ctx.arc(f.x - 2, f.y, rr, 0, Math.PI * 2); ctx.stroke();
-        ctx.strokeStyle = `rgba(60,230,255,${(1 - p) * 0.45})`; ctx.beginPath(); ctx.arc(f.x + 2, f.y, rr, 0, Math.PI * 2); ctx.stroke();
+        const z = f.size, r0 = f.rot0 || 0;
+        drawTex('p_smoke1', '#6a6478', f.x, f.y - p * 22 * z, (34 + 96 * p) * z, r0 * 2 + p, (1 - p) * 0.5, false);
+        drawTex('p_smoke2', '#4a4658', f.x + 8 * z, f.y - p * 30 * z, (26 + 80 * p) * z, -r0, (1 - p) * 0.35, false);
+        drawGlow(f.color, f.x, f.y, (30 + 60 * p) * z, (1 - p) * 0.8);
+        drawTex('p_fire', f.color, f.x, f.y, (46 + 70 * p) * z, r0 + p, (1 - p) * 1.1);
+        drawTex('p_fire', '#fff2c0', f.x, f.y, (28 + 40 * p) * z, -r0 - p * 2, Math.max(0, 0.9 - p * 1.8));
+        drawTex('p_scorch', f.color, f.x, f.y, (30 + 120 * p) * z, r0, (1 - p) * 0.8);
+        drawTex('p_ring', '#ffe6c8', f.x, f.y, (24 + 170 * p) * z, 0, (1 - p) * 0.55);
+        if (p < 0.3) drawTex('p_star', '#ffffff', f.x, f.y, (70 + 200 * p) * z, r0 * 0.5, (0.3 - p) * 3.3);
         break;
       }
       case 'ring': {
@@ -2442,6 +2529,20 @@ function drawFx() {
         ctx.strokeStyle = '#c8faff'; ctx.globalAlpha = 1 - p; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(f.x, f.y, 40 + 700 * p, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
         break;
       case 'atk': drawAtkFx(f, p); break;
+      case 'parts': {
+        const c = f.cap, tx = c.x, ty = c.y;
+        for (let k = 0; k < 7; k++) {
+          const q = Math.max(0, Math.min(1, p * 1.3 - k * 0.04)), e2 = q * q;
+          const x = f.x + (tx - f.x) * e2 + Math.sin(k * 2.1) * 30 * Math.sin(q * Math.PI), y = f.y + (ty - f.y) * e2 - Math.sin(q * Math.PI) * 50;
+          drawTex('p_star2', '#ffb347', x, y, 22, k, 1);
+        }
+        if (p > 0.95 && !f.done) {
+          f.done = true;
+          if (!c.dead) { hitCap(c, f.n); addText(c.x, c.y - 12, `-${f.n}`, '#ffb347', 22, 0.9, true); drawTex('p_ring', '#ffb347', c.x, c.y, 120, 0, 1); }
+          else { S.scrapBank = (S.scrapBank || 0) + f.n; }
+        }
+        break;
+      }
       case 'debris': {
         const im = IMG[f.img];
         if (!im || !im.width) break;
@@ -2655,6 +2756,7 @@ function draw(dt) {
 
   ctx.restore();
   if (S.whiteFlash > 0) { ctx.fillStyle = `rgba(255,255,255,${S.whiteFlash * 0.8})`; ctx.fillRect(0, 0, W, H); }
+  applyBloom();
   if (!SHOT_RAW) drawHud();
   drawOverlays();
 }
@@ -3187,6 +3289,7 @@ function drawCard() {
   if (c.inGame) {
     ctx.font = FK(17); ctx.textAlign = 'center'; ctx.fillStyle = '#bfefff';
     ctx.fillText(`지금 Lv${c.u.lv} · HP ${Math.max(0, Math.ceil(c.u.hp))}/${c.u.maxHp} · 전투 일시정지 중`, W / 2, by - 28);
+    if (c.u.cells || c.u.res != null) button(x + 30, by, 190, 46, '해체하기', 'scrapInfo', 'danger');
   } else if (own) {
     if (inDeck) button(x + 30, by, 190, 46, '편성에서 빼기', 'undeploy', 'ghost', { type: t2 });
     else button(x + 30, by, 190, 46, PROG.deck.length < DECK_N ? '편성하기' : '편성이 꽉 찼어요', 'deploy', PROG.deck.length < DECK_N ? 'primary' : 'danger', { type: t2 });
@@ -3440,7 +3543,7 @@ function drawReveal() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (e < T) {
     const q = e / T, jx = (Math.random() - .5) * 10 * q, jy = (Math.random() - .5) * 10 * q;
-    if (!r.s1) { r.s1 = 1; play('zap', 0.45, 0.6); play('ui_open', 0.4, 0.8); }
+    if (!r.s1) { r.s1 = 1; play('zap', 0.4, 0.6); play('open', 0.4, 0.8); }
     for (let i = 0; i < 3; i++) {
       ctx.strokeStyle = `rgba(90,210,255,${0.3 + 0.5 * q})`; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, 60 + (1 - q) * (160 + i * 60), 0, Math.PI * 2); ctx.stroke();
@@ -3459,7 +3562,7 @@ function drawReveal() {
   }
   const q = e - T;
   if (!r.s2) {
-    r.s2 = 1; play('boom_low', 0.55); play('shieldUp', 0.5); play('upgrade', 0.45, 1.25);
+    r.s2 = 1; play('boom_low', 0.55); play('unlock', 0.6); play('levelup', 0.4);
     for (let i = 0; i < 60; i++) { const a = Math.random() * Math.PI * 2, v = 150 + Math.random() * 420; r.parts.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, t: 0, life: 0.8 + Math.random() * 0.8, sz: 2 + Math.random() * 5, rot: Math.random() * 6 }); }
   }
   // 빛살
@@ -3569,11 +3672,12 @@ function doAction(b) {
       if (S.mode === 'hangar' && PROG.deck.length !== DECK_N) { toast('편성 5종을 채워야 해요'); }
       goMap(); return;
     case 'hangar': S = { mode: 'hangar' }; return;
-    case 'card': UI.card = { type: b.type }; play('ui_open', 0.3);
+    case 'card': UI.card = { type: b.type }; play('open', 0.45);
       if ((PROG.newUnits || []).includes(b.type)) { PROG.newUnits = PROG.newUnits.filter(k => k !== b.type); save(); }
       return;
     case 'revealDetail': UI.reveal = null; UI.card = { type: b.type, isNew: true }; PROG.newUnits = (PROG.newUnits || []).filter(k => k !== b.type); save(); play('ui_open', 0.3); return;
     case 'revealOk': UI.reveal = null; return;
+    case 'scrapInfo': if (UI.card && UI.card.u) scrapUnit(UI.card.u); UI.card = null; return;
     case 'closecard': UI.card = null; return;
     case 'deploy':
       if (PROG.deck.length >= DECK_N) { toast('편성에서 하나를 먼저 빼 주세요'); return; }
@@ -3593,7 +3697,7 @@ function doAction(b) {
       PROG.credits -= cost; PROG.mk[b.type] = mkOf(b.type) + 1; save();
       const mk = mkOf(b.type);
       UI.upFx = { type: b.type, mk, t0: performance.now() / 1000, milestone: mk % 3 === 0, max: mk >= MK_MAX };
-      play('upgrade', 0.5); setTimeout(() => { play(mk % 3 === 0 ? 'shieldUp' : 'twoTone', 0.5); play('boom_low', 0.35, 1.4); }, 440);
+      play('upgrade', 0.45); setTimeout(() => { play('levelup', 0.6); play('boom_low', 0.35, 1.4); if (mk % 3 === 0) play('unlock', 0.4); }, 440);
       return;
     }
     case 'endless':
@@ -3627,8 +3731,8 @@ cv.addEventListener('pointerdown', ev => {
   loadSfx();
   if (S.mode === 'title') { goMap(); return; }
   const b = hitButton(p);
-  if (UI.reveal || UI.settings || UI.card || S.paused || ['map', 'hangar', 'records', 'win', 'lose', 'perk'].includes(S.mode)) { if (b) doAction(b); return; }
-  if (b) { doAction(b); return; }
+  if (UI.reveal || UI.settings || UI.card || S.paused || ['map', 'hangar', 'records', 'win', 'lose', 'perk'].includes(S.mode)) { if (b) { if (b.act !== 'slider') play(b.act === 'closecard' || b.act === 'closesettings' ? 'close' : 'click', 0.35); doAction(b); } return; }
+  if (b) { play('click', 0.35); doAction(b); return; }
   const c = cellAt(p.x, p.y), k = resAt(p.x, p.y);
   const u = c >= 0 ? S.slots[c] : k >= 0 ? S.reserve[k] : null;
   if (u) {
@@ -3649,7 +3753,7 @@ function unitAt(p) {
   const c = cellAt(p.x, p.y), k = resAt(p.x, p.y);
   return c >= 0 ? S.slots[c] : k >= 0 ? S.reserve[k] : null;
 }
-function openUnitInfo(u) { UI.card = { type: u.type, inGame: true, u }; play('ui_open', 0.3); }
+function openUnitInfo(u) { UI.card = { type: u.type, inGame: true, u }; play('open', 0.45); }
 cv.addEventListener('contextmenu', ev => {
   ev.preventDefault();
   if (UI.card || UI.settings || S.paused) return;
@@ -3661,7 +3765,7 @@ cv.addEventListener('pointermove', ev => {
   if (!drag || ev.pointerId !== drag.id) return;
   const p = toLocal(ev);
   drag.x = p.x; drag.y = p.y;
-  if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) { drag.moved = true; play('coin', 0.28, 0.55, 0.03); }
+  if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) { drag.moved = true; play('pick', 0.55, 1, 0.04); }
 });
 function doMerge(target, from) {
   mergeInto(target, from);
@@ -3675,9 +3779,10 @@ function doMerge(target, from) {
   S.whiteFlash = Math.max(S.whiteFlash, 0.08 * target.lv);
   shake(0.08 * target.lv);
   S.glitch = Math.max(S.glitch, 0.05 * target.lv);
-  play('twoTone', 0.4); play('upgrade', 0.3, 1 + target.lv * 0.08);
+  play('merge' + Math.min(5, Math.max(2, target.lv)), 0.55); play('latch', 0.3, 0.8);
 }
 function dropUnit(u, x, y) {
+  if (scrapAt(x, y)) { scrapUnit(u); return; }
   const k = resAt(x, y);
   if (k >= 0) {
     const r = S.reserve[k];
@@ -3702,8 +3807,21 @@ function dropUnit(u, x, y) {
   const q = cellPos(c);
   addText(q.x, q.y - 20, uSize(u) === 2 ? '두 칸이 비어야 해요' : '자리가 없어요', '#ff9a9a', 16, 0.9);
 }
-function clunk(rate = 1) { play('hit', 0.4, 0.62 * rate, 0.04); play('base_hit', 0.12, 1.9 * rate, 0.03); }
-function denied() { play('shield_hit', 0.25, 1.9, 0.02); }
+// 해체: 기체를 부품으로 바꿔, 가장 아래 캡슐의 필요 타수를 줄인다 (없으면 보관했다가 다음 캡슐에)
+function scrapUnit(u) {
+  if (!u.cells && u.res == null) return;
+  const p = unitPos(u), val = Math.max(2, Math.round(UNIT[u.type].cost * [1, 2.2, 4.5, 9, 16][u.lv - 1] * 0.6));
+  unplace(u);
+  if (drag && drag.unit === u) drag = null;
+  sparks(p.x, p.y, '#ffb347', 16, 240, 'shard'); boom(p.x, p.y, 0.7, '#ff9a3c');
+  play('scrap', 0.55); play('scrap_low', 0.35);
+  const tgt = S.caps.filter(c => !c.dead && !c.carrier && c.y > -20).sort((a, b) => b.y - a.y)[0];
+  if (tgt) S.fx.push({ kind: 'parts', x: p.x, y: p.y, cap: tgt, n: val, t: 0, life: 0.6 });
+  else { S.scrapBank = (S.scrapBank || 0) + val; addText(p.x, p.y - 30, `부품 +${val} 보관`, '#ffb347', 18); }
+  hintOnce('scrap', '해체한 기체는 부품이 되어 캡슐을 깨는 데 필요한 타수를 줄여 줘요. 캡슐이 없으면 보관했다가 다음 캡슐에 써요.');
+}
+function clunk(rate = 1) { play('drop', 0.55, rate, 0.03); play('latch', 0.4, rate, 0.03); play('hit', 0.18, 0.6 * rate, 0.04); }
+function denied() { play('deny', 0.5); }
 function endDrag(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
   const d = drag; drag = null;
