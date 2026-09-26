@@ -1,0 +1,9 @@
+Background music (all CC0 / public domain, from opengameart.org)
+
+menu.mp3     Outer Space Loop        by wipics    https://opengameart.org/content/outer-space-loop
+battle1.mp3  Space Battle            by MintoDog  https://opengameart.org/content/space-battle
+battle2.mp3  Hard Battle 2           by MintoDog  https://opengameart.org/content/hard-battle-2
+endless.mp3  Xenocity - Digital Acid by Deva      https://opengameart.org/content/xenocity-digital-acid-glitch-hop
+boss1.mp3    Hard Boss Battle 1      by MintoDog  https://opengameart.org/content/hard-boss-battle-1
+boss2.mp3    Trance Boss Battle      by MintoDog  https://opengameart.org/content/trance-boss-battle
+boss3.mp3    Hard Boss Battle 2      by MintoDog  https://opengameart.org/content/hard-boss-battle-2

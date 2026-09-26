@@ -83,7 +83,7 @@ function buildTints() {
 
 // ── 저장 (이 브라우저에만) ────────────────────────────────
 const SAVE_KEY = 'mergeDefense.v1';
-const DEFAULT_SETTINGS = { sfx: true, shake: true, fx: true, nums: true };
+const DEFAULT_SETTINGS = { sfx: true, bgm: true, shake: true, fx: true, nums: true };
 function freshProg() { return { stars: {}, seen: {}, deck: ['f', 't', 's', 'g', 'm'], owned: [], credits: 0, mk: {}, records: [], settings: { ...DEFAULT_SETTINGS } }; }
 let PROG = freshProg();
 try {
@@ -127,6 +127,40 @@ function play(n, vol = 0.4, rate = 1, jitter = 0.06) {
   src.playbackRate.value = rate * (1 + (Math.random() - .5) * 2 * jitter);
   g.gain.value = vol;
   src.connect(g); g.connect(MASTER); src.start();
+}
+// ── 배경음악: 상황별 곡, 교차 페이드 ──
+const MUS = { tracks: {} };
+const BOSS_TRACK = { boss1: 'boss1', boss2: 'boss1', boss3: 'boss2', boss4: 'boss3' };
+function musicTrack(k) {
+  if (!MUS.tracks[k]) {
+    const a = new Audio('assets/bgm/' + k + '.mp3');
+    a.loop = true; a.preload = 'auto';
+    const t = { a, vol: 0, g: null };
+    // WebAudio로 볼륨을 조절해야 아이폰에서도 페이드가 된다
+    try { const src = AC.createMediaElementSource(a); t.g = AC.createGain(); t.g.gain.value = 0; src.connect(t.g); t.g.connect(AC.destination); } catch (e) {}
+    MUS.tracks[k] = t;
+  }
+  return MUS.tracks[k];
+}
+function wantedMusic() {
+  const st = S.stage;
+  if (!st) return 'menu';
+  if (S.warning > 0 || (S.boss && !S.boss.dead)) return BOSS_TRACK[st.sector.boss] || 'boss1';
+  if (st.endless) return 'endless';
+  return st.s <= 1 ? 'battle1' : 'battle2';
+}
+function updateMusic(dt) {
+  if (!AC) return;
+  const want = SET().bgm ? wantedMusic() : null;
+  const duck = S.paused || UI.settings || UI.card || S.mode === 'win' || S.mode === 'lose' ? 0.4 : 1;
+  if (want) musicTrack(want);
+  for (const k in MUS.tracks) {
+    const t = MUS.tracks[k], target = k === want ? 0.42 * duck : 0;
+    t.vol += (target - t.vol) * Math.min(1, dt * 1.6);
+    if (target > 0 && t.a.paused) { if (t.vol < 0.02 && k.startsWith('boss')) t.a.currentTime = 0; t.a.play().catch(() => {}); }
+    if (target === 0 && t.vol < 0.01 && !t.a.paused) t.a.pause();
+    if (t.g) t.g.gain.value = t.vol; else t.a.volume = Math.max(0, Math.min(1, t.vol));
+  }
 }
 function spr(name, x, y, w, h, rot = 0, alpha = 1) {
   const im = IMG[name];
@@ -3224,9 +3258,9 @@ function drawSettings() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FT(24, 900); glitchText('SETTINGS', W / 2, y + 44, '#d8f6ff', 5, 0);
   ctx.font = FK(15); ctx.fillStyle = 'rgba(200,230,255,.75)'; ctx.fillText('설정', W / 2, y + 72);
-  const rows = [['sfx', '효과음'], ['shake', '화면 흔들림'], ['fx', '화면 효과 (스캔라인 · 글리치)'], ['nums', '피해 숫자 표시']];
+  const rows = [['sfx', '효과음'], ['bgm', '배경음악'], ['shake', '화면 흔들림'], ['fx', '화면 효과 (스캔라인 · 글리치)'], ['nums', '피해 숫자 표시']];
   rows.forEach(([key, label], i) => {
-    const ry = y + 120 + i * 64, on = SET()[key];
+    const ry = y + 116 + i * 58, on = SET()[key];
     ctx.fillStyle = 'rgba(255,255,255,.04)'; chamfer(x + 24, ry - 24, w - 48, 50, 8); ctx.fill();
     ctx.textAlign = 'left'; ctx.font = FK(19); ctx.fillStyle = '#fff'; ctx.fillText(label, x + 44, ry + 1);
     const tx = x + w - 110, ty = ry - 15;
@@ -3237,11 +3271,12 @@ function drawSettings() {
     BUTTONS.push({ x: x + 24, y: ry - 24, w: w - 48, h: 50, act: 'toggle', key });
   });
   const armed = UI.resetArm > performance.now() / 1000;
-  button(x + 30, y + 400, w - 60, 46, armed ? '한 번 더 누르면 진행이 모두 지워져요' : '진행 초기화', 'reset', 'danger');
+  button(x + 30, y + 418, w - 60, 44, armed ? '한 번 더 누르면 진행이 모두 지워져요' : '진행 초기화', 'reset', 'danger');
   ctx.font = FK(13); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(190,210,240,.7)';
-  ctx.fillText('그래픽 · 효과음: Kenney (CC0)', W / 2, y + 480);
-  ctx.fillText('폰트: Orbitron, Chakra Petch, 도현 (SIL OFL)', W / 2, y + 502);
-  ctx.fillText('진행 상황은 이 기기의 브라우저에만 저장돼요', W / 2, y + 524);
+  ctx.fillText('그래픽 · 효과음: Kenney (CC0)', W / 2, y + 488);
+  ctx.fillText('음악: MintoDog, wipics, Deva · OpenGameArt (CC0)', W / 2, y + 508);
+  ctx.fillText('폰트: Orbitron, Chakra Petch, 도현 (SIL OFL)', W / 2, y + 528);
+  ctx.fillText('진행 상황은 이 기기의 브라우저에만 저장돼요', W / 2, y + 548);
   button(W / 2 - 100, y + h - 76, 200, 50, '닫기', 'closesettings', 'primary');
 }
 function drawPause() {
@@ -3522,6 +3557,7 @@ function loop(now) {
   let gdt = dt;
   if (S.hitStop > 0) { S.hitStop -= dt; gdt = dt * 0.15; }
   if (S.stage && !S.paused && !UI.settings && !(UI.card && S.mode !== 'win')) update(gdt);
+  updateMusic(dt);
   draw(dt);
   requestAnimationFrame(loop);
 }
