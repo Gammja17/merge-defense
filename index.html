@@ -103,7 +103,7 @@ function buildTints() {
 }
 
 // ── 온라인 순위표 (docs/leaderboard: 구글 시트 + Apps Script). 비어 있으면 내 기록만 ──
-const LB_URL = '';
+const LB_URL = 'https://script.google.com/macros/s/AKfycbynNTAN-EhnufymMQg-Oy1ESt2GS9uYpC119zx1HBN6YlFHBAYDstlPyYE5v4dlo9uv/exec';
 const LB = { top: null, t: 0, loading: false, err: '' };
 function lbFetch(force) {
   if (!LB_URL || LB.loading || (!force && LB.top && performance.now() - LB.t < 30000)) return;
