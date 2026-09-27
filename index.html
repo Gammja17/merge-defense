@@ -52,7 +52,7 @@ const IMG_NAMES = ['f1','f2','f3','tbase','t1','t2','t3','laser','hit','missile'
   'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b',
   ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl','ex1','ex2','ex3','ex4'].map(n => 'fx/' + n),
   ...[...'ftsgmedcabrhnxvkwlqy'].flatMap(t => [1, 2, 3, 4, 5, 6, 7, 8].map(k => 'units/' + t + k)),
-  ...['grunt','tank','rusher','shield','minion','heal','thief','sniper','gunship','bomber','elite','rock1','rock2','split','splitS','boss1','boss2','boss3','boss4'].map(n => 'enemies/' + n)];
+  ...['grunt','tank','rusher','shield','minion','heal','thief','sniper','gunship','bomber','elite','rock1','rock2','split','splitS','boss1','boss2','boss3','boss4','phase','grav','boss5','boss6'].map(n => 'enemies/' + n)];
 const IMG = {};
 function loadImages() {
   return Promise.all(IMG_NAMES.map(n => new Promise(res => {
@@ -146,7 +146,7 @@ function play(n, vol = 0.4, rate = 1, jitter = 0.06) {
 }
 // ── 배경음악: 상황별 곡, 교차 페이드 ──
 const MUS = { tracks: {} };
-const BOSS_TRACK = { boss1: 'boss1', boss2: 'boss1', boss3: 'boss2', boss4: 'boss3' };
+const BOSS_TRACK = { boss1: 'boss1', boss2: 'boss1', boss3: 'boss2', boss4: 'boss3', boss5: 'boss2', boss6: 'boss3' };
 function musicTrack(k) {
   if (!MUS.tracks[k]) {
     const a = new Audio('assets/bgm/' + k + '.mp3');
@@ -310,9 +310,13 @@ const ENEMY = {
   sniper:  { img: 'enemies/sniper',  hp: 80,  speed: 60,  r: 30, dmg: 1, w: 66,  h: 60, atk: 'snipe',  atkCd: 4.5, atkDmg: 2, name: '저격함' },
   gunship: { img: 'enemies/gunship', hp: 210, speed: 32,  r: 36, dmg: 2, w: 80,  h: 82, atk: 'column', atkCd: 6,   atkDmg: 3, name: '포격함' },
   bomber:  { img: 'enemies/bomber',  hp: 130, speed: 48,  r: 30, dmg: 1, w: 76,  h: 62, atk: 'diag',   atkCd: 5.5, atkDmg: 2, name: '폭격기' },
+  phase:   { img: 'enemies/phase',   hp: 90,  speed: 58,  r: 28, dmg: 1, w: 64,  h: 66,  name: '위상함' },
+  grav:    { img: 'enemies/grav',    hp: 190, speed: 30,  r: 34, dmg: 2, w: 78,  h: 78,  name: '중력함' },
   boss1:   { img: 'enemies/boss1', hp: 8000,  speed: 11, r: 90,  dmg: 99, w: 224, h: 196, boss: true, name: '외계 모함', atk: 'column', atkCd: 7, atkDmg: 3 },
   boss2:   { img: 'enemies/boss2', hp: 9500,  speed: 10, r: 100, dmg: 99, w: 230, h: 226, boss: true, name: '거대 운석 핵', spin: 0.3, atk: 'meteor', atkCd: 6, atkDmg: 3 },
   boss3:   { img: 'enemies/boss3',  hp: 9000,  speed: 10, r: 96,  dmg: 99, w: 210, h: 210, boss: true, name: 'UFO 모선', spin: 0.8, shield: 0.35, regen: 6, atk: 'row', atkCd: 8, atkDmg: 3 },
+  boss5:   { img: 'enemies/boss5', hp: 14000, speed: 9, r: 100, dmg: 99, w: 250, h: 210, boss: true, name: '빙결 요새', shield: 0.3, atk: 'freeze', atkCd: 6.5, atkDmg: 0 },
+  boss6:   { img: 'enemies/boss6', hp: 17000, speed: 8, r: 104, dmg: 99, w: 250, h: 230, boss: true, name: '블랙홀 모함', regen: 8, atk: 'cross', atkCd: 7, atkDmg: 3 },
   boss4:   { img: 'enemies/boss4', hp: 12000, speed: 9,  r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '최종 기함', shield: 0.25, regen: 8, atk: 'cross', atkCd: 8, atkDmg: 3 },
 };
 const ENEMY_HINT = {
@@ -327,6 +331,9 @@ const ENEMY_HINT = {
   gunship: '포격함은 세로 한 줄을 통째로 쓸어요. 그 열에서 기체를 옮기세요.',
   bomber:  '폭격기는 대각선으로 폭탄을 떨어뜨려요.',
   meteor:  '운석이 떨어지는 자리에 그림자가 생겨요. 그 네 칸을 비우세요.',
+  phase:   '위상함은 잠깐씩 투명해져서 공격이 통하지 않아요. 다시 보일 때 노리세요.',
+  grav:    '중력함은 근처 캡슐을 끌어당겨 위로 데려가요. 캡슐을 지키려면 먼저 격추하세요.',
+  freeze:  '파란 칸은 빙결 포격이에요. 맞은 기체는 4초 동안 얼어서 쏘지 못해요.',
 };
 
 // ── 구역과 스테이지 ───────────────────────────────────────
@@ -339,6 +346,10 @@ const SECTORS = [
     info: '새 적: 보호막함, 수리선, 폭격기', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer'], atk: ['sniper', 'gunship', 'bomber'], fresh: ['shield', 'healer'], boss: 'boss3' },
   { name: '적 본성', color: '#ff5a6a', planet: ['#ff9a8a', '#a8323a', '#2a0a14'],
     info: '새 적: 캡슐 도둑', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief'], atk: ['sniper', 'gunship', 'bomber', 'meteor'], fresh: ['thief'], boss: 'boss4' },
+  { name: '얼음 고리', color: '#a8f0ff', planet: ['#effcff', '#6ab8d8', '#12304a'],
+    info: '새 적: 위상함, 빙결 포격', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'phase'], atk: ['sniper', 'gunship', 'bomber', 'freeze'], fresh: ['phase'], boss: 'boss5' },
+  { name: '블랙홀', color: '#ffc46a', planet: ['#fff0c8', '#c07a2a', '#1a0f06'],
+    info: '새 적: 중력함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'phase', 'grav'], atk: ['sniper', 'gunship', 'bomber', 'meteor', 'freeze'], fresh: ['grav'], boss: 'boss6' },
 ];
 const STAGE_COUNT = SECTORS.length * 5;
 function stageInfo(n) {
@@ -346,9 +357,9 @@ function stageInfo(n) {
   return { n, s, i, sector: SECTORS[s], boss: i === 4, waves: 5 };
 }
 let WAVE_GROWTH = 0.4, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
-let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0];
+let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8];
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
-const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2]];
+const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2]];
 
 function pickWeighted(pool, fresh) {
   const bag = [];
@@ -773,6 +784,7 @@ function runEvent(ev) {
       break;
     }
     case 'meteor': launchAttack('meteor', null, 3); break;
+    case 'freeze': launchAttack('freeze', null, 0); break;
     case 'gold': {
       const deck = PROG.deck.filter(t => isOwned(t) && UNIT[t].shape === 1);
       const left = Math.random() < 0.5, c = makeCap({ type: deck[Math.floor(Math.random() * deck.length)] || 'f', lv: 3, n: 1, gold: true }, left ? -40 : W + 40, 1);
@@ -845,7 +857,7 @@ function pickCells(kind) {
     if (c + 2 * d < 0 || c + 2 * d >= COLS) continue;
     all.push([c, COLS + c + d, 2 * COLS + c + 2 * d]);
   }
-  if (kind === 'meteor') for (let r = 0; r < openRows() - 1; r++) for (let c = 0; c < COLS - 1; c++) {
+  if (kind === 'meteor' || kind === 'freeze') for (let r = 0; r < openRows() - 1; r++) for (let c = 0; c < COLS - 1; c++) {
     const i = r * COLS + c; all.push([i, i + 1, i + COLS, i + COLS + 1]);
   }
   if (kind === 'cross') for (let i = 0; i < COLS * ROWS; i++) if (occupied(i)) {
@@ -859,7 +871,7 @@ function pickCells(kind) {
 function launchAttack(kind, src, dmg) {
   const cells = pickCells(kind);
   if (!cells) return false;
-  const warn = kind === 'meteor' ? 1.8 : kind === 'row' || kind === 'cross' ? 1.9 : 1.5;
+  const warn = kind === 'meteor' || kind === 'freeze' ? 1.8 : kind === 'row' || kind === 'cross' ? 1.9 : 1.5;
   S.attacks.push({ kind, cells, src, dmg, t: 0, warn });
   if (src && !src.boss) hintOnce('atkfocus', '공격하려는 적을 탭하면 집중 사격해요. 경고가 끝나기 전에 격추하면 공격이 취소돼요.');
   return true;
@@ -870,6 +882,12 @@ function cellsCenter(cells) {
   return { x: x / cells.length, y: y / cells.length };
 }
 function resolveAttack(a) {
+  if (a.kind === 'freeze') {   // 빙결: 피해 대신 4초 동안 못 쏜다
+    const done = new Set();
+    for (const c of a.cells) { const u = S.slots[c]; if (u && !done.has(u)) { done.add(u); u.ice = 4; const p = unitPos(u); addText(p.x, p.y - 24, '빙결!', '#bff4ff', 18, 0.8); } const q = cellPos(c); S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.5, color: '#bff4ff' }); }
+    sparks(cellsCenter(a.cells).x, cellsCenter(a.cells).y, '#dff8ff', 16, 260, 'shard'); play('shield_crack', 0.45, 1.3);
+    return;
+  }
   // 방공포 요격
   if (a.kind === 'snipe' || a.kind === 'diag' || a.kind === 'meteor') {
     for (const u of gridUnits()) if (((u.type === 'a' && u.lv >= 3) || (u.type === 'w' && u.lv >= 2)) && u.t2 <= 0 && a.cells.some(c => u.cells.some(uc => cellDist(uc, c) <= 1))) {
@@ -960,7 +978,7 @@ function focusValid() {
   if (!f || f.dead || f.y <= RANGE_Y) return false;
   return f.maxHits ? S.caps.includes(f) : S.enemies.includes(f);
 }
-const shootable = e => !e.dead && !(e.hacked > 0);
+const shootable = e => !e.dead && !(e.hacked > 0) && !(e.ph > 0);
 function pickTarget() {
   for (const e of S.enemies) if (e.carry && e.y > 70 && e.pending < effHp(e) && shootable(e)) return e;
   const fOk = focusValid();
@@ -1279,7 +1297,7 @@ const SKILL_CD = { f: 4, b: 5, t: 6, r: 9, s: 5, e: 6, c: 7, n: 9, l: 6, q: 8, y
 
 // ── 피해 ──────────────────────────────────────────────────
 function hitEnemy(e, dmg, src = 'laser', quiet = false) {
-  if (e.dead) return;
+  if (e.dead || e.ph > 0) return;
   if (e.frozen > 0 && S.shatter) dmg *= 2;
   if (e.guarded) dmg *= 0.7;
   if (e.boss && e.weak > 0) dmg *= 2;
@@ -1597,7 +1615,7 @@ function updateEnemy(e, dt) {
   }
   if (e.boss && d.atk && e.y > 60) {
     e.atkT -= dt;
-    if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) e.atkT = launchAttack(d.atk, e, d.atkDmg) ? d.atkCd * (mutOn('rapid') ? 0.7 : 1) : 1;
+    if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) e.atkT = launchAttack(e.nextAtk || d.atk, e, d.atkDmg) ? d.atkCd * (mutOn('rapid') ? 0.7 : 1) : 1;
   }
   // 부서질수록 연기, 더 부서지면 불
   if (!e.boss && e.maxHp > 90 && e.k !== 'rock') {
@@ -1668,6 +1686,30 @@ function updateEnemy(e, dt) {
       e.spawnT += dt;
       if (e.spawnT > 4 && e.y > 40) { e.spawnT = 0; spawnEnemy('minion', e.x - 80, e.y + 50); spawnEnemy('minion', e.x + 80, e.y + 50); }
       if (e.phase < 1 && e.hp < e.maxHp * 0.5) { e.phase = 1; spawnEnemy('healer', e.x, e.y + 80); }
+      break;
+    case 'phase':
+      e.phT = (e.phT == null ? 2 + Math.random() * 2 : e.phT) - dt;
+      if (e.ph > 0) e.ph -= dt;
+      if (e.phT <= 0 && e.y > 60) { e.phT = 4; e.ph = 1.2; if (S.focus === e) S.focus = null; }
+      break;
+    case 'grav': case 'boss6':
+      if (!(e.hacked > 0)) for (const c of S.caps) if (!c.carrier && !c.dead && Math.hypot(c.x - e.x, c.y - e.y) < (e.boss ? 260 : 170)) {
+        c.x += (e.x - c.x) * 0.5 * dt; c.y -= (e.boss ? 40 : 30) * dt; c.pulled = 0.2;
+        if (c.y < -50) { c.dead = true; addText(c.x, 120, '캡슐이 끌려갔어요!', '#ffc46a', 20); }
+      }
+      if (e.k === 'boss6') {
+        e.x = (e.cx || W / 2) + Math.sin(S.time * 0.45) * 70 * (e.cx ? 0.4 : 1);
+        const kinds = ['cross', 'column', 'freeze', 'row', 'meteor'];
+        if (!S.attacks.some(a => a.src === e)) e.nextAtk = kinds[Math.floor(S.time / 7) % kinds.length];
+        e.spawnT += dt;
+        if (e.spawnT > 6 && e.y > 40) { e.spawnT = 0; spawnEnemy('grav', e.x - 100, e.y + 50); spawnEnemy('phase', e.x + 100, e.y + 50); }
+      }
+      break;
+    case 'boss5':
+      e.x = (e.cx || W / 2) + Math.sin(S.time * 0.55) * 80 * (e.cx ? 0.4 : 1);
+      e.spawnT += dt;
+      if (e.spawnT > 5 && e.y > 40) { e.spawnT = 0; spawnEnemy('phase', e.x - 90, e.y + 40); spawnEnemy('phase', e.x + 90, e.y + 40); }
+      if (e.phase < 1 && e.hp < e.maxHp * 0.5) { e.phase = 1; addText(e.x, e.y + 110, '얼음 폭풍!', '#bff4ff', 24); for (let k = 0; k < 2; k++) launchAttack('freeze', null, 0); }
       break;
     case 'boss4':
       e.x = (e.cx || W / 2) + Math.sin(S.time * 0.5) * 70 * (e.cx ? 0.4 : 1);
@@ -1847,7 +1889,7 @@ function update(dt) {
   S.attacks = S.attacks.filter(a => !a.done && !a.cancelled);
 
   for (const c of S.caps) {
-    c.flash = Math.max(0, (c.flash || 0) - dt); c.jit = Math.max(0, (c.jit || 0) - dt);
+    c.flash = Math.max(0, (c.flash || 0) - dt); c.pulled = Math.max(0, (c.pulled || 0) - dt); c.jit = Math.max(0, (c.jit || 0) - dt);
     c.sq = Math.max(0, (c.sq || 0) - dt * 3); c.tilt = (c.tilt || 0) * Math.pow(0.01, dt);
     if (c.carrier && !c.carrier.dead) continue;
     c.carrier = null;
@@ -1870,6 +1912,7 @@ function update(dt) {
     if (u.hp < u.maxHp * 0.5 && Math.random() < 0.08) { const p = unitPos(u); smoke(p.x + (Math.random() - .5) * 20, p.y - 10); }
     if (drag && drag.unit === u) continue;
     if (S.mode === 'clearing') continue;
+    if (u.ice > 0) { u.ice -= dt; continue; }
     RANGE_Y = FIRE_Y - cellRange(u);
     u.cd -= dt * (1 + u.buffSpd) * S.pk.spd * cellSpd(u);
     if (u.cd <= 0) {
@@ -2090,7 +2133,7 @@ function endStage(win) {
   if (n === 1) ach('first_clear');
   if (n % 5 === 0) ach('boss_' + n / 5);
   if (S.stars === 3) ach('three_star');
-  if (Array.from({ length: 20 }, (_, i) => PROG.stars[i + 1]).every(v => v === 3)) ach('all_stars');
+  if (Array.from({ length: STAGE_COUNT }, (_, i) => PROG.stars[i + 1]).every(v => v === 3)) ach('all_stars');
   save();
   // 이 스테이지로 풀리는 기체가 있으면 소개 카드
   if (first) { const t = UNIT_ORDER.find(k => UNIT[k].unlock.stage === n); if (t) { unlockUnit(t); UI.pendingReveal = { type: t, at: performance.now() / 1000 + S.introDur }; } }
@@ -2241,7 +2284,7 @@ function coreLabel(x, y, value, size = 16, align = 'left', color = '#bff6ff') {
   else outlineText(txt, x0 + r * 2 + gap, y + 1, color, 3);
 }
 
-const ENGINE_COL = { grunt: '#7dff7a', tank: '#a9b4ff', minion: '#ff7a5a', rusher: '#ffb35a', shield: '#6ad0ff', sniper: '#ff5ad8', gunship: '#ff4a4a', bomber: '#ffb040' };
+const ENGINE_COL = { grunt: '#7dff7a', tank: '#a9b4ff', minion: '#ff7a5a', rusher: '#ffb35a', shield: '#6ad0ff', sniper: '#ff5ad8', gunship: '#ff4a4a', bomber: '#ffb040', phase: '#bff4ff', grav: '#c89bff' };
 
 const STARS = [];
 [[70, 10, 1.1, .45], [40, 26, 1.6, .7], [16, 64, 2.2, 1]].forEach(([n, sp, sz, a], layer) => {
@@ -2344,6 +2387,13 @@ function drawSectorLayer(s, dt, t) {
     list.slice(0, 3).forEach((o, i) => spr(i % 2 ? 'enemies/boss4_sh' : 'enemies/boss1_sh', o.x, o.y * 0.6 + 80, 150 + o.r * 2, 130 + o.r * 2, 0, 0.35));
   }
   if (s === 0) for (const o of list.slice(0, 4)) drawTex('p_light', '#48c8ff', o.x, o.y, o.r * 3, o.rot, 0.06, true);
+  if (s === 4) for (const o of list) { spr('enemies/rock2', o.x, o.y, o.r * 0.9, o.r * 0.8, o.rot, 0.22); if (o.k < 0.4) drawTex('p_star', '#dff8ff', o.x, o.y, o.r * 1.2, o.rot, 0.25, true); }
+  if (s === 5) {
+    drawTex('p_ring', '#ffb84a', W / 2, 150, 420, t * 0.05, 0.14, true);
+    const g = ctx.createRadialGradient(W / 2, 150, 10, W / 2, 150, 120);
+    g.addColorStop(0, 'rgba(0,0,0,.85)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(W / 2 - 120, 30, 240, 240);
+  }
 }
 function drawBg(dt, planetIdx = 0) {
   const t = performance.now() / 1000;
@@ -2668,6 +2718,14 @@ function drawCap(c) {
 }
 
 function drawEnemy(e) {
+  if (e.ph > 0 && !e.ghostDraw) { ctx.save(); ctx.globalAlpha *= 0.22; e.ghostDraw = true; drawEnemy(e); e.ghostDraw = false; ctx.restore(); return; }
+  if ((e.k === 'grav' || e.k === 'boss6') && !(e.hacked > 0)) {
+    drawGlow(e.boss ? '#ffb84a' : '#b86bff', e.x, e.y, e.boss ? 200 : 80, 0.18 + 0.08 * Math.sin(S.time * 4));
+    for (const c of S.caps) if (c.pulled > 0) {
+      ctx.strokeStyle = e.boss ? 'rgba(255,190,90,.5)' : 'rgba(190,120,255,.55)'; ctx.lineWidth = 3; ctx.setLineDash([5, 7]); ctx.lineDashOffset = S.time * 40;
+      ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(c.x, c.y); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
   if (e.carry) {
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const gr = ctx.createLinearGradient(e.x, e.y, e.carry.x, e.carry.y);
@@ -2688,7 +2746,7 @@ function drawEnemy(e) {
   if (charging) drawGlow('#ff2a4a', e.x, e.y, e.r * 2.4, 0.35 + 0.3 * Math.sin(S.time * 18));
   if (e.boss) {
     const p = 0.5 + 0.5 * Math.sin(S.time * 4);
-    const bc = { boss1: '#ff3a2a', boss2: '#ff8a3a', boss3: '#4ab8ff', boss4: '#ff3a5a' }[e.k];
+    const bc = { boss1: '#ff3a2a', boss2: '#ff8a3a', boss3: '#4ab8ff', boss4: '#ff3a5a', boss5: '#6ad8ff', boss6: '#ffb84a' }[e.k];
     drawGlow(bc, e.x, e.y - 20, 160, 0.22 + 0.1 * p);
     if (e.k === 'boss1' || e.k === 'boss4') for (const ox of [-58, 58]) drawGlow('#ff6a3a', e.x + ox, e.y - e.h * 0.45, 26, 0.6 + 0.3 * p, 1.4);
   } else if (ENGINE_COL[e.k] && !(e.frozen > 0) && !(e.hacked > 0)) {
@@ -2782,7 +2840,7 @@ function drawAttacks() {
     }
     for (const c of a.cells) {
       const q = cellPos(c), x = q.x - CW / 2 + 3, y = q.y - CH / 2 + 3, w = CW - 6, h = CH - 6;
-      ctx.fillStyle = `rgba(255,30,60,${0.12 + 0.2 * pulse * (0.5 + p)})`;
+      ctx.fillStyle = a.kind === 'freeze' ? `rgba(120,220,255,${0.14 + 0.2 * pulse * (0.5 + p)})` : `rgba(255,30,60,${0.12 + 0.2 * pulse * (0.5 + p)})`;
       chamfer(x, y, w, h, 8); ctx.fill();
       ctx.save(); chamfer(x, y, w, h, 8); ctx.clip();
       ctx.fillStyle = `rgba(255,60,80,${0.18 + 0.12 * p})`;
@@ -3396,6 +3454,12 @@ function draw(dt) {
   drawPads();
   drawAttacks();
   for (const u of gridUnits()) { const p = unitPos(u); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 1, 1, true); }
+  for (const u of gridUnits()) if (u.ice > 0) {
+    const b = unitBox(u), a = Math.min(1, u.ice * 2);
+    ctx.fillStyle = `rgba(170,235,255,${0.35 * a})`; chamfer(b.x, b.y, b.w, b.h, 9); ctx.fill();
+    ctx.strokeStyle = `rgba(220,250,255,${0.9 * a})`; ctx.lineWidth = 2; ctx.stroke();
+    ctx.font = FU(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText(u.ice.toFixed(1), b.x + b.w / 2, b.y + 12, '#e8fbff', 3);
+  }
   drawUnitFrames(true);
   S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.85, uSize(u) > 2 ? 0.34 : uSize(u) === 2 ? 0.45 : 0.8); });
   drawDrones();
@@ -3826,10 +3890,11 @@ function drawEnd() {
 }
 
 // ── 지도 ──────────────────────────────────────────────────
+const MAP_BAND = Math.floor((838 - 108) / SECTORS.length);   // 여섯 구역이 한 화면에
 function mapNodePos(n) {
   const s = Math.floor((n - 1) / 5), i = (n - 1) % 5;
-  const bandY = 112 + s * 182;
-  return { x: [78, 176, 274, 372, 468][i], y: bandY + 110 + (i === 4 ? -6 : i % 2 ? -18 : 14), r: i === 4 ? 32 : 24 };
+  const bandY = 108 + s * MAP_BAND;
+  return { x: [78, 176, 274, 372, 468][i], y: bandY + 72 + (i === 4 ? -2 : i % 2 ? -6 : 6), r: i === 4 ? 25 : 19 };
 }
 function drawMap() {
   const t = performance.now() / 1000;
@@ -3850,18 +3915,18 @@ function drawMap() {
   BUTTONS.push({ x: W - 62, y: 16, w: 52, h: 52, act: 'settings' });
 
   SECTORS.forEach((sec, s) => {
-    const y = 112 + s * 182;
-    const g = ctx.createLinearGradient(0, y, W, y + 170);
+    const y = 108 + s * MAP_BAND;
+    const g = ctx.createLinearGradient(0, y, W, y + MAP_BAND - 6);
     g.addColorStop(0, sec.color + '26'); g.addColorStop(1, 'rgba(6,8,26,.45)');
-    ctx.fillStyle = g; chamfer(16, y, W - 32, 170, 16); ctx.fill();
+    ctx.fillStyle = g; chamfer(16, y, W - 32, MAP_BAND - 6, 14); ctx.fill();
     ctx.strokeStyle = sec.color + '77'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.globalAlpha = 0.3; ctx.drawImage(PLANETS[s], W - 140, y + 4, 110, 110); ctx.globalAlpha = 1;
+    ctx.globalAlpha = 0.3; ctx.drawImage(PLANETS[s], W - 110, y + 4, 84, 84); ctx.globalAlpha = 1;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.font = FU(11); ctx.fillStyle = sec.color;
-    ctx.fillText(`// SECTOR ${String(s + 1).padStart(2, '0')}`, 32, y + 20);
-    ctx.font = FK(21); outlineText(sec.name, 32, y + 42, '#fff', 4);
-    ctx.font = FK(13); ctx.fillStyle = 'rgba(220,230,255,.8)';
-    ctx.fillText(sec.info, 32, y + 64);
+    ctx.font = FU(10); ctx.fillStyle = sec.color;
+    ctx.fillText(`// SECTOR ${String(s + 1).padStart(2, '0')}`, 30, y + 14);
+    ctx.font = FK(18); outlineText(sec.name, 30, y + 32, '#fff', 4);
+    ctx.font = FK(12); ctx.fillStyle = 'rgba(220,230,255,.8)';
+    ctx.fillText(sec.info, 140, y + 32);
   });
   ctx.lineWidth = 2.5; ctx.setLineDash([6, 8]); ctx.lineDashOffset = -t * 20;
   for (let n = 1; n < STAGE_COUNT; n++) {

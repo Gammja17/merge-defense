@@ -20,13 +20,21 @@ achievements:
     name: "적 본성 함락"
     desc: "스테이지 20에서 최종 기함을 격침하세요"
     icon: "achievements/boss_4.png"
+  - id: boss_5
+    name: "빙결 요새 격파"
+    desc: "스테이지 25에서 빙결 요새를 부수세요"
+    icon: "achievements/boss_5.png"
+  - id: boss_6
+    name: "사건의 지평선"
+    desc: "스테이지 30에서 블랙홀 모함을 격침하세요"
+    icon: "achievements/boss_6.png"
   - id: three_star
     name: "흠집 하나 없이"
     desc: "별 3개로 스테이지를 깨세요"
     icon: "achievements/three_star.png"
   - id: all_stars
     name: "만점 사령관"
-    desc: "20스테이지 모두 별 3개를 받으세요"
+    desc: "모든 스테이지에서 별 3개를 받으세요"
     icon: "achievements/all_stars.png"
   # 합체
   - id: gold_unit
