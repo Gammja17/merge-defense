@@ -165,10 +165,11 @@ const SFX_FILES = ['laser1', 'zap', 'twoTone', 'shieldDown', 'shieldUp', 'lose',
   'boom_s1', 'boom_s2', 'boom_low', 'boom_big', 'hit_1', 'hit_2', 'shield_hit', 'shield_break', 'upgrade', 'ui_open', 'coin_1', 'coin_2', 'coin_3', 'base_hit',
   'pick', 'drop', 'latch', 'swap', 'deny', 'click', 'open', 'close', 'confirm', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule', 'levelup', 'unlock', 'scrap', 'scrap_low',
   'pew1', 'pew2', 'pew3', 'pew4', 'kaboom1', 'kaboom2', 'kaboom_s1', 'kaboom_s2', 'thud', 'drums', 'crackle1', 'crackle2', 'shield_crack',
-  'imp_l1', 'imp_l2', 'imp_l3', 'imp_h1', 'imp_h2', 'imp_h3', 'imp_s1', 'imp_s2', 'imp_p1', 'imp_p2', 'debris1', 'debris2', 'debris3'];   // imp_, debris: Kenney Impact Sounds (CC0)
+  'imp_l1', 'imp_l2', 'imp_l3', 'imp_h1', 'imp_h2', 'imp_h3', 'imp_s1', 'imp_s2', 'imp_p1', 'imp_p2', 'debris1', 'debris2', 'debris3',
+  'gun_l1', 'gun_l2', 'gun_l3', 'gun_l4', 'gun_h1', 'gun_h2', 'gun_h3', 'gun_sg'];   // gun_: Gunshot Sounds (Vincent Sevedge, OpenGameArt)   // imp_, debris: Kenney Impact Sounds (CC0)
 // 같은 소리의 최소 재생 간격(초). 연사가 많아도 귀가 따갑지 않게
-const SFX_GAP = { imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.045, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
-const VARIANTS = { imp_l: ['imp_l1', 'imp_l2', 'imp_l3'], imp_h: ['imp_h1', 'imp_h2', 'imp_h3'], imp_s: ['imp_s1', 'imp_s2'], imp_p: ['imp_p1', 'imp_p2'], debris: ['debris1', 'debris2', 'debris3'], shot: ['pew1', 'pew2', 'pew3', 'pew4'], boom_s: ['kaboom_s1', 'kaboom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2', 'coin_3'],
+const SFX_GAP = { pew: 0.06, imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.045, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
+const VARIANTS = { imp_l: ['imp_l1', 'imp_l2', 'imp_l3'], imp_h: ['imp_h1', 'imp_h2', 'imp_h3'], imp_s: ['imp_s1', 'imp_s2'], imp_p: ['imp_p1', 'imp_p2'], debris: ['debris1', 'debris2', 'debris3'], shot: ['gun_l1', 'gun_l2', 'gun_l3', 'gun_l4'], shot_retro: ['gun_l1', 'gun_l2', 'gun_l3', 'gun_l4'], shot_big: ['gun_h1', 'gun_h2', 'gun_h3'], pew: ['pew1', 'pew2', 'pew3', 'pew4'], boom_s: ['kaboom_s1', 'kaboom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2', 'coin_3'],
   kaboom: ['kaboom1', 'kaboom2'], crackle: ['crackle1', 'crackle2'], bosshit: ['thud'] };
 let AC = null, MASTER = null;
 const BUF = {}, lastPlay = {};
@@ -185,7 +186,7 @@ function loadSfx() {
   for (const n of SFX_FILES) fetch('assets/sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b)).then(buf => { BUF[n] = buf; }).catch(() => {});
 }
 const UI_SFX = new Set(['click', 'open', 'close', 'confirm', 'deny', 'pick', 'drop', 'latch', 'swap', 'ui_open', 'coin', 'levelup', 'unlock', 'upgrade', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule']);
-const SWEEP_SFX = new Set(['shot', 'shot_a', 'shot_b', 'shot_c', 'shot_big', 'shot_retro', 'laser1']);
+const SWEEP_SFX = new Set(['pew', 'laser1']);   // 총소리는 미끄러지지 않게
 function play(n, vol = 0.4, rate = 1, jitter = 0.06) {
   if (!SET().sfxVol || !AC) return;
   const now = AC.currentTime;
@@ -1170,7 +1171,7 @@ function fireUnit(u) {
       else if (L === 2) { ok = shoot('f', p.x - 8, y, base / 2, L); shoot('f', p.x + 8, y, base / 2, L); }
       else if (L === 3) { ok = shoot('f', p.x, y, base / 3, L); shoot('f', p.x - 9, y, base / 3, L, -0.35); shoot('f', p.x + 9, y, base / 3, L, 0.35); }
       else { ok = pierce(p.x - 8, y, base / 2, L); pierce(p.x + 8, y, base / 2, L); }
-      if (ok) play('shot', 0.12, 1 + L * 0.04);
+      if (ok) { play('shot', 0.16, 1 + L * 0.03); play('pew', 0.04, 1 + L * 0.04); }   // 총성 "두" 위에 레이저음을 작게
       break;
     }
     case 't': {
@@ -1285,7 +1286,8 @@ function fireUnit(u) {
   }
   if (ok) {
     const snd = { w: 'shot_retro', l: 'shot_big', q: 'zap', y: 'shot_big', t: 'shot_retro', a: 'shot_retro', v: 'shot_retro', s: 'shot_big', b: 'shot_big', r: 'boom_low', c: 'shot', g: 'shot', m: 'shot', e: 'zap' }[u.type];
-    if (snd) play(snd, snd === 'shot_big' ? 0.22 : snd === 'boom_low' ? 0.3 : 0.1, snd === 'shot' ? 1.25 : 1);
+    if (snd) play(snd, snd === 'shot_big' ? 0.3 : snd === 'boom_low' ? 0.3 : 0.14, snd === 'shot' ? 1.15 : snd === 'shot_retro' ? 0.85 : 1);
+    if (u.type === 'b' || u.type === 'y') play('gun_sg', 0.18, 0.8);   // 전함 주포는 산탄 한 방을 겹쳐 더 묵직하게
     if (u.type === 'e') play('crackle', 0.16, 1.1);
     const t = ok.tgt || null;
     if (t && u.type !== 'h') u.ang = Math.atan2(t.y - p.y, t.x - p.x);
