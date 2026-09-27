@@ -51,7 +51,9 @@ const IMG_NAMES = ['f1','f2','f3','tbase','t1','t2','t3','laser','hit','missile'
   'e_heal','e_thief','b_rock','b_ufo','b_flag','cap_f','cap_t','cap_up','cap_heal',
   'puff','aura1','aura2','star','wall','life',
   'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b',
-  ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl','ex1','ex2','ex3','ex4'].map(n => 'fx/' + n)];
+  ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl','ex1','ex2','ex3','ex4'].map(n => 'fx/' + n),
+  ...[...'ftsgmedcabrhnxvk'].flatMap(t => [1, 2, 3].map(k => 'units/' + t + k)),
+  ...['grunt','tank','rusher','shield','minion','heal','thief','sniper','gunship','bomber','elite','rock1','rock2','split','splitS','boss1','boss2','boss3','boss4'].map(n => 'enemies/' + n)];
 const IMG = {};
 function loadImages() {
   return Promise.all(IMG_NAMES.map(n => new Promise(res => {
@@ -73,12 +75,22 @@ function makeTint(src, color, key, amount = 0.5, flip = false) {
     g.globalAlpha = amount; g.fillStyle = color; g.fillRect(0, 0, im.width, im.height);
   });
 }
+// 새 그림 비율에 맞춰 적 크기를 다시 잡는다 (긴 변은 그대로)
+function fitEnemySizes() {
+  for (const d of Object.values(ENEMY)) {
+    const im = IMG[d.img]; if (!im || !im.width) continue;
+    const m = Math.max(d.w, d.h) * (d.boss ? 1.12 : 1.08), r = im.width / im.height;
+    if (r >= 1) { d.w = m; d.h = m / r; } else { d.h = m; d.w = m * r; }
+  }
+}
 function buildTints() {
+  // 초월 광택: 최종 단계 그림에 빨강(Lv6), 분홍(Lv7), 청록(Lv8 무지개 순환용)
+  setTimeout(() => { for (const t of 'ftsgmedcabrhnxvk') { const n = 'units/' + t + '3'; makeTint(n, '#ff4a3a', n + '_l6', 0.6); makeTint(n, '#ff4ad2', n + '_l7', 0.6); makeTint(n, '#48e0ff', n + '_l8', 0.6); } }, 0);
   const lvImgs = ['f1', 'f2', 'f3', 'tbase', 't1', 't2', 't3', ...Object.values(UNIT).map(d => d.img)];
   setTimeout(() => { for (const n of lvImgs) { makeTint(n, '#c07bff', n + '_l4', 0.32); makeTint(n, '#ffc83a', n + '_l5', 0.4);
     makeTint(n, '#3a7cff', n + '_l6', 0.45); makeTint(n, '#ff2a4a', n + '_l7', 0.45); makeTint(n, '#f4f0ff', n + '_l8', 0.4);
     RAINBOW.forEach((c, i) => makeTint(n, c, n + '_r' + i, 0.6)); } }, 0);
-  const enemyImgs = [...new Set(Object.values(ENEMY).map(d => d.img).concat(['e_rock1', 'e_rock2']))];
+  const enemyImgs = [...new Set(Object.values(ENEMY).map(d => d.img).concat(['enemies/rock2']))];
   setTimeout(() => { for (const n of enemyImgs) makeTint(n, '#000000', n + '_sh', 1); }, 0);
   makeTint('e_grunt', '#ff3cc8', 't_sniper', 0.55);
   makeTint('e_tank', '#ff2a3a', 't_gunship', 0.5);
@@ -283,24 +295,24 @@ if (!PROG.deck.length) PROG.deck = ['f', 't'];
 
 // ── 적 ────────────────────────────────────────────────────
 const ENEMY = {
-  grunt:   { img: 'e_grunt',   hp: 50,  speed: 60,  r: 30, dmg: 1, w: 70,  h: 63 },
-  tank:    { img: 'e_tank',    hp: 260, speed: 24,  r: 36, dmg: 2, w: 82,  h: 84 },
-  rock:    { img: 'e_rock1',   hp: 10,  speed: 70,  r: 16, dmg: 1, w: 30,  h: 30 },
-  minion:  { img: 'e_minion',  hp: 22,  speed: 55,  r: 22, dmg: 1, w: 50,  h: 45 },
-  rusher:  { img: 'e_rusher',  hp: 35,  speed: 135, r: 24, dmg: 1, w: 62,  h: 50 },
-  split:   { img: 'e_split',   hp: 150, speed: 38,  r: 36, dmg: 2, w: 92,  h: 76, spin: 1 },
-  splitS:  { img: 'e_splitS',  hp: 30,  speed: 65,  r: 18, dmg: 1, w: 40,  h: 40, spin: 3 },
-  shield:  { img: 'e_shield',  hp: 150, speed: 30,  r: 36, dmg: 2, w: 82,  h: 84, shield: 0.7 },
-  healer:  { img: 'e_heal',    hp: 110, speed: 28,  r: 34, dmg: 1, w: 68,  h: 68, spin: 1.5 },
-  thief:   { img: 'e_thief',   hp: 70,  speed: 55,  r: 30, dmg: 1, w: 62,  h: 62, spin: 4 },
-  elite:   { img: 't_elite',   hp: 700, speed: 22,  r: 46, dmg: 3, w: 108, h: 110, shield: 0.4, atk: 'column', atkCd: 5, atkDmg: 3, name: '엘리트 전함' },
-  sniper:  { img: 't_sniper',  hp: 80,  speed: 60,  r: 30, dmg: 1, w: 66,  h: 60, atk: 'snipe',  atkCd: 4.5, atkDmg: 2, name: '저격함' },
-  gunship: { img: 't_gunship', hp: 210, speed: 32,  r: 36, dmg: 2, w: 80,  h: 82, atk: 'column', atkCd: 6,   atkDmg: 3, name: '포격함' },
-  bomber:  { img: 't_bomber',  hp: 130, speed: 48,  r: 30, dmg: 1, w: 76,  h: 62, atk: 'diag',   atkCd: 5.5, atkDmg: 2, name: '폭격기' },
-  boss1:   { img: 'e_boss', hp: 8000,  speed: 11, r: 90,  dmg: 99, w: 224, h: 196, boss: true, name: '외계 모함', atk: 'column', atkCd: 7, atkDmg: 3 },
-  boss2:   { img: 'b_rock', hp: 9500,  speed: 10, r: 100, dmg: 99, w: 230, h: 226, boss: true, name: '거대 운석 핵', spin: 0.3, atk: 'meteor', atkCd: 6, atkDmg: 3 },
-  boss3:   { img: 'b_ufo',  hp: 9000,  speed: 10, r: 96,  dmg: 99, w: 210, h: 210, boss: true, name: 'UFO 모선', spin: 0.8, shield: 0.35, regen: 6, atk: 'row', atkCd: 8, atkDmg: 3 },
-  boss4:   { img: 'b_flag', hp: 12000, speed: 9,  r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '최종 기함', shield: 0.25, regen: 8, atk: 'cross', atkCd: 8, atkDmg: 3 },
+  grunt:   { img: 'enemies/grunt',   hp: 50,  speed: 60,  r: 30, dmg: 1, w: 70,  h: 63 },
+  tank:    { img: 'enemies/tank',    hp: 260, speed: 24,  r: 36, dmg: 2, w: 82,  h: 84 },
+  rock:    { img: 'enemies/rock1',   hp: 10,  speed: 70,  r: 16, dmg: 1, w: 30,  h: 30 },
+  minion:  { img: 'enemies/minion',  hp: 22,  speed: 55,  r: 22, dmg: 1, w: 50,  h: 45 },
+  rusher:  { img: 'enemies/rusher',  hp: 35,  speed: 135, r: 24, dmg: 1, w: 62,  h: 50 },
+  split:   { img: 'enemies/split',   hp: 150, speed: 38,  r: 36, dmg: 2, w: 92,  h: 76, spin: 1 },
+  splitS:  { img: 'enemies/splitS',  hp: 30,  speed: 65,  r: 18, dmg: 1, w: 40,  h: 40, spin: 3 },
+  shield:  { img: 'enemies/shield',  hp: 150, speed: 30,  r: 36, dmg: 2, w: 82,  h: 84, shield: 0.7 },
+  healer:  { img: 'enemies/heal',    hp: 110, speed: 28,  r: 34, dmg: 1, w: 68,  h: 68, spin: 1.5 },
+  thief:   { img: 'enemies/thief',   hp: 70,  speed: 55,  r: 30, dmg: 1, w: 62,  h: 62, spin: 4 },
+  elite:   { img: 'enemies/elite',   hp: 700, speed: 22,  r: 46, dmg: 3, w: 108, h: 110, shield: 0.4, atk: 'column', atkCd: 5, atkDmg: 3, name: '엘리트 전함' },
+  sniper:  { img: 'enemies/sniper',  hp: 80,  speed: 60,  r: 30, dmg: 1, w: 66,  h: 60, atk: 'snipe',  atkCd: 4.5, atkDmg: 2, name: '저격함' },
+  gunship: { img: 'enemies/gunship', hp: 210, speed: 32,  r: 36, dmg: 2, w: 80,  h: 82, atk: 'column', atkCd: 6,   atkDmg: 3, name: '포격함' },
+  bomber:  { img: 'enemies/bomber',  hp: 130, speed: 48,  r: 30, dmg: 1, w: 76,  h: 62, atk: 'diag',   atkCd: 5.5, atkDmg: 2, name: '폭격기' },
+  boss1:   { img: 'enemies/boss1', hp: 8000,  speed: 11, r: 90,  dmg: 99, w: 224, h: 196, boss: true, name: '외계 모함', atk: 'column', atkCd: 7, atkDmg: 3 },
+  boss2:   { img: 'enemies/boss2', hp: 9500,  speed: 10, r: 100, dmg: 99, w: 230, h: 226, boss: true, name: '거대 운석 핵', spin: 0.3, atk: 'meteor', atkCd: 6, atkDmg: 3 },
+  boss3:   { img: 'enemies/boss3',  hp: 9000,  speed: 10, r: 96,  dmg: 99, w: 210, h: 210, boss: true, name: 'UFO 모선', spin: 0.8, shield: 0.35, regen: 6, atk: 'row', atkCd: 8, atkDmg: 3 },
+  boss4:   { img: 'enemies/boss4', hp: 12000, speed: 9,  r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '최종 기함', shield: 0.25, regen: 8, atk: 'cross', atkCd: 8, atkDmg: 3 },
 };
 const ENEMY_HINT = {
   tank:    '중장갑 함선은 아주 튼튼해요. 기체를 합쳐서 한 방을 키워야 뚫려요.',
@@ -717,7 +729,7 @@ function spawnEnemy(k, x, y) {
               img: d.img, w: d.w, h: d.h, boss: !!d.boss, phase: 0, spawnT: 0, skillT: 0,
               atkT: d.boss ? 3 : 1.2, atkLeft: 3, hoverY: 250 + Math.random() * 90,
               stun: 0, frozen: 0, slow: 0, slowT: 0, burnT: 0, burnD: 0, hacked: 0, hackT: 0 };
-  if (k === 'rock') { e.img = Math.random() < 0.5 ? 'e_rock1' : 'e_rock2'; e.spin = (Math.random() - 0.5) * 4; }
+  if (k === 'rock') { e.img = Math.random() < 0.5 ? 'enemies/rock1' : 'enemies/rock2'; e.spin = (Math.random() - 0.5) * 4; }
   S.enemies.push(e);
   return e;
 }
@@ -2228,13 +2240,13 @@ const BGX = SECTORS.map(() => [...Array(8)].map(() => ({ x: Math.random() * W, y
 function drawSectorLayer(s, dt, t) {
   const list = BGX[s];
   for (const o of list) { o.y += o.sp * dt; o.rot += o.vr * dt; if (o.y > H + 120) { o.y = -120; o.x = Math.random() * W; } }
-  if (s === 1) for (const o of list) spr(o.k < 0.5 ? 'e_split' : 'e_rock1', o.x, o.y, o.r * 1.4, o.r * 1.2, o.rot, 0.28);
+  if (s === 1) for (const o of list) spr(o.k < 0.5 ? 'enemies/split' : 'enemies/rock1', o.x, o.y, o.r * 1.4, o.r * 1.2, o.rot, 0.28);
   if (s === 2) for (const o of list) drawTex(o.k < 0.5 ? 'p_smoke2' : 'p_smoke1', o.k < 0.33 ? '#c060ff' : o.k < 0.66 ? '#ff5ab8' : '#6a5aff', o.x, o.y, o.r * 7, o.rot, 0.13, true);
   if (s === 3) {
     const g = ctx.createRadialGradient(W / 2, 0, 20, W / 2, 0, H * 0.7);
     g.addColorStop(0, 'rgba(255,40,70,.18)'); g.addColorStop(1, 'rgba(255,40,70,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    list.slice(0, 3).forEach((o, i) => spr(i % 2 ? 'b_flag_sh' : 'e_boss_sh', o.x, o.y * 0.6 + 80, 150 + o.r * 2, 130 + o.r * 2, 0, 0.35));
+    list.slice(0, 3).forEach((o, i) => spr(i % 2 ? 'enemies/boss4_sh' : 'enemies/boss1_sh', o.x, o.y * 0.6 + 80, 150 + o.r * 2, 130 + o.r * 2, 0, 0.35));
   }
   if (s === 0) for (const o of list.slice(0, 4)) drawTex('p_light', '#48c8ff', o.x, o.y, o.r * 3, o.rot, 0.06, true);
 }
@@ -2369,6 +2381,35 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
   const shine = lv >= 4 ? (lv >= 8 ? 0.45 : lv >= 6 ? 0.3 : lv >= 5 ? 0.22 : 0.14) + 0.12 * Math.sin(t * 3 + x * 0.1) : 0;
   const ang = u ? u.ang : -Math.PI / 2, kick = u ? (u.kick || 0) : 0, flash = u ? (u.flash || 0) : 0;
   const col = type === 'f' || lv >= 5 ? lvCol(lv) : def.col;
+  const tier = lv >= 5 ? 3 : lv >= 3 ? 2 : 1, NI = IMG['units/' + type + tier];
+  if (NI && NI.width) {
+    // 칸 위의 기체는 단계별 고정 크기, 카드 같은 곳은 넘겨받은 배율에 맞춘다
+    const k = u ? s / U_SCALE / (1 + (lv - 1) * 0.05) : s * Math.max(def.iw, def.ih) / (def.shape === 1 ? 60 : 130);
+    const [bw, bh] = def.shape === 'h2' ? [[112, 62], [124, 68], [136, 74]][tier - 1] : def.shape === 'v2' ? [[60, 124], [64, 136], [70, 148]][tier - 1] : [[50, 50], [58, 58], [64, 64]][tier - 1];
+    const sc = Math.min(bw * k / NI.width, bh * k / NI.height), dw = NI.width * sc, dh = NI.height * sc, ky = kick * 30;
+    const turns = def.rot || type === 't', rot = turns ? ang + Math.PI / 2 : 0;
+    if (type === 'x') {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha *= alpha * 0.35;
+      ctx.translate(x, y); ctx.rotate(t * 2);
+      const g = ctx.createLinearGradient(0, 0, 40 * k, 0); g.addColorStop(0, '#48ffd8'); g.addColorStop(1, 'rgba(72,255,216,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 44 * k, -0.4, 0.4); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    if (def.air) drawFlame(x, y + dh * 0.44 + ky, (8 + lv * 3) * (0.8 + Math.random() * 0.35) * k, 3 + tier, col, alpha * 0.8);
+    ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y - 2 + ky); if (rot) ctx.rotate(rot);
+    ctx.drawImage(NI, -dw / 2, -dh / 2, dw, dh);
+    if (lv >= 6) {
+      const TI = IMG['units/' + type + '3_' + (lv >= 8 ? ['l6', 'l7', 'l8'][Math.floor(t * 4) % 3] : 'l' + lv)];
+      if (TI && TI.width) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha * (0.28 + 0.12 * Math.sin(t * 3 + x * 0.1)); ctx.drawImage(TI, -dw / 2, -dh / 2, dw, dh); }
+    }
+    ctx.restore();
+    if (flash > 0) {
+      const tx = turns ? x + Math.cos(ang) * dh * 0.5 : x, ty = turns ? y + Math.sin(ang) * dh * 0.5 : y - dh * 0.5;
+      drawTex('p_muzzle', col, tx, ty, 34 * k, rot, flash * 12 * alpha); drawGlow('#ffffff', tx, ty, 14 * k, flash * 8 * alpha);
+    }
+    if (type === 'e' || type === 'k') drawGlow(col, x, y, 22 * k, (0.3 + 0.2 * Math.sin(t * 9)) * alpha);
+    return;
+  }
   if (type === 'f') {
     const ky = kick * 40, w = [66, 72, 70][m - 1] * s, h = [50, 52, 52][m - 1] * s;
     drawFlame(x, y - 12 + ky + h / 2, (12 + lv * 5) * (0.8 + Math.random() * 0.35) * s, 4 + lv, col, alpha);
@@ -2622,7 +2663,7 @@ function drawAttacks() {
       if (p > 0.6) {
         const k = (p - 0.6) / 0.4, my = m.y - 600 * (1 - k);
         drawFlame(m.x, my - 90, 90, 18, '#ff8a3a');
-        spr('e_split', m.x, my, 110, 92, S.time * 3);
+        spr('enemies/split', m.x, my, 100, 100, S.time * 3);
         drawGlow('#ffb347', m.x, my, 60, 0.7);
       }
     }
@@ -4153,7 +4194,7 @@ function drawTitle() {
   drawGlow('#ff3a2a', W / 2, 170, 150, 0.22 + 0.1 * Math.sin(t * 2));
   const by = 190 + Math.sin(t * 1.2) * 8;
   for (const ox of [-58, 58]) drawGlow('#ff6a3a', W / 2 + ox, by - 88, 24, 0.7, 1.4);
-  spr('e_boss', W / 2, by, 224, 196);
+  { const im = IMG['enemies/boss1'], r = im && im.width ? im.width / im.height : 1.14; spr('enemies/boss1', W / 2, by, 230, 230 / r); }
   brackets(W / 2 - 130, by - 110, 260, 220, 22, 'rgba(255,90,90,.5)', 2);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   drawGlow('#48c8ff', W / 2, 385, 220, 0.25, 0.4);
@@ -4167,14 +4208,14 @@ function drawTitle() {
   const cyc = (t % 2.4) / 2.4, cy = 580;
   if (cyc < 0.55) {
     const k = cyc / 0.55, gap = 70 * (1 - k * k);
-    for (const sx of [-1, 1]) { drawFlame(W / 2 + sx * gap, cy + 14, 16, 5, '#48c8ff'); spr('f2', W / 2 + sx * gap, cy, 66, 48); }
+    for (const sx of [-1, 1]) { drawFlame(W / 2 + sx * gap, cy + 14, 16, 5, '#48c8ff'); drawUnitArt('f', 1, W / 2 + sx * gap, cy, 0.85, 1, null); }
   } else {
     const k = (cyc - 0.55) / 0.45;
     if (k < 0.3) drawGlow('#5ae0ff', W / 2, cy, 90, (0.3 - k) * 3);
     drawGlow('#5ae0ff', W / 2, cy + 6, 60, 0.25);
     drawFlame(W / 2, cy + 18, 24, 7, '#5ae0ff');
     const sc = 1 + Math.max(0, 0.25 - k) * 1.5;
-    spr('f3', W / 2, cy, 76 * sc, 57 * sc);
+    drawUnitArt('f', 3, W / 2, cy, 0.95 * sc, 1, null);
     ctx.font = FK(17); glitchText('확산 레이저!', W / 2, cy - 50, '#5ae0ff', 4, k < 0.2 ? 6 : 0);
   }
   ctx.font = FT(20, 900);
@@ -4517,5 +4558,5 @@ function setupShot(k) {
   else if (k === 'hits') { PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(12); shotArmy(army); S.wave = 3; startWave(4); shotRun(60 * 6);
     blastFx(150, 330, 1.4); blastFx(390, 250, 2.2); blastFx(300, 480, 1); for (const f of S.fx) if (f.kind === 'sheet') f.t = Math.max(f.t, 0) + f.life * 0.3; S.frozen = true; }
 }
-Promise.all([loadImages(), fontsReady()]).then(() => { buildTints(); if (SHOT) setupShot(SHOT); requestAnimationFrame(loop); });
+Promise.all([loadImages(), fontsReady()]).then(() => { fitEnemySizes(); buildTints(); if (SHOT) setupShot(SHOT); requestAnimationFrame(loop); });
 </script>
