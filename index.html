@@ -650,18 +650,19 @@ function cellAt(x, y) {
   return r * COLS + c;
 }
 let SCRAP_Y = LINE_Y - 20;   // 이 선보다 위(전장)에 놓으면 해체
-// 판 올리기: k는 지금 보이는 줄 수(소수). 줄이 적으면 판이 그만큼 아래에 있다
+// 판 올리기: k는 판 위치를 정하는 줄 수(소수). 2줄일 땐 3줄 자리에 두고 셋째 줄을 비워 둔다
 function setLift(k) { S.lift = k; const off = (ROWS - k) * CH; GRID_Y = 662 + off; LINE_Y = 640 + off; SCRAP_Y = LINE_Y - 20; }
 function tickLift(dt) {
-  const want = S.rowsOpen || START_ROWS;
-  if (S.lift == null || S.lift > want) { setLift(want); return; }
-  if (S.lift >= want) return;
-  // 0.6초 동안 올라가다 살짝 넘친 뒤 제자리에서 철컹
+  const want = S.rowsOpen || START_ROWS, pos = Math.max(3, want);
+  if (S.lift == null || S.shown == null || S.shown > want) { setLift(pos); S.shown = want; S.popRow = -1; return; }
+  if (S.shown >= want) return;
+  // 0.6초 동안: 셋째 줄은 빈자리에서 튀어 올라오고, 넷째 줄은 판이 통째로 올라간다. 끝에서 철컹
   S.liftT = (S.liftT || 0) + dt;
-  const p = Math.min(1, S.liftT / 0.6), c1 = 1.4, q = p - 1;
-  setLift(p < 1 ? want + (c1 + 1) * q * q * q + c1 * q * q : want);
-  for (const e of S.enemies) if (e.y > LINE_Y - 24) e.y = LINE_Y - 24;
+  const p = Math.min(1, S.liftT / 0.6), c1 = 1.4, q = p - 1, e = p < 1 ? 1 + (c1 + 1) * q * q * q + c1 * q * q : 1;
+  S.popRow = want - 1; S.rowPop = e;
+  if (pos > S.lift) { setLift(pos - 1 + e); for (const en of S.enemies) if (en.y > LINE_Y - 24) en.y = LINE_Y - 24; }
   if (p < 1) return;
+  setLift(pos); S.shown = want; S.popRow = -1;
   shake(0.45); play('thud', 0.9); play('upgrade', 0.4);
   for (let c = (want - 1) * COLS; c < want * COLS; c++) { const q2 = cellPos(c); S.fx.push({ kind: 'ring', x: q2.x, y: q2.y, t: -Math.abs(c % COLS - 2.5) * 0.04, life: 0.5, color: '#ffb347' }); }
   addText(W / 2, GRID_Y + (want - 0.5) * CH, '줄 추가!', '#ffd6a0', 26, 1.2);
@@ -1430,6 +1431,7 @@ function giveUnit(type, lv, fromX, fromY, col) {
     hintOnce('reserve', '자리가 없어서 대기함으로 갔어요. 대기 중인 기체는 쏘지 않아요. 칸을 비우고 끌어다 놓거나, 같은 기체에 겹쳐 합체하세요.');
   }
   S.fx.push({ kind: 'fly', x: fromX, y: fromY, tx: where.x, ty: where.y, t: 0, life: 0.45, color: col });
+  S.fx.push({ kind: 'arrive', x: where.x, y: where.y, t: -0.42, life: 0.5, big: spot && uSize(u) > 1 ? 1.5 : 1 });   // 날아와 앉는 순간 하얗게 짜잔
   return spot ? 'placed' : 'reserve';
 }
 function claimCap(c) {
@@ -2966,11 +2968,21 @@ function drawUnitFrames(top) {
 }
 function drawPads() {
   const t = S.time;
+  if (S.popRow >= 0 && S.popRow < openRows() && S.lift >= 3 && S.popRow === 2) {   // 셋째 줄이 빈자리에서 튀어 올라오는 중
+    const e = S.rowPop || 0;
+    for (let c = 0; c < COLS; c++) {
+      const p = cellPos(S.popRow * COLS + c), x = p.x - CW / 2 + 4, y = p.y - CH / 2 + 4 + (1 - e) * 70;
+      ctx.globalAlpha = Math.max(0, Math.min(1, e * 1.5));
+      ctx.fillStyle = 'rgba(20,30,56,.95)'; chamfer(x, y, CW - 8, CH - 8, 9); ctx.fill();
+      ctx.strokeStyle = '#ffb347'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
   for (let i = 0; i < COLS * ROWS; i++) {
     // 편대 발진대: 금속 판 + 착륙 표적 + 칸 번호 + 유도등. 줄마다 색(앞 주황, 가운데 청록, 뒤 파랑)
     const p = cellPos(i), x = p.x - CW / 2 + 4, y = p.y - CH / 2 + 4, w = CW - 8, h = CH - 8;
     const r = Math.floor(i / COLS), c = i % COLS, f = S.cellFx[i], fc = f ? CELL_FX[f.k].col : '#5a86c8', u = S.slots[i], lit = u ? UNIT[u.type].col : fc;
-    if (r >= openRows()) continue;
+    if (r >= openRows() || (r === S.popRow && r === 2)) continue;
     const pg = ctx.createLinearGradient(0, y, 0, y + h);
     pg.addColorStop(0, 'rgba(26,38,66,.94)'); pg.addColorStop(1, 'rgba(7,11,24,.94)');
     ctx.fillStyle = pg; chamfer(x, y, w, h, 9); ctx.fill();
@@ -3144,6 +3156,16 @@ function drawFx() {
     if (f.t < 0) continue;
     const p = f.t / f.life;
     switch (f.kind) {
+      case 'arrive': {
+        const big = f.big || 1, a = 1 - p;
+        drawGlow('#ffffff', f.x, f.y, (40 + 50 * p) * big, a * 0.9);
+        drawTex('p_flare', '#ffffff', f.x, f.y, (70 + 60 * p) * big, p * 0.8, a * 1.4);
+        ctx.strokeStyle = '#ffffff'; ctx.globalAlpha = a; ctx.lineWidth = 3 * a + 1;
+        ctx.beginPath(); ctx.arc(f.x, f.y, (14 + 46 * p) * big, 0, Math.PI * 2); ctx.stroke();
+        for (let k = 0; k < 4; k++) { const ang = k * Math.PI / 2 + Math.PI / 4, r0 = (18 + 30 * p) * big, r1 = r0 + 14 * a * big; ctx.beginPath(); ctx.moveTo(f.x + Math.cos(ang) * r0, f.y + Math.sin(ang) * r0); ctx.lineTo(f.x + Math.cos(ang) * r1, f.y + Math.sin(ang) * r1); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+        break;
+      }
       case 'hit': {
         const c = f.color || '#7fe0ff', big = f.big || 1;
         drawGlow(c, f.x, f.y, 26 * big, (1 - p) * 1.0);
