@@ -3646,6 +3646,15 @@ function drawHud() {
     ctx.font = FU(9); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,200,120,.8)'; ctx.fillText('전투력', 38, py - 1);
     ctx.font = FT(13, 900); outlineText(fmt(S.powerShown), 70, py + 1, '#ffe2a8', 3);
     if (S.mode === 'play' || S.mode === 'break') {   // 오른쪽: 소환 버튼
+      { // 소환 왼쪽: 지금 가진 부품
+        const gx = W - 142 - 8 - 86, gp = S.gearPulse || 0;
+        if (gp > 0) drawGlow('#ffb347', gx + 43, py, 50, gp * 0.8, 0.5);
+        ctx.fillStyle = 'rgba(40,24,10,.9)'; chamfer(gx, py - 16, 86, 32, 7); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,180,70,.7)'; ctx.lineWidth = 1.2; ctx.stroke();
+        drawGearIcon(gx + 16, py, 7);
+        ctx.font = FK(13); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffd6a0'; ctx.fillText('부품', gx + 29, py + 1);
+        ctx.font = FT(15, 900); ctx.textAlign = 'right'; outlineText(String(S.gear), gx + 78, py + 1, '#fff', 3);
+      }
       const cost = summonCost(), ok = S.gear >= cost, bx = W - 142, by = py - 16, bw = 130, bh = 32;
       if (ok) drawGlow('#ffb347', bx + bw / 2, py, 60, 0.18 + 0.1 * Math.sin(S.time * 5), 0.5);
       ctx.fillStyle = ok ? 'rgba(60,34,8,.92)' : 'rgba(4,12,34,.85)'; chamfer(bx, by, bw, bh, 7); ctx.fill();
