@@ -582,6 +582,12 @@ function updateTut(dt) {
       addText(W / 2, 420, T.dodged ? '잘 피했어요!' : '다음엔 붉은 칸에서 기체를 빼 주세요', T.dodged ? '#8dff9a' : '#ffb08a', 24, 1.6);
       play(T.dodged ? 'levelup' : 'deny', 0.5);
     }
+  } else if (T.step === 4) {   // 해체: 부품 얻기
+    if (!T.s4) { T.s4 = true; if (!allUnits().some(u => u.lv === 1 && uSize(u) === 1)) giveUnit(PROG.deck[0] || 'f', 1, W / 2, 420, '#8dff9a'); }
+    if (T.scrapped) { T.step = 5; T.t = 0; play('confirm', 0.5); }
+  } else if (T.step === 5) {   // 정비소: 칸 강화
+    if (!T.s5 && T.t > 0.8) { T.s5 = true; const need = cellNewCost() - S.gear; if (need > 0) addGear(need, W / 2, 420); }
+    if (S.cellFx.some(Boolean)) { T.step = 6; T.t = 0; play('confirm', 0.5); addText(W / 2, 420, '강화 완료! 이제 실전이에요', '#8dff9a', 24, 1.6); }
   } else if (T.t > 1.4) {
     S.tut = null; PROG.tut = true; save();
     S.banner = { text: 'WAVE 1', sub: '실전이에요. 정찰대가 방어선을 떠보고 있어요', color: S.stage.sector.color, t: 0, life: 2.4 };
@@ -593,18 +599,20 @@ function pairOnGrid() {
 }
 function drawTut() {
   const T = S.tut;
-  if (!T || T.step > 3) return;
+  if (!T || T.step > 5) return;
   const t = S.time;
   const [head, sub] = [
     ['캡슐을 탭하세요', '모든 기체가 그쪽을 쏴요. 깨면 새 기체가 와요'],
     ['같은 기체끼리 겹치세요', '한 기체를 끌어서 똑같은 기체 위에 놓으면 합체해요'],
     ['붉은 칸의 기체를 옮기세요', '경고가 끝나면 그 칸이 공격받아요'],
+    ['기체를 위 전장으로 끌어 해체하세요', '적을 잡거나 기체를 해체하면 부품이 나와요'],
+    ['정비소에서 칸을 강화하세요', '부품으로 칸을 강화하거나 새 기체를 소환해요'],
   ][T.step - 1];
   const y = 470;
   ctx.fillStyle = 'rgba(4,12,34,.88)'; chamfer(30, y - 44, W - 60, 88, 12); ctx.fill();
   ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.stroke();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = FU(11); ctx.fillStyle = '#ffd24a'; ctx.fillText(`TUTORIAL ${T.step}/3`, W / 2, y - 28);
+  ctx.font = FU(11); ctx.fillStyle = '#ffd24a'; ctx.fillText(`TUTORIAL ${T.step}/5`, W / 2, y - 28);
   ctx.font = FK(24); outlineText(head, W / 2, y - 4, '#fff', 4);
   ctx.font = FK(15); ctx.fillStyle = 'rgba(220,235,255,.9)'; ctx.fillText(sub, W / 2, y + 24);
   // 가리키는 화살표
@@ -624,6 +632,17 @@ function drawTut() {
       break; }
   }
   if (T.step === 3 && T.unit && T.unit.cells) { const p = unitPos(T.unit); arrow(p.x, p.y - 40); }
+  if (T.step === 4) {
+    const u = allUnits().filter(q => uSize(q) === 1).sort((a, b) => a.lv - b.lv)[0];
+    if (u && !(drag && drag.moved)) {
+      const p = unitPos(u), k = (t * 0.8) % 1;
+      ctx.strokeStyle = 'rgba(255,120,90,.7)'; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.lineDashOffset = t * 40;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - 20); ctx.lineTo(p.x, SCRAP_Y - 90); ctx.stroke(); ctx.setLineDash([]);
+      drawGlow('#ff7a5a', p.x, p.y - 20 + (SCRAP_Y - 70 - p.y) * k, 24, 0.9);
+      arrow(p.x, p.y - 40);
+    }
+  }
+  if (T.step === 5) arrow(RES_X + RES_W / 2, GRID_Y + 2);
   button(W - 124, 124, 108, 36, '건너뛰기', 'tutskip', 'ghost');
 }
 function hint(msg) {
@@ -4811,6 +4830,7 @@ function dropUnit(u, x, y) {
 const SCRAP_GEAR = [1, 2, 4, 7, 12, 18, 26, 36];
 function scrapUnit(u) {
   if (!u.cells && u.res == null) return;
+  if (S.tut) S.tut.scrapped = true;
   const p = unitPos(u), val = SCRAP_GEAR[u.lv - 1] * uSize(u);
   unplace(u);
   if (drag && drag.unit === u) drag = null;
