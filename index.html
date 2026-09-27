@@ -504,14 +504,19 @@ const MUTATORS = [
 ];
 const mutOn = id => !!S.mut && S.mut.includes(id);
 const cyclePos = w => (w - 1) % 10 + 1;
+// 한 주기: 1 숨 돌리기, 2~4 오름, 5 미니보스, 6 숨 돌리기(변이), 7~8 오름, 9 위기, 10 보스
+const PACE = [0.75, 0.9, 1, 1.1, 1.35, 0.75, 0.95, 1.05, 1.15, 1];
+const LULL = ci => ci === 1 || ci === 6;
 function buildEndlessWave(w) {
   const ci = cyclePos(w), cyc = Math.floor((w - 1) / 10);
   const tier = Math.min(3, Math.floor((w - 1) / 6));
   const bossW = ci === 10, bs = Math.floor(Math.random() * SECTORS.length), supply = ci === 1 && w > 10;
   S.crisis = ci === 9;
   S.stage.s = bossW ? bs : tier; S.stage.sector = SECTORS[S.stage.s];
-  const st = { n: Math.min(20, 3 + w), s: tier, i: Math.min(3, Math.floor(w / 5)), sector: SECTORS[S.stage.s], boss: bossW, waves: 5, twist: supply ? 'supply' : TWISTS[cyc % 3] };
-  const ev = buildWave(st, bossW ? 5 : supply ? 4 : [2, 3, 3, 4, 5, 3, 3, 5, 5][ci - 1]);
+  const st = { n: Math.min(20, 3 + w), s: tier, i: Math.min(3, Math.floor(w / 5)), sector: SECTORS[S.stage.s], boss: bossW, waves: 5, twist: supply ? 'supply' : TWISTS[1 + cyc % 2] };
+  const ev = buildWave(st, bossW ? 5 : supply ? 4 : [2, 3, 4, 4, 5, 2, 3, 4, 5][ci - 1]);
+  if (ci === 5) { ev.push({ t: 4, k: 'elite' }); if (cyc >= 2) ev.push({ t: 12, k: 'elite' }); }   // 미니보스
+  if (LULL(ci) && !supply) for (const t of [5, 13]) ev.push({ t, k: 'cap', r: rollReward(st.n, 3) });   // 숨 돌리는 웨이브엔 캡슐을 더
   const atk = st.sector.atk, add = (k, t, x) => ev.push({ t, k, x });
   if (S.crisis) {
     for (let k = 0; k < 3; k++) add(atk[k % atk.length], 5 + k * 5);
@@ -563,16 +568,16 @@ function startStage(n, endless = false) {
     hint: null, hintT: 0, hintQueue: [],
     shake: 0, time: 0, glitch: 0, lost: 0,
     parts: [], shieldHits: [], banner: null, warning: 0, whiteFlash: 0, skillPop: null,
-    score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0,
+    score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0, dmgBy: {}, used: {},
     pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0 },
     gear: 0, cellFx: new Array(COLS * ROWS).fill(null), rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0,
   };
   const types = PROG.deck.filter(t => isOwned(t) && UNIT[t].shape === 1).sort((a, b) => UNIT[b].stat[0] * UNIT[b].stat[1] - UNIT[a].stat[0] * UNIT[a].stat[1]);
-  START_LV[endless ? 1 : st.s].forEach((lv, j) => { const u = makeUnit(types[j % types.length] || 'f', lv); const sp = findSpot(u); if (sp) place(u, sp); });
+  START_LV[endless ? 1 : st.s].forEach((lv, j) => { const u = makeUnit(types[j % types.length] || 'f', lv); S.used[u.type] = (S.used[u.type] || 0) + Math.pow(2, lv - 1); const sp = findSpot(u); if (sp) place(u, sp); });
   hintOnce('focus', '가까이 온 적이 없으면 기체들이 알아서 캡슐을 쏴요. 캡슐을 탭하면 적이 있어도 그쪽부터 집중 사격해요.');
   hintOnce('info', '기체를 꾹 누르거나 우클릭하면 스킬과 성능을 볼 수 있어요.');
   hintOnce('cells', '부품을 모으면 정비소에서 칸을 강화하거나 줄을 늘릴 수 있어요. 필요 없는 기체는 위쪽 전장으로 끌어 놓으면 해체돼요.');
-  if (endless) hintOnce('endless2', '무한 방어선은 10웨이브가 한 주기예요. 5웨이브마다 강화를 고르고, 6웨이브째마다 적이 새 변이를 얻어요. 9웨이브는 위기, 10웨이브는 보스예요.');
+  if (endless) hintOnce('endless3', '무한 방어선은 10웨이브가 한 주기예요. 5웨이브째는 미니보스, 10웨이브째는 보스예요. 1, 6웨이브째는 잠잠하니 그때 정비하세요. 미니보스를 넘기면 강화를 골라요.');
   if (n === 1 && !endless && !PROG.tut && !PROG.stars[1] && !SHOT) S.tut = { step: 1, t: 0 };
   startWave(1);
 }
@@ -605,9 +610,11 @@ function startWave(n) {
     S.warnText = null;
     if (ci === 10) { S.warning = 3; S.banner = null; play('drums', 0.7); if (n >= 30) S.warnText = '보스 두 척이 한꺼번에 접근하고 있어요'; }
     else if (mut) { S.banner = { text: 'MUTATION', sub: `${mut.name}: ${mut.desc}`, color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.55, 1.1); S.glitch = 0.5; }
-    else if (ci === 9) { S.banner = { text: 'CRISIS', sub: '적 전력 1.5배! 공격형 함선이 몰려와요', color: '#ff3a4a', t: 0, life: 2.8 }; play('drums', 0.7); shake(0.5); }
-    else if (ci === 4 || (ci === 1 && n > 10)) { const [tt, sub] = TWIST_TEXT[ci === 4 ? TWISTS[Math.floor((n - 1) / 10) % 3] : 'supply']; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.6 }; }
-    else S.banner = { text: `WAVE ${n}`, sub: `${ci === 5 ? '돌파하면 강화를 고를 수 있어요' : ci === 8 ? '다음은 위기 웨이브예요. 대비하세요' : '끝없는 방어선'}`, color: ci === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2 };
+    else if (ci === 9) { S.banner = { text: 'CRISIS', sub: '보스 전 총공세! 공격형 함선이 몰려와요', color: '#ff3a4a', t: 0, life: 2.8 }; play('drums', 0.7); shake(0.5); }
+    else if (ci === 5) { S.banner = { text: 'MINI BOSS', sub: '엘리트 전함이 나타났어요. 넘기면 강화를 고를 수 있어요', color: '#ffb347', t: 0, life: 2.8 }; play('drums', 0.6); }
+    else if (LULL(ci) && !(ci === 1 && n > 10)) S.banner = { text: 'LULL', sub: '잠시 잠잠해요. 캡슐을 모으고 기체를 합칠 때예요', color: '#5affc8', t: 0, life: 2.6 };
+    else if (ci === 4 || (ci === 1 && n > 10)) { const [tt, sub] = TWIST_TEXT[ci === 4 ? TWISTS[1 + Math.floor((n - 1) / 10) % 2] : 'supply']; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.6 }; }
+    else S.banner = { text: `WAVE ${n}`, sub: `${ci === 4 ? '다음은 미니보스예요. 대비하세요' : ci === 8 ? '다음은 위기, 그다음은 보스예요. 대비하세요' : '끝없는 방어선'}`, color: ci === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2 };
     return;
   }
   S.events = buildWave(st, n);
@@ -841,8 +848,8 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 
 // ── 스폰 ──────────────────────────────────────────────────
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s];
-let ENDLESS_GROWTH = 1.24;
-const hpMul = () => S.stage.endless ? 0.9 * Math.pow(ENDLESS_GROWTH, S.wave - 1) * (S.crisis ? 1.5 : 1) * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (S.wave - 1)) * stageMul();
+let ENDLESS_GROWTH = 1.22;
+const hpMul = () => S.stage.endless ? 0.9 * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (S.wave - 1)) * stageMul();
 function spawnEnemy(k, x, y) {
   const d = ENEMY[k];
   const hp = d.hp * (d.boss ? BOSS_MUL * (S.stage.endless ? 0.7 * Math.pow(ENDLESS_GROWTH, S.wave - 10) : 1) : hpMul());
@@ -1003,7 +1010,7 @@ function resolveAttack(a) {
     if (!u.cells) continue;
     damageUnit(taker, dmg);
     if (taker.type === 'g' && taker.cells && taker.lv >= 3 && a.src && !a.src.dead) {   // 방패 드론이 방금 파괴됐으면 반사 없음
-      hitEnemy(a.src, UNIT.g.dmg * LV_MUL[taker.lv - 1] * 12, 'blast');
+      DMG_BY = 'g'; hitEnemy(a.src, UNIT.g.dmg * LV_MUL[taker.lv - 1] * 12, 'blast'); DMG_BY = null;
       const p = unitPos(taker);
       S.fx.push({ kind: 'bolt', pts: [p, { x: a.src.x, y: a.src.y }], t: 0, life: 0.3, col: '#6ad0ff' });
     }
@@ -1060,6 +1067,7 @@ function focusValid() {
   if (!f || f.dead || f.y <= RANGE_Y) return false;
   return f.maxHits ? S.caps.includes(f) : S.enemies.includes(f);
 }
+let DMG_BY = null;   // 지금 피해를 주는 기체 종류 (전투 분석용)
 const shootable = e => !e.dead && !(e.hacked > 0) && !(e.ph > 0);
 function pickTarget() {
   for (const e of S.enemies) if (e.carry && e.y > 70 && e.pending < effHp(e) && shootable(e)) return e;
@@ -1110,7 +1118,7 @@ function shoot(type, x, y, dmg, lv, fan = 0, tgt = null, extra = null) {
   const def = UNIT[type] || UNIT.f;
   const s = { type, x, y, vx: Math.cos(ang) * def.sp, vy: Math.sin(ang) * def.sp, sp: def.sp, turn: def.turn, tgt, dmg, lv, isCap };
   if (extra) Object.assign(s, extra);
-  S.shots.push(s);
+  s.ut = DMG_BY; S.shots.push(s);
   return s;
 }
 function pierce(x, y, dmg, lv, tgt = null, col = '#b86bff', extra = null) {
@@ -1120,7 +1128,7 @@ function pierce(x, y, dmg, lv, tgt = null, col = '#b86bff', extra = null) {
   const ang = Math.atan2(tgt.y - y, tgt.x - x);
   const s = { type: 'p', x, y, vx: Math.cos(ang) * 1150, vy: Math.sin(ang) * 1150, dmg, lv, hitSet: new Set(), col, tgt };
   if (extra) Object.assign(s, extra);
-  S.shots.push(s);
+  s.ut = DMG_BY; S.shots.push(s);
   return s;
 }
 function lightning(from, first, dmg, lv) {
@@ -1214,7 +1222,7 @@ function fireUnit(u) {
         while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
         if (Math.abs(da) > half) continue;
         hitEnemy(e, dps * UNIT.h.cd, 'fire', true);
-        if (L >= 3 && !e.boss) { e.burnT = 3; e.burnD = base * 0.2; }
+        if (L >= 3 && !e.boss) { e.burnT = 3; e.burnD = base * 0.2; e.burnBy = DMG_BY; }
       }
       const col = L >= 5 ? '#6ad8ff' : '#ff8a2a';
       for (let k = 0; k < 3; k++) {
@@ -1310,7 +1318,7 @@ function unitSkill(u) {
       const tgt = pickTarget();
       if (!tgt || tgt.maxHits) return false;
       const ang = Math.atan2(tgt.y - p.y, tgt.x - p.x);
-      S.shots.push({ type: 'plasma', x: p.x, y: p.y - 30, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, sp: 520, turn: 3, tgt, dmg: base * 4, lv: 5 });
+      S.shots.push({ ut: DMG_BY, type: 'plasma', x: p.x, y: p.y - 30, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, sp: 520, turn: 3, tgt, dmg: base * 4, lv: 5 });
       S.fx.push({ kind: 'ring', x: p.x, y: p.y - 30, t: 0, life: 0.4, color: '#7fe8ff' });
       play('zap', 0.35);
       return true;
@@ -1319,7 +1327,7 @@ function unitSkill(u) {
       const best = densest(u.type === 'r' ? 150 : 110);
       if (!best) return false;
       const nuke = u.type === 'r';
-      S.strikes.push({ x: best.x, y: Math.min(best.y + 30, LINE_Y - 60), t: 0, delay: nuke ? 1 : 0.75, dmg: base * (nuke ? 8 : 5), r: nuke ? 190 : 130, done: false, nuke });
+      S.strikes.push({ ut: DMG_BY, x: best.x, y: Math.min(best.y + 30, LINE_Y - 60), t: 0, delay: nuke ? 1 : 0.75, dmg: base * (nuke ? 8 : 5), r: nuke ? 190 : 130, done: false, nuke });
       return true;
     }
     case 's': {
@@ -1369,13 +1377,13 @@ function unitSkill(u) {
     case 'y': {
       const best = densest(120);
       if (!best) return false;
-      S.strikes.push({ x: best.x, y: Math.min(best.y + 30, LINE_Y - 60), t: 0, delay: 0.75, dmg: base * 4, r: 120, done: false, nuke: false });
+      S.strikes.push({ ut: DMG_BY, x: best.x, y: Math.min(best.y + 30, LINE_Y - 60), t: 0, delay: 0.75, dmg: base * 4, r: 120, done: false, nuke: false });
       return true;
     }
     case 'n': {
       const best = densest(140);
       if (!best) return false;
-      S.holes.push({ x: best.x, y: best.y, r: 160, t: 0, life: 2.2, dps: base * 3 });
+      S.holes.push({ ut: DMG_BY, x: best.x, y: best.y, r: 160, t: 0, life: 2.2, dps: base * 3 });
       return true;
     }
   }
@@ -1394,6 +1402,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   if (e.shield > 0) {
     const m = src === 'laser' || src === 'fire' ? 0.25 : src === 'beam' ? 0.5 : src === 'emp3' ? 3 : 1;
     const sd = dmg * m;
+    if (DMG_BY && S.dmgBy) S.dmgBy[DMG_BY] = (S.dmgBy[DMG_BY] || 0) + Math.min(sd, e.shield) / m;
     if (sd < e.shield) {
       e.shield -= sd;
       if (!quiet) { e.sflash = 0.12; play('shield_hit', 0.12, 1.2); }
@@ -1403,6 +1412,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
     e.shield = 0; e.downT = 0;
     shieldBreak(e);
   }
+  if (DMG_BY && S.dmgBy) S.dmgBy[DMG_BY] = (S.dmgBy[DMG_BY] || 0) + Math.min(dmg, Math.max(0, e.hp));
   e.hp -= dmg;
   if (!quiet) {
     e.flash = 0.1; e.jit = 0.12;
@@ -1514,6 +1524,7 @@ function hitCap(c, n = 1) {
 }
 function giveUnit(type, lv, fromX, fromY, col) {
   const u = makeUnit(type, lv);
+  if (S.used) S.used[type] = (S.used[type] || 0) + Math.pow(2, lv - 1);
   const spot = findSpot(u);
   let where;
   if (spot) { place(u, spot); where = unitPos(u); }
@@ -1683,7 +1694,7 @@ function updateEnemy(e, dt) {
     }
     return;
   }
-  if (e.burnT > 0) { e.burnT -= dt; hitEnemy(e, e.burnD * dt, 'fire', true); if (Math.random() < 0.3) ember(e.x + (Math.random() - .5) * e.r, e.y, '#ff8a2a'); if (e.dead) return; }
+  if (e.burnT > 0) { e.burnT -= dt; DMG_BY = e.burnBy || null; hitEnemy(e, e.burnD * dt, 'fire', true); DMG_BY = null; if (Math.random() < 0.3) ember(e.x + (Math.random() - .5) * e.r, e.y, '#ff8a2a'); if (e.dead) return; }
   const held = e.stun > 0 || e.frozen > 0;
   e.stun = Math.max(0, e.stun - dt); e.frozen = Math.max(0, e.frozen - dt);
   e.slowT = Math.max(0, e.slowT - dt);
@@ -1865,6 +1876,7 @@ function updateAuras(dt) {
   S.rebuilds = S.rebuilds.filter(r => !r.done);
 }
 function updateDrones(u, dt) {
+  DMG_BY = u.type;
   const n = (u.type === 'y' ? [3, 4, 6, 6, 8] : [1, 2, 4, 4, 8])[lvIdx(u.lv)], p = unitPos(u);
   while (u.drones.length < n) u.drones.push({ x: p.x, y: p.y, cd: Math.random() * 0.4, a: Math.random() * 6, gone: 0 });
   u.drones.length = n;
@@ -1903,6 +1915,7 @@ function updateDrones(u, dt) {
 }
 
 function update(dt) {
+  DMG_BY = null;
   S.time += dt;
   tickLift(dt);
   if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 2);
@@ -2006,6 +2019,7 @@ function update(dt) {
     u.hurt = Math.max(0, u.hurt - dt);
     if (u.res != null) continue;
     if (u.hp < u.maxHp * 0.5 && Math.random() < 0.08) { const p = unitPos(u); smoke(p.x + (Math.random() - .5) * 20, p.y - 10); }
+    DMG_BY = u.type;
     if (drag && drag.unit === u) continue;
     if (S.mode === 'clearing') continue;
     if (u.ice > 0) { u.ice -= dt; continue; }
@@ -2023,6 +2037,7 @@ function update(dt) {
   }
 
   for (const s of S.shots) {
+    DMG_BY = s.ut || null;
     if (s.type === 'p') {
       s.x += s.vx * dt; s.y += s.vy * dt;
       for (const e of S.enemies) if (shootable(e) && !s.hitSet.has(e) && Math.hypot(e.x - s.x, e.y - s.y) < e.r + 8) {
@@ -2055,6 +2070,7 @@ function update(dt) {
   S.shots = S.shots.filter(s => !s.done);
 
   for (const z of S.zones) {
+    DMG_BY = z.ut || null;
     z.t += dt;
     for (const e of S.enemies) {
       if (!shootable(e)) continue;
@@ -2068,7 +2084,7 @@ function update(dt) {
   // 중력장과 블랙홀
   const pullAll = (list) => {
     for (const f of list) {
-      f.t += dt;
+      f.t += dt; DMG_BY = f.ut || null;
       for (const e of S.enemies) {
         if (!shootable(e)) continue;
         const dx = f.x - e.x, dy = f.y - e.y, d = Math.hypot(dx, dy);
@@ -2094,6 +2110,7 @@ function update(dt) {
     if (S.enemies.some(e => shootable(e) && Math.hypot(e.x - m.x, e.y - m.y) < 32 + e.r * 0.5)) m.boom = 0.001;
   }
   for (const m of S.mines) if (m.boom && !m.done) {
+    DMG_BY = m.owner ? m.owner.type : null;
     m.boom -= dt;
     if (m.boom > 0) continue;
     m.done = true;
@@ -2105,6 +2122,7 @@ function update(dt) {
   S.mines = S.mines.filter(m => !m.done && m.owner.cells);
 
   for (const k of S.strikes) {
+    DMG_BY = k.ut || null;
     k.t += dt;
     if (!k.done && k.t >= k.delay) {
       k.done = true;
@@ -2119,6 +2137,7 @@ function update(dt) {
   S.strikes = S.strikes.filter(k => k.t < k.delay + 0.1);
 
   for (const b of S.beams) {
+    DMG_BY = b.u ? b.u.type : null;
     b.t += dt;
     if (b.u.cells) { const p = unitPos(b.u); b.x = p.x; b.y = p.y - 26; }
     for (const e of S.enemies) if (shootable(e) && distToRay(e.x, e.y, b.x, b.y, b.ang) < e.r + (b.w || 18)) {
@@ -2163,8 +2182,8 @@ function impact(s, t) {
       const r = UNIT.t.splash * (1 + 0.12 * (s.lv - 1));
       boom(s.x, s.y, 0.5 + r / 140, '#ff9a3c'); sheetFx(3, s.x, s.y, 120 + r, 0.5);
       blast(s.x, s.y, r, s.dmg, t);
-      if (s.lv >= 3) S.zones.push({ x: s.x, y: s.y, r: 58 + s.lv * 4, dps: s.dmg * 0.45, t: 0, life: 2 });
-      if (s.lv >= 4) for (let k = 0; k < 4; k++) { const a = Math.PI * 2 * k / 4 + Math.random() * 0.8; S.shots.push({ type: 'bomb', x: s.x, y: s.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320, dmg: s.dmg * 0.35, lv: s.lv, t: 0, life: 0.35 }); }
+      if (s.lv >= 3) S.zones.push({ ut: DMG_BY, x: s.x, y: s.y, r: 58 + s.lv * 4, dps: s.dmg * 0.45, t: 0, life: 2 });
+      if (s.lv >= 4) for (let k = 0; k < 4; k++) { const a = Math.PI * 2 * k / 4 + Math.random() * 0.8; S.shots.push({ ut: DMG_BY, type: 'bomb', x: s.x, y: s.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320, dmg: s.dmg * 0.35, lv: s.lv, t: 0, life: 0.35 }); }
       break;
     }
     case 'b': boom(s.x, s.y, 0.7, '#7fe8ff'); blast(s.x, s.y, UNIT.b.splash, s.dmg, t); break;
@@ -2173,7 +2192,7 @@ function impact(s, t) {
       const r = UNIT.r.splash * (1 + 0.1 * (s.lv - 1));
       boom(s.x, s.y, 1.5, '#ffb0a0'); sheetFx(3, s.x, s.y, 230, 0.55); shake(0.25);
       blast(s.x, s.y, r, s.dmg, t, s.lv >= 3 ? { stun: 0.5 } : null);
-      if (s.lv >= 4) for (let k = 0; k < 6; k++) { const a = Math.PI * 2 * k / 6 + Math.random() * 0.5; S.shots.push({ type: 'bomb', x: s.x, y: s.y, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, dmg: s.dmg * 0.25, lv: s.lv, t: 0, life: 0.35 }); }
+      if (s.lv >= 4) for (let k = 0; k < 6; k++) { const a = Math.PI * 2 * k / 6 + Math.random() * 0.5; S.shots.push({ ut: DMG_BY, type: 'bomb', x: s.x, y: s.y, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, dmg: s.dmg * 0.25, lv: s.lv, t: 0, life: 0.35 }); }
       break;
     }
     case 'c': {
@@ -2185,7 +2204,7 @@ function impact(s, t) {
     }
     case 'v': {
       const L = s.lv;
-      S.fields.push({ x: s.x, y: s.y, r: [70, 85, 90, 90, 110][L - 1], t: 0, life: 2, pull: 45, dps: L >= 3 ? s.dmg * 0.6 : 0, implode: L >= 5 ? s.dmg * 6 : 0 });
+      S.fields.push({ ut: DMG_BY, x: s.x, y: s.y, r: [70, 85, 90, 90, 110][L - 1], t: 0, life: 2, pull: 45, dps: L >= 3 ? s.dmg * 0.6 : 0, implode: L >= 5 ? s.dmg * 6 : 0 });
       hitEnemy(t, s.dmg, 'blast');
       break;
     }
@@ -3961,32 +3980,50 @@ function drawEarned(rx, y) {
 }
 function drawEndlessEnd() {
   const col = '#ffd24a';
-  ctx.fillStyle = 'rgba(2,3,12,.78)'; ctx.fillRect(0, 0, W, H);
-  drawGlow(col, W / 2, 400, 220, 0.16);
-  panel(50, 240, W - 100, LB_URL ? 510 : 440, col);
+  ctx.fillStyle = 'rgba(2,3,12,.8)'; ctx.fillRect(0, 0, W, H);
+  drawGlow(col, W / 2, 300, 220, 0.14);
+  const dmg = S.dmgBy || {}, tot = Object.values(dmg).reduce((a, b) => a + b, 0) || 1;
+  const types = [...new Set(Object.keys(dmg).concat(Object.keys(S.used || {})))].filter(t => UNIT[t]).sort((a, b) => (dmg[b] || 0) - (dmg[a] || 0)).slice(0, 5);
+  const ph = 336 + Math.max(1, types.length) * 46 + 4 + (LB_URL ? 76 : 0) + 124, top = Math.max(40, (H - ph) / 2 - 20);
+  panel(40, top, W - 80, ph, col);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = FU(13); ctx.fillStyle = col; ctx.fillText('// ENDLESS DEFENSE / LINE BROKEN', W / 2, 276);
-  ctx.font = FK(34); glitchText('방어선 붕괴', W / 2, 318, '#fff', 6, S.glitch * 8);
-  ctx.font = FT(44, 900); glitchText(String(S.score), W / 2, 380, '#ffd24a', 6, S.rank === 1 ? 2 : 0);
-  ctx.font = FU(12); ctx.fillStyle = 'rgba(255,230,160,.8)'; ctx.fillText('SCORE', W / 2, 412);
-  if (S.rank === 1) { ctx.font = FK(20); glitchText('최고 기록 갱신!', W / 2, 440, '#5affc8', 4, 2); }
-  ctx.font = FK(18);
+  ctx.font = FU(13); ctx.fillStyle = col; ctx.fillText('// ENDLESS DEFENSE / LINE BROKEN', W / 2, top + 30);
+  ctx.font = FK(32); glitchText('방어선 붕괴', W / 2, top + 70, '#fff', 6, S.glitch * 8);
+  ctx.font = FT(42, 900); glitchText(String(S.score), W / 2, top + 122, '#ffd24a', 6, S.rank === 1 ? 2 : 0);
+  ctx.font = FU(12); ctx.fillStyle = 'rgba(255,230,160,.8)'; ctx.fillText('SCORE', W / 2, top + 152);
+  if (S.rank === 1) { ctx.font = FK(18); glitchText('최고 기록 갱신!', W / 2, top + 174, '#5affc8', 4, 2); }
+  ctx.font = FK(17);
   [['도달 웨이브', `${S.wave}`], ['내 기록 순위', S.rank ? `${S.rank}위` : '순위 밖'], ['획득 코어', '']].forEach(([k, v], i) => {
-    const y = 474 + i * 30;
-    ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(180,215,255,.75)'; ctx.fillText(k, 90, y);
-    ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; if (v) ctx.fillText(v, W - 90, y);
+    const y = top + 204 + i * 28;
+    ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(180,215,255,.75)'; ctx.fillText(k, 76, y);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; if (v) ctx.fillText(v, W - 76, y);
   });
-  drawEarned(W - 90, 534);
-  const oy = LB_URL ? 70 : 0;
+  drawEarned(W - 76, top + 260);
+  // 전투 분석: 기체 종류별로 넣은 피해와 1코(Lv1) 기준 투입량
+  ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.85)'; ctx.fillText('// 전투 분석: 기체별 피해 비중과 투입량 (1코 = Lv1 한 대)', 62, top + 304);
+  types.forEach((t2, i) => {
+    const def = UNIT[t2], y = top + 336 + i * 46, d = dmg[t2] || 0, pct = Math.round(d / tot * 100);
+    ctx.fillStyle = 'rgba(12,24,52,.9)'; chamfer(56, y - 20, W - 112, 40, 8); ctx.fill();
+    drawUnitArt(t2, 1, 80, y, Math.min(30 / def.iw, 28 / def.ih), 1, null);
+    ctx.textAlign = 'left'; ctx.font = FK(15); ctx.fillStyle = '#fff'; ctx.fillText(def.name, 104, y - 8);
+    ctx.font = FK(12); ctx.fillStyle = 'rgba(190,215,245,.8)'; ctx.fillText(`1코 ${fmt(S.used && S.used[t2] || 0)}기 투입`, 104, y + 10);
+    const bx = 250, bw = 150;
+    ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(bx, y - 5, bw, 10);
+    ctx.fillStyle = def.col; ctx.fillRect(bx, y - 5, bw * d / tot, 10);
+    ctx.textAlign = 'right'; ctx.font = FT(14, 900); ctx.fillStyle = '#fff'; ctx.fillText(`${pct}%`, W - 66, y - 6);
+    ctx.font = FU(10); ctx.fillStyle = 'rgba(190,215,245,.75)'; ctx.fillText(fmt(Math.round(d)), W - 66, y + 10);
+  });
+  let y2 = top + 336 + Math.max(1, types.length) * 46 + 4;
   if (LB_URL) {   // 온라인 순위에 올리기
-    if (!S.lbSent) nickInput(84, 566, 236, 42);
-    else { ctx.font = FK(18); ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.fillText(PROG.nick || '', 96, 587); }
-    button(328, 566, 128, 42, S.lbSent ? '올렸어요' : S.lbSending ? '올리는 중' : '순위 올리기', 'lbSubmit', S.lbSent ? 'ghost' : 'gold');
-    if (UI.lbMsg) { ctx.font = FK(15); ctx.textAlign = 'center'; ctx.fillStyle = S.lbSent ? '#5affc8' : '#ffd6a0'; ctx.fillText(UI.lbMsg, W / 2, 622); }
+    if (!S.lbSent) nickInput(64, y2, 250, 42);
+    else { ctx.font = FK(18); ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.fillText(PROG.nick || '', 76, y2 + 21); }
+    button(322, y2, 154, 42, S.lbSent ? '올렸어요' : S.lbSending ? '올리는 중' : '순위 올리기', 'lbSubmit', S.lbSent ? 'ghost' : 'gold');
+    if (UI.lbMsg) { ctx.font = FK(15); ctx.textAlign = 'center'; ctx.fillStyle = S.lbSent ? '#5affc8' : '#ffd6a0'; ctx.fillText(UI.lbMsg, W / 2, y2 + 58); }
+    y2 += 76;
   }
-  button(W / 2 - 110, 572 + oy, 220, 48, '다시 도전', 'endless', 'primary');
-  button(W / 2 - 110, 630 + oy, 105, 36, '기록 보기', 'records', 'ghost');
-  button(W / 2 + 5, 630 + oy, 105, 36, '지도로', 'map', 'ghost');
+  button(W / 2 - 110, y2, 220, 48, '다시 도전', 'endless', 'primary');
+  button(W / 2 - 110, y2 + 58, 105, 36, '기록 보기', 'records', 'ghost');
+  button(W / 2 + 5, y2 + 58, 105, 36, '지도로', 'map', 'ghost');
 }
 // 결과창 전에 뜨는 짧은 클리어/실패 연출
 function drawEndIntro(win, e) {
