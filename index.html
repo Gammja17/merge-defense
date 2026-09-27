@@ -2452,11 +2452,12 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
   let tier = Math.min(lv, 8), NI = IMG['units/' + type + tier];
   while (tier > 1 && !(NI && NI.width)) NI = IMG['units/' + type + --tier];   // 그 레벨 그림이 없으면 아래 단계 그림
   if (NI && NI.width) {
-    // 칸 위의 기체는 단계별 고정 크기, 카드 같은 곳은 넘겨받은 배율에 맞춘다
-    const dm = shapeDims(type), fz = [0.84, 0.87, 0.9, 0.93, 0.95, 0.97, 0.99, 1][tier - 1];
-    const [bw, bh] = !['1', 'h2', 'v2'].includes(String(def.shape)) ? [(dm.w * CW - 10) * fz, (dm.h * CH - 10) * fz] : def.shape === 'h2' ? [[108, 60], [114, 63], [120, 66], [126, 69], [130, 71], [132, 72], [134, 73], [136, 74]][tier - 1] : def.shape === 'v2' ? [[58, 120], [61, 126], [63, 132], [65, 137], [67, 141], [68, 144], [69, 146], [70, 148]][tier - 1] : [[46, 58], [50, 62], [54, 66], [58, 70], [61, 72], [63, 74], [65, 75], [67, 76]][tier - 1];
+    // 배율은 종류마다 Lv5 본체가 칸에 맞는 크기로 고정. 모든 단계 그림이 같은 배율로 저장돼 있어서
+    // 낮은 단계는 작게, Lv6~8은 본체 크기 그대로 홀로그램 날개만 칸 밖으로 퍼진다
+    const dm = shapeDims(type), RI = IMG['units/' + type + '5'] && IMG['units/' + type + '5'].width ? IMG['units/' + type + '5'] : NI;
+    const [bw, bh] = def.shape === 'h2' ? [132, 72] : def.shape === 'v2' ? [66, 140] : def.shape === 1 ? [64, 74] : [dm.w * CW - 10, dm.h * CH - 10];
     const k = u ? s / U_SCALE / (1 + (lv - 1) * 0.05) : s * Math.max(def.iw, def.ih) / Math.max(bw, bh);
-    const sc = Math.min(bw * k / NI.width, bh * k / NI.height), dw = NI.width * sc, dh = NI.height * sc, ky = kick * 30;
+    const sc = Math.min(bw * k / RI.width, bh * k / RI.height, 1.3 * bw * k / NI.width, 1.3 * bh * k / NI.height), dw = NI.width * sc, dh = NI.height * sc, ky = kick * 30;   // 날개가 칸의 1.3배를 넘을 때만 줄인다
     const turns = def.rot || type === 't', rot = turns ? ang + Math.PI / 2 : 0;
     if (type === 'x') {
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha *= alpha * 0.35;
