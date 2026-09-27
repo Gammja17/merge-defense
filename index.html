@@ -2993,6 +2993,42 @@ function drawUnitFrames(top) {
     ctx.globalAlpha = 1;
   }
 }
+// 주변 칸에 효과를 주는 기체: 효과가 닿는 칸을 그 기체 색으로 표시. 들고 있으면 놓을 자리 기준으로 진하게
+const AURA = { x: { k: 'ring', lv: 1 }, m: { k: 'ring', lv: 2 }, g: { k: 'cross', lv: 1 }, w: { k: 'cross', lv: 3 } };
+function auraArea(type, lv, cells) {
+  const a = AURA[type];
+  if (!a || lv < a.lv || !cells) return null;
+  const set = new Set(), own = new Set(cells), rows = openRows();
+  for (const c of cells) {
+    const r = Math.floor(c / COLS), cc = c % COLS;
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (a.k === 'cross' && Math.abs(dr) + Math.abs(dc) !== 1) continue;
+      const nr = r + dr, nc = cc + dc, i = nr * COLS + nc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < COLS && !own.has(i)) set.add(i);
+    }
+  }
+  return set;
+}
+function drawAuras() {
+  const t = S.time;
+  const paint = (u, cells, strong) => {
+    const area = auraArea(u.type, u.lv, cells);
+    if (!area) return;
+    const col = UNIT[u.type].col, src = cellsCenter(cells), wave = (t * 0.5 + u.cells0 * 0.13) % 1;
+    for (const i of area) {
+      const q = cellPos(i), x = q.x - CW / 2 + 5, y = q.y - CH / 2 + 5, w = CW - 10, h = CH - 10;
+      const d = Math.hypot(q.x - src.x, q.y - src.y) / (CW * 1.5), hit = Math.max(0, 1 - Math.abs(wave * 1.4 - d) * 4);
+      ctx.fillStyle = col; ctx.globalAlpha = strong ? 0.22 + 0.08 * Math.sin(t * 8) : 0.05 + 0.12 * hit; chamfer(x, y, w, h, 8); ctx.fill();
+      ctx.strokeStyle = col; ctx.globalAlpha = strong ? 0.9 : 0.35 + 0.4 * hit; ctx.lineWidth = strong ? 2 : 1.2;
+      ctx.setLineDash([5, 5]); ctx.lineDashOffset = -t * 20; ctx.stroke(); ctx.setLineDash([]);
+      for (const [cx, cy, sx, sy] of [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]]) { ctx.beginPath(); ctx.moveTo(cx + sx * 9, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy * 9); ctx.stroke(); }
+    }
+    ctx.globalAlpha = 1;
+  };
+  const du = drag && drag.moved ? drag.unit : null;
+  for (const u of gridUnits()) if (u !== du) { u.cells0 = u.cells[0]; paint(u, u.cells, false); }
+  if (du && AURA[du.type]) { const c = cellAt(drag.x, drag.y); if (c >= 0) { du.cells0 = c; paint(du, cellsFor(du, c), true); } }
+}
 function drawPads() {
   const t = S.time;
   if (S.popRow >= 0 && S.popRow < openRows() && S.lift >= 3 && S.popRow === 2) {   // 셋째 줄이 빈자리에서 튀어 올라오는 중
@@ -3480,6 +3516,7 @@ function draw(dt) {
   drawShield();
   drawBaseLive();
   drawPads();
+  drawAuras();
   drawAttacks();
   for (const u of gridUnits()) { const p = unitPos(u); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 1, 1, true); }
   for (const u of gridUnits()) if (u.ice > 0) {
