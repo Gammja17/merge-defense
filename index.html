@@ -131,9 +131,16 @@ function loadSfx() {
   if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return;
-  AC = new Ctx(); MASTER = AC.createGain(); MASTER.gain.value = 0.9; MASTER.connect(AC.destination);
+  AC = new Ctx(); MASTER = AC.createGain(); MASTER.gain.value = 0.9;
+  // 효과음 음색: 저음을 올리고 쨍한 고음을 깎아 묵직하게, 가볍게 눌러 뭉치지 않게 (음악은 따로 나간다)
+  const lo = AC.createBiquadFilter(); lo.type = 'lowshelf'; lo.frequency.value = 150; lo.gain.value = 5;
+  const hi = AC.createBiquadFilter(); hi.type = 'highshelf'; hi.frequency.value = 3500; hi.gain.value = -7;
+  const comp = AC.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.2;
+  MASTER.connect(lo); lo.connect(hi); hi.connect(comp); comp.connect(AC.destination);
   for (const n of SFX_FILES) fetch('assets/sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b)).then(buf => { BUF[n] = buf; }).catch(() => {});
 }
+const UI_SFX = new Set(['click', 'open', 'close', 'confirm', 'deny', 'pick', 'drop', 'latch', 'swap', 'ui_open', 'coin', 'levelup', 'unlock', 'upgrade', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule']);
+const SWEEP_SFX = new Set(['shot', 'shot_a', 'shot_b', 'shot_c', 'shot_big', 'shot_retro', 'laser1']);
 function play(n, vol = 0.4, rate = 1, jitter = 0.06) {
   if (!SET().sfxVol || !AC) return;
   const now = AC.currentTime;
@@ -144,7 +151,11 @@ function play(n, vol = 0.4, rate = 1, jitter = 0.06) {
   if (!buf) return;
   const src = AC.createBufferSource(), g = AC.createGain();
   src.buffer = buf;
-  src.playbackRate.value = rate * (1 + (Math.random() - .5) * 2 * jitter);
+  // 무기와 타격음은 음을 낮춰 무게감을, 발사음은 높은음에서 낮은음으로 미끄러져 "쥐잉". 버튼 같은 소리는 그대로
+  let r = rate * (1 + (Math.random() - .5) * 2 * jitter);
+  if (!UI_SFX.has(n)) r *= 0.87;
+  src.playbackRate.value = r;
+  if (SWEEP_SFX.has(n)) { src.playbackRate.setValueAtTime(r * 1.2, now); src.playbackRate.exponentialRampToValueAtTime(r * 0.8, now + 0.14); }
   g.gain.value = vol * SET().sfxVol * 1.25;
   src.connect(g); g.connect(MASTER); src.start();
 }
