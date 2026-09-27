@@ -34,7 +34,7 @@ function resize() {
   const cs = getComputedStyle(document.documentElement);
   const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
   scale = Math.min(innerWidth / W, (innerHeight - padY) / H);
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);   // 3배 폰에서 칠할 픽셀을 절반 아래로
   cv.style.width = W * scale + 'px';
   cv.style.height = H * scale + 'px';
   cv.width = Math.round(W * scale * dpr);
@@ -92,7 +92,7 @@ function buildTints() {
 // ── 저장 (이 브라우저에만) ────────────────────────────────
 const SAVE_KEY = 'mergeDefense.v1';
 const DEFAULT_SETTINGS = { sfxVol: 0.8, bgmVol: 0.7, shake: true, fx: true, nums: true };
-function freshProg() { return { stars: {}, seen: {}, deck: ['f', 't', 's', 'g', 'm'], owned: [], credits: 0, mk: {}, records: [], settings: { ...DEFAULT_SETTINGS } }; }
+function freshProg() { return { stars: {}, seen: {}, deck: ['f', 't'], owned: [], credits: 0, mk: {}, records: [], settings: { ...DEFAULT_SETTINGS } }; }
 let PROG = freshProg();
 try {
   const s = JSON.parse(localStorage.getItem(SAVE_KEY));
@@ -197,13 +197,13 @@ const UNIT = {
   t: { name: '미사일 포탑', role: '범위 폭발', img: 't1', iw: 60, ih: 60, hp: 4, dmg: 22, cd: 1.3, sp: 520, turn: 5, splash: 70, shape: 1, cost: 18, col: '#ff9a3c', stat: [3, 2, 3],
        desc: '느리지만 폭발로 몰려오는 적을 쓸어요.', unlock: 'base' },
   s: { name: '저격기', role: '보스 저격', img: 'u_s', iw: 66, ih: 44, air: true, hp: 3, dmg: 45, cd: 1.7, sp: 1700, turn: 30, shape: 1, cost: 14, col: '#7dff7a', stat: [4, 1, 1],
-       desc: '가장 튼튼한 적을 골라 강한 한 방을 꽂아요.', unlock: 'base' },
+       desc: '가장 튼튼한 적을 골라 강한 한 방을 꽂아요.', unlock: { stage: 1 } },
   g: { name: '방패 드론', role: '보호', img: 'u_g', iw: 66, ih: 31, hp: 7, dmg: 5, cd: 0.6, sp: 950, turn: 9, shape: 1, cost: 14, col: '#6ad0ff', stat: [1, 3, 5],
-       desc: '상하좌우로 붙은 기체가 받는 공격을 대신 맞아 줘요.', unlock: 'base' },
+       desc: '상하좌우로 붙은 기체가 받는 공격을 대신 맞아 줘요.', unlock: { stage: 2 } },
   m: { name: '수리 드론', role: '회복', img: 'u_m', iw: 52, ih: 34, hp: 4, dmg: 5, cd: 0.6, sp: 950, turn: 9, shape: 1, cost: 14, col: '#6dff8a', stat: [1, 3, 2],
-       desc: '다친 기체를 주기적으로 고쳐요.', unlock: 'base' },
+       desc: '다친 기체를 주기적으로 고쳐요.', unlock: { stage: 3 } },
   e: { name: '전자전기', role: '연쇄 번개', img: 'u_e', iw: 64, ih: 48, air: true, hp: 3, dmg: 6, cd: 0.8, shape: 1, cost: 14, col: '#ffe24a', stat: [2, 4, 1],
-       desc: '번개가 적 사이를 튀어 다니고, 레벨이 오르면 보호막을 잘 깨요.', unlock: { stage: 2 } },
+       desc: '번개가 적 사이를 튀어 다니고, 레벨이 오르면 보호막을 잘 깨요.', unlock: { stage: 4 } },
   d: { name: '드론 모함', role: '캡슐 특화', img: 'u_d', iw: 64, ih: 49, air: true, hp: 3, dmg: 5, cd: 1, shape: 1, cost: 16, col: '#ff6a5a', stat: [2, 4, 1],
        desc: '드론을 띄워 캡슐을 먼저 까요. 캡슐이 없으면 적을 쏴요.', unlock: { stage: 5 } },
   c: { name: '빙결포', role: '감속, 빙결', img: 'u_c2', iw: 44, ih: 52, hp: 4, dmg: 7, cd: 0.7, sp: 800, turn: 8, shape: 1, cost: 14, col: '#9ff0ff', stat: [1, 4, 2],
@@ -275,6 +275,9 @@ function levelStat(type, lv) {
   return { v: Math.round(dps * mkMul(type) * 10), label: '전투력' };
 }
 const isOwned = t => { const u = UNIT[t].unlock; return u === 'base' || (u.stage && PROG.stars[u.stage] > 0) || PROG.owned.includes(t); };
+// 편성은 1~5종. 아직 못 가진 기체가 저장에 남아 있으면 뺀다
+PROG.deck = PROG.deck.filter(t => UNIT[t] && isOwned(t)).slice(0, DECK_N);
+if (!PROG.deck.length) PROG.deck = ['f', 't'];
 
 // ── 적 ────────────────────────────────────────────────────
 const ENEMY = {
@@ -481,6 +484,7 @@ function startStage(n, endless = false) {
   hintOnce('info', '기체를 꾹 누르거나 우클릭하면 스킬과 성능을 볼 수 있어요.');
   hintOnce('rows', '줄마다 효과가 달라요. 앞줄은 화력, 가운데줄은 공격 속도가 오르고, 뒷줄은 받는 피해가 줄어요. 필요 없는 기체는 위쪽 전장으로 끌어 놓으면 해체돼요.');
   if (endless) hintOnce('endless2', '무한 방어선은 10웨이브가 한 주기예요. 5웨이브마다 강화를 고르고, 6웨이브째마다 적이 새 변이를 얻어요. 9웨이브는 위기, 10웨이브는 보스예요.');
+  if (n === 1 && !endless && !PROG.tut && !PROG.stars[1] && !SHOT) S.tut = { step: 1, t: 0 };
   startWave(1);
 }
 function makeUnit(type, lv) {
@@ -515,6 +519,78 @@ function startWave(n) {
   else if (n === 1) S.banner = { text: `STAGE ${st.n}`, sub: '정찰대가 방어선을 떠보고 있어요', color: st.sector.color, t: 0, life: 2.4 };
   else if (n === 4) { const [tt, sub] = TWIST_TEXT[twistOf(st)]; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.8 }; }
   else S.banner = { text: `WAVE ${n}`, sub: n === 2 ? '적 본대가 도착했어요' : n === 3 ? (st.n >= 2 ? '공격형 함선이 합류했어요' : '적의 공세가 거세져요') : '마지막 총공세! 버텨내세요', color: n === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2.4 };
+}
+// 튜토리얼: 1 캡슐 탭하기, 2 같은 기체 합체하기, 3 붉은 칸 피하기. 끝나야 첫 웨이브가 시작된다
+function updateTut(dt) {
+  const T = S.tut;
+  T.t += dt;
+  if (T.step === 1) {
+    if (!T.cap || (T.cap.dead && !T.cap.claimed)) {
+      T.cap = makeCap({ type: PROG.deck[0] || 'f', lv: 1, n: 1 }, W / 2, 1);
+      T.cap.lock = true; T.cap.y = 150; T.cap.speed = 16; T.cap.hits = T.cap.maxHits = 8;
+    }
+    if (T.cap.claimed) { T.step = 2; T.t = 0; play('confirm', 0.5); }
+  } else if (T.step === 2) {
+    if (!pairOnGrid()) { const u = gridUnits()[0]; if (u) giveUnit(u.type, u.lv, W / 2, 420, '#8dff9a'); }
+    if (T.merged) { T.step = 3; T.t = 0; play('confirm', 0.5); }
+  } else if (T.step === 3) {
+    if (!T.e) {
+      T.unit = gridUnits().filter(u => uSize(u) === 1).sort((a, b) => a.cells[0] - b.cells[0])[0];
+      T.cell = T.unit.cells[0];
+      T.e = spawnEnemy('sniper', cellPos(T.cell).x, -50);
+      T.e.hp *= 30; T.e.maxHp *= 30; T.e.atkT = 999; T.e.hoverY = 300;
+    }
+    if (!T.atk && T.e.y >= T.e.hoverY - 4) { T.atk = { kind: 'snipe', cells: [T.cell], src: T.e, dmg: 1, t: 0, warn: 4.5 }; S.attacks.push(T.atk); }
+    if (T.atk && T.unit.cells && !T.unit.cells.includes(T.cell)) T.dodged = true;
+    if (T.atk && (T.atk.done || T.atk.cancelled || T.e.dead)) {
+      T.step = 4; T.t = 0;
+      if (!T.e.dead) { T.e.hp = T.e.maxHp = T.e.maxHp / 30; T.e.atkLeft = 0; }
+      addText(W / 2, 420, T.dodged ? '잘 피했어요!' : '다음엔 붉은 칸에서 기체를 빼 주세요', T.dodged ? '#8dff9a' : '#ffb08a', 24, 1.6);
+      play(T.dodged ? 'levelup' : 'deny', 0.5);
+    }
+  } else if (T.t > 1.4) {
+    S.tut = null; PROG.tut = true; save();
+    S.banner = { text: 'WAVE 1', sub: '실전이에요. 정찰대가 방어선을 떠보고 있어요', color: S.stage.sector.color, t: 0, life: 2.4 };
+  }
+}
+function pairOnGrid() {
+  const us = allUnits();
+  return us.some(a => us.some(b => a !== b && a.type === b.type && a.lv === b.lv));
+}
+function drawTut() {
+  const T = S.tut;
+  if (!T || T.step > 3) return;
+  const t = S.time;
+  const [head, sub] = [
+    ['캡슐을 탭하세요', '모든 기체가 그쪽을 쏴요. 깨면 새 기체가 와요'],
+    ['같은 기체끼리 겹치세요', '한 기체를 끌어서 똑같은 기체 위에 놓으면 합체해요'],
+    ['붉은 칸의 기체를 옮기세요', '경고가 끝나면 그 칸이 공격받아요'],
+  ][T.step - 1];
+  const y = 470;
+  ctx.fillStyle = 'rgba(4,12,34,.88)'; chamfer(30, y - 44, W - 60, 88, 12); ctx.fill();
+  ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = FU(11); ctx.fillStyle = '#ffd24a'; ctx.fillText(`TUTORIAL ${T.step}/3`, W / 2, y - 28);
+  ctx.font = FK(24); outlineText(head, W / 2, y - 4, '#fff', 4);
+  ctx.font = FK(15); ctx.fillStyle = 'rgba(220,235,255,.9)'; ctx.fillText(sub, W / 2, y + 24);
+  // 가리키는 화살표
+  const arrow = (x, yy) => {
+    const b = Math.sin(t * 6) * 8;
+    ctx.fillStyle = '#ffd24a';
+    ctx.beginPath(); ctx.moveTo(x, yy + b); ctx.lineTo(x - 14, yy - 20 + b); ctx.lineTo(x - 5, yy - 20 + b); ctx.lineTo(x - 5, yy - 40 + b); ctx.lineTo(x + 5, yy - 40 + b); ctx.lineTo(x + 5, yy - 20 + b); ctx.lineTo(x + 14, yy - 20 + b); ctx.closePath(); ctx.fill();
+  };
+  if (T.step === 1 && T.cap && !T.cap.dead) arrow(T.cap.x, T.cap.y - 64);
+  if (T.step === 2) {
+    const us = allUnits();
+    for (const a of us) { const b = us.find(o => o !== a && o.type === a.type && o.lv === a.lv); if (!b) continue;
+      const p = unitPos(a), q = unitPos(b), k = (t * 0.8) % 1;
+      ctx.strokeStyle = 'rgba(255,210,74,.7)'; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.lineDashOffset = -t * 40;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - 20); ctx.lineTo(q.x, q.y - 20); ctx.stroke(); ctx.setLineDash([]);
+      drawGlow('#ffd24a', p.x + (q.x - p.x) * k, p.y - 20 + (q.y - p.y) * k, 24, 0.9);
+      break; }
+  }
+  if (T.step === 3 && T.unit && T.unit.cells) { const p = unitPos(T.unit); arrow(p.x, p.y - 40); }
+  button(W - 124, 124, 108, 36, '건너뛰기', 'tutskip', 'ghost');
 }
 function hint(msg) {
   if (S.hint === msg || S.hintQueue.includes(msg)) return;
@@ -836,7 +912,7 @@ function pickTarget() {
   if (fOk) return S.focus;
   for (const e of S.enemies) if (shootable(e) && (e.y > FIRE_Y || (e.carry && e.y > 70)) && e.y > by) { by = e.y; best = e; }
   if (best) return best;
-  for (const c of S.caps) if (c.y > FIRE_Y && c.pending < c.hits && c.y > by) { by = c.y; best = c; }
+  for (const c of S.caps) if (c.y > FIRE_Y && c.pending < c.hits && c.y > by && !c.lock) { by = c.y; best = c; }
   return best;
 }
 function pickHeavy() {
@@ -1211,7 +1287,7 @@ function giveUnit(type, lv, fromX, fromY, col) {
   return spot ? 'placed' : 'reserve';
 }
 function claimCap(c) {
-  c.dead = true;
+  c.dead = true; c.claimed = true;
   const rw = c.rw, look = capLook(rw), col = look.col;
   play('capsule', 0.5);
   boom(c.x, c.y, 0.8, col);
@@ -1252,6 +1328,7 @@ function checkMergeHint() {
   }
 }
 function mergeInto(t, from) {
+  if (S.tut) S.tut.merged = true;
   if (from) unplace(from);
   t.lv += 1; t.pop = 0.5; t.cd = 0.2; t.sk = 1.5;
   t.maxHp = unitMaxHp(t.type, t.lv); t.hp = t.maxHp;
@@ -1526,7 +1603,7 @@ function update(dt) {
   S.glitch = Math.max(0, S.glitch - dt);
 
   if (S.hint) { S.hintT -= dt; if (S.hintT <= 0) S.hint = null; }
-  if (!S.hint && S.hintQueue.length) { S.hint = S.hintQueue.shift(); S.hintT = 5.5; }
+  if (!S.hint && S.hintQueue.length && !S.tut) { S.hint = S.hintQueue.shift(); S.hintT = 5.5; }
 
   for (const t of S.texts) t.t += dt;
   S.texts = S.texts.filter(t => t.t < t.life);
@@ -1549,8 +1626,11 @@ function update(dt) {
     S.breakT -= dt;
     if (S.breakT <= 0) startWave(S.wave + 1);
   } else if (S.mode === 'play') {
-    S.waveT += dt;
-    while (S.events.length && S.events[0].t <= S.waveT) runEvent(S.events.shift());
+    if (S.tut) updateTut(dt);
+    else {
+      S.waveT += dt;
+      while (S.events.length && S.events[0].t <= S.waveT) runEvent(S.events.shift());
+    }
   } else if (S.mode === 'clearing') {
     // 소탕: 남은 적을 차례로 터뜨리고, 화면이 가라앉으면 클리어
     S.clearT += dt; S.clearK = (S.clearK || 0) + dt;
@@ -2121,7 +2201,10 @@ const BLOOM2 = document.createElement('canvas'), b2ctx = BLOOM2.getContext('2d')
 function applyBloom() {
   if (!SET().fx || !('filter' in ctx)) return;
   const bw = Math.max(1, cv.width >> 2), bh = Math.max(1, cv.height >> 2);
-  if (BLOOM.width !== bw || BLOOM.height !== bh) { BLOOM.width = bw; BLOOM.height = bh; }
+  const fresh = BLOOM.width !== bw || BLOOM.height !== bh;
+  if (fresh) { BLOOM.width = bw; BLOOM.height = bh; }
+  UI.bloomF = (UI.bloomF || 0) + 1;
+  if (fresh || UI.bloomF % 2 === 0) {
   bctx.globalCompositeOperation = 'copy';
   bctx.filter = 'brightness(0.62) contrast(3.2) blur(3px)';
   bctx.drawImage(cv, 0, 0, bw, bh);
@@ -2132,6 +2215,7 @@ function applyBloom() {
   b2ctx.filter = 'blur(4px)';
   b2ctx.drawImage(BLOOM, 0, 0, w2, h2);
   b2ctx.filter = 'none';
+  }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.32;
   ctx.drawImage(BLOOM, 0, 0, cv.width, cv.height);
@@ -2139,12 +2223,12 @@ function applyBloom() {
   ctx.drawImage(BLOOM2, 0, 0, cv.width, cv.height);
   ctx.restore();
 }
+let GRADE = null;
 function applyGrade() {
   if (!SET().fx) return;
   ctx.save(); ctx.globalCompositeOperation = 'soft-light';
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, 'rgba(40,90,200,.5)'); g.addColorStop(0.55, 'rgba(90,70,170,.3)'); g.addColorStop(1, 'rgba(255,150,70,.35)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (!GRADE) { GRADE = ctx.createLinearGradient(0, 0, 0, H); GRADE.addColorStop(0, 'rgba(40,90,200,.5)'); GRADE.addColorStop(0.55, 'rgba(90,70,170,.3)'); GRADE.addColorStop(1, 'rgba(255,150,70,.35)'); }
+  ctx.fillStyle = GRADE; ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }
 // 충격파 굴절: 퍼지는 고리 모양으로 잘라, 그 안의 화면을 살짝 확대해 다시 그린다
@@ -2984,11 +3068,14 @@ function draw(dt) {
       const cells = cellsFor(du, c), ok = canPlace(du, cells);
       for (const cc of cells) { const q = cellPos(cc); ctx.strokeStyle = ok ? 'rgba(120,230,255,.8)' : 'rgba(255,90,90,.6)'; ctx.lineWidth = 2; chamfer(q.x - CW / 2 + 4, q.y - CH / 2 + 4, CW - 8, CH - 8, 9); ctx.stroke(); }
     }
+    { // 해체 구역: 끄는 동안 전장 아래쪽을 붉게. 들어가면 더 진하게
+      const hot = drag.y < SCRAP_Y, hg = ctx.createLinearGradient(0, SCRAP_Y - 280, 0, SCRAP_Y);
+      hg.addColorStop(0, 'rgba(255,50,30,0)'); hg.addColorStop(1, `rgba(255,50,30,${hot ? 0.5 + 0.08 * Math.sin(S.time * 10) : 0.2})`);
+      ctx.fillStyle = hg; ctx.fillRect(0, SCRAP_Y - 280, W, 280);
+      ctx.font = FK(hot ? 40 : 32); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.globalAlpha = hot ? 1 : 0.55; outlineText('해체', W / 2, SCRAP_Y - 70, '#ffb08a', 5); ctx.globalAlpha = 1;
+    }
     if (drag.y < SCRAP_Y) {
-      // 해체 구역: 전장 아래쪽을 붉게, 놓으면 얼마를 받는지 보여 준다
-      const hg = ctx.createLinearGradient(0, SCRAP_Y - 260, 0, SCRAP_Y);
-      hg.addColorStop(0, 'rgba(255,60,40,0)'); hg.addColorStop(1, 'rgba(255,60,40,.28)');
-      ctx.fillStyle = hg; ctx.fillRect(0, SCRAP_Y - 260, W, 260);
       drawGlow('#ff5a3a', drag.x, drag.y - 20, 70, 0.45 + 0.15 * Math.sin(S.time * 10));
       ctx.font = FK(22); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       outlineText(`부품 +${SCRAP_GEAR[du.lv - 1] * uSize(du)}`, drag.x, drag.y - 78, '#ffb08a', 4);
@@ -3114,6 +3201,7 @@ function drawHud() {
   drawBanner();
   drawWarning();
   drawSkillPop();
+  drawTut();
 
   if (S.mode === 'break') {
     ctx.font = FK(19); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -3413,7 +3501,7 @@ function drawMap() {
     BUTTONS.push({ x: p.x - p.r - 8, y: p.y - p.r - 8, w: p.r * 2 + 16, h: p.r * 2 + 24, act: 'stage', n });
   }
   // 편성 요약 + 격납고
-  const deckOk = PROG.deck.length === DECK_N;
+  const deckOk = PROG.deck.length >= 1;
   ctx.font = FU(10); ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(140,220,255,.7)'; ctx.fillText('// SQUADRON', 22, 858);
   PROG.deck.forEach((t2, k) => {
     const x = 42 + k * 50, y = 896;
@@ -3485,7 +3573,7 @@ function drawHangar() {
   });
   ctx.font = FK(14); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(200,225,255,.7)';
   ctx.fillText('카드를 누르면 스킬과 성능을 볼 수 있어요', W / 2, 838);
-  button(W / 2 - 110, 862, 220, 52, '지도로', 'map', PROG.deck.length === DECK_N ? 'primary' : 'danger');
+  button(W / 2 - 110, 862, 220, 52, '지도로', 'map', PROG.deck.length >= 1 ? 'primary' : 'danger');
 }
 
 // 기체 소개 카드 (해금 팝업 겸용)
@@ -3833,6 +3921,7 @@ function drawOverlays() {
 }
 function unlockUnit(t) {
   PROG.newUnits = (PROG.newUnits || []).filter(k => k !== t).concat([t]);
+  if (PROG.deck.length < DECK_N && !PROG.deck.includes(t)) PROG.deck.push(t);   // 빈자리가 있으면 바로 편성
   save();
 }
 // 해금 연출: 신호 수신 → 검은 실루엣이 떨림 → 섬광과 함께 기체가 드러남
@@ -3890,7 +3979,7 @@ function drawReveal() {
   ctx.font = FK(19); ctx.fillStyle = def.col; ctx.fillText(def.role, cx, 632);
   ctx.font = FK(17); ctx.fillStyle = 'rgba(220,235,255,.9)';
   wrapLines(def.desc, W - 100).forEach((l, i) => ctx.fillText(l, cx, 670 + i * 24));
-  ctx.font = FK(15); ctx.fillStyle = 'rgba(160,220,255,.8)'; ctx.fillText('격납고에서 편성하면 캡슐로 나와요', cx, 736);
+  ctx.font = FK(15); ctx.fillStyle = 'rgba(160,220,255,.8)'; ctx.fillText(PROG.deck.includes(r.type) ? '편성에 들어갔어요. 이제 캡슐로 나와요' : '격납고에서 편성하면 캡슐로 나와요', cx, 736);
   if (q > 0.6) {
     button(cx - 200, 790, 190, 52, '자세히 보기', 'revealDetail', 'ghost', { type: r.type });
     button(cx + 10, 790, 190, 52, '확인', 'revealOk', 'primary');
@@ -3914,7 +4003,6 @@ function drawTitle() {
   drawGlow('#48c8ff', W / 2, 385, 220, 0.25, 0.4);
   const amt = Math.random() < 0.06 ? 4 + Math.random() * 6 : 0.4;
   ctx.save();
-  ctx.shadowColor = '#48c8ff'; ctx.shadowBlur = 20;
   ctx.font = FT(62, 900); glitchText('OVERRIDE', W / 2, 360, '#eef8ff', 7, amt);
   ctx.font = FK(22); ctx.fillStyle = '#9fdcff'; ctx.fillText('SF 머지 디펜스', W / 2, 408);
   ctx.restore();
@@ -3962,13 +4050,13 @@ function doAction(b) {
   const now = performance.now() / 1000;
   switch (b.act) {
     case 'stage':
-      if (PROG.deck.length !== DECK_N) { S.toast = { text: '격납고에서 편성 5종을 먼저 채워 주세요', until: now + 1.8 }; return; }
+      if (!PROG.deck.length) { S.toast = { text: '격납고에서 기체를 하나 이상 편성해 주세요', until: now + 1.8 }; return; }
       if (unlocked(b.n)) startStage(b.n); else S.toast = { text: '앞 스테이지를 먼저 깨야 열려요', until: now + 1.6 };
       return;
     case 'next': startStage(S.stage.n + 1); return;
     case 'retry': UI.shop = false; if (S.stage.endless) startStage(0, true); else startStage(S.stage.n); return;
     case 'map':
-      if (S.mode === 'hangar' && PROG.deck.length !== DECK_N) { toast('편성 5종을 채워야 해요'); }
+      if (S.mode === 'hangar' && !PROG.deck.length) { toast('기체를 하나 이상 편성해야 해요'); return; }
       goMap(); return;
     case 'hangar': S = { mode: 'hangar' }; return;
     case 'card': UI.card = { type: b.type }; play('open', 0.45);
@@ -3979,6 +4067,7 @@ function doAction(b) {
     case 'scrapInfo': if (UI.card && UI.card.u) scrapUnit(UI.card.u); UI.card = null; return;
     case 'closecard': UI.card = null; return;
     case 'closeshop': UI.shop = false; return;
+    case 'tutskip': if (S.tut) { if (S.tut.e && !S.tut.e.dead) S.tut.e.dead = true; if (S.tut.atk) S.tut.atk.cancelled = true; S.tut = null; PROG.tut = true; save(); } return;
     case 'rowup': {
       const lv = S.row[b.r], cost = ROW_COST[lv];
       if (lv >= 3) return;
@@ -4013,7 +4102,7 @@ function doAction(b) {
     }
     case 'endless':
       if (!endlessOpen()) return;
-      if (PROG.deck.length !== DECK_N) { toast('격납고에서 편성 5종을 먼저 채워 주세요'); return; }
+      if (!PROG.deck.length) { toast('격납고에서 기체를 하나 이상 편성해 주세요'); return; }
       UI.card = null; startStage(0, true); return;
     case 'records': S = { mode: 'records' }; UI.card = null; return;
     case 'perk': {
@@ -4058,7 +4147,7 @@ cv.addEventListener('pointerdown', ev => {
   let best = null, bd = 1e9;
   for (const cp of S.caps) { const d = Math.hypot(cp.x - p.x, cp.y - p.y); if (d < 60 && d < bd) { bd = d; best = cp; } }
   for (const e of S.enemies) { const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < e.r + 22 && d < bd && !(e.hacked > 0)) { bd = d; best = e; } }
-  if (best) S.focus = S.focus === best ? null : best;
+  if (best) { if (best.lock) best.lock = false; S.focus = S.focus === best ? null : best; }
 });
 function unitAt(p) {
   if (!S.slots || !['play', 'break'].includes(S.mode)) return null;
@@ -4149,7 +4238,19 @@ cv.addEventListener('pointercancel', endDrag);
 
 // ── 루프 ──────────────────────────────────────────────────
 let last = performance.now();
+// 가려지면 음악과 소리를 멈추고 전투는 일시정지. 돌아오면 소리만 다시 켠다 (음악은 updateMusic이 이어서 튼다)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    for (const k in MUS.tracks) MUS.tracks[k].a.pause();
+    if (AC && AC.state === 'running') AC.suspend();
+    if (S.stage && (S.mode === 'play' || S.mode === 'break')) S.paused = true;
+  } else if (AC && AC.state === 'suspended') AC.resume();
+});
 function loop(now) {
+  requestAnimationFrame(loop);
+  // 프레임 상한: 전투 60, 메뉴와 창이 떠 있을 때 30 (120Hz 폰에서 두 배로 그리지 않게)
+  const calm = !S.stage || S.paused || UI.settings || UI.card || UI.shop || UI.reveal || !['play', 'break', 'clearing'].includes(S.mode);
+  if (now - last < (calm ? 1000 / 30 : 1000 / 60) - 2) return;
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   let gdt = dt;
@@ -4157,7 +4258,6 @@ function loop(now) {
   if (S.stage && !S.paused && !S.frozen && !UI.settings && !UI.reveal && !UI.shop && !(UI.card && S.mode !== 'win')) update(gdt);
   updateMusic(dt);
   draw(dt);
-  requestAnimationFrame(loop);
 }
 function fontsReady() {
   if (!document.fonts || !document.fonts.load) return Promise.resolve();
@@ -4237,6 +4337,11 @@ function setupShot(k) {
     if (k === 'result') { S.endT -= 1.9; UI.pendingReveal = null; }
   } else if (k === 'reveal') { S = { mode: 'map' }; UI.reveal = { type: 'e', t0: performance.now() / 1000 - 1.35, parts: [] }; }
   else if (k === 'shop') { PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(12); shotArmy(army); S.wave = 2; startWave(3); shotRun(60 * 5); S.gear = 11; S.row = [1, 0, 0]; S.hint = null; S.hintQueue = []; UI.shop = true; }
+  else if (k === 'tut1' || k === 'tut3') {
+    PROG.deck = ['f', 't']; PROG.stars = {}; startStage(1); S.tut = { step: k === 'tut1' ? 1 : 3, t: 0 };
+    for (let i = 0; i < (k === 'tut1' ? 150 : 420); i++) update(1 / 60);
+    S.hint = null; S.frozen = true;
+  }
   else if (k === 'dragout') { PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(12); shotArmy(army); S.wave = 2; startWave(3); shotRun(60 * 5); S.hint = null; S.hintQueue = []; const du = gridUnits().find(u => u.type === 'c') || gridUnits()[0]; drag = { unit: du, x: 300, y: 560, sx: 0, sy: 0, moved: true, id: -1 }; S.frozen = true; }
   else if (k === 'trans') {
     PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(15);
