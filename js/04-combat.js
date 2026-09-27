@@ -554,7 +554,7 @@ function killEnemy(e) {
   e.dead = true;
   if (S.mode === 'play' && cmdOpen()) {
     const was = S.cmd || 0;
-    S.cmd = Math.min(100, was + (e.boss ? 30 : e.k === 'elite' ? 15 : ENEMY[e.k].atk ? 4 : e.k === 'rock' || e.k === 'splitS' ? 0.5 : 1.5));
+    S.cmd = Math.min(100, was + (e.boss ? 30 : e.k === 'elite' ? 15 : ENEMY[e.k].atk ? 4 : e.k === 'rock' || e.k === 'splitS' ? 0.5 : 1.5) * S.pk.cmd);
     if (was < 40 && S.cmd >= 40) hintOnce('cmd', '적을 격추하면 왼쪽 사령관 게이지가 차요. 버튼을 눌러 궤도 포격, 비상 방어막, 전체 빙결을 써 보세요.');
   }
   const drop = e.boss ? 30 : e.k === 'elite' ? 10 : ENEMY[e.k].atk ? 2 : (e.k === 'tank' || e.k === 'shield' || e.k === 'healer') && Math.random() < 0.35 ? 1 : 0;
@@ -598,7 +598,8 @@ function killEnemy(e) {
     S.fx.push({ kind: 'debris', img: e.img, x: e.x, y: e.y, w: e.w, h: e.h, rot: e.rot, pcs, t: 0, life: 0.75 });
   }
   if (e.boss) addGear(8, e.x, e.y); else if (e.k === 'elite') addGear(4, e.x, e.y);
-  else if (!(e.hacked > 0) && e.k !== 'rock' && e.k !== 'splitS' && Math.random() < (ENEMY[e.k].atk ? 0.5 : 0.15)) addGear(1, e.x, e.y);
+  else if (!(e.hacked > 0) && e.k !== 'rock' && e.k !== 'splitS' && Math.random() < (ENEMY[e.k].atk ? 0.5 : 0.15) * S.pk.gear) addGear(1, e.x, e.y);
+  if (S.pk.chain && !e.boss && S.mode === 'play' && S.chainQ.length < 12) S.chainQ.push({ x: e.x, y: e.y, d: e.maxHp * S.pk.chain });
   if (e.k === 'split') for (const vx of [-90, 0, 90]) { const c = spawnEnemy('splitS', e.x + vx * 0.2, e.y); c.vx = vx; }
   if (e.k === 'elite') {
     const rw = rollReward(S.stage.n, 3); if (!rw.heal && UNIT[rw.type].shape === 1) rw.lv = Math.max(rw.lv, 2);

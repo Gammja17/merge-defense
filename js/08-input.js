@@ -113,6 +113,7 @@ function doAction(b) {
       const pk = S.perkChoices[b.i];
       pk.apply(); S.perks.push(pk.id);
       S.perkChoices = null; S.mode = 'break'; S.breakT = 2;
+      S.fx.push({ kind: 'ring', x: W / 2, y: 420, t: 0, life: 0.6, color: pk.col }); play('up_fx', 0.5);
       S.banner = { text: pk.name, sub: pk.desc, color: pk.col, t: 0, life: 1.8 };
       play('shieldUp', 0.4);
       return;
@@ -183,6 +184,11 @@ function doMerge(target, from) {
             { kind: 'beam', x: q.x, y: q.y, t: 0, life: 0.7, color: col });
   sparks(q.x, q.y, col, 14 + target.lv * 5, 260 + target.lv * 30);
   S.whiteFlash = Math.max(S.whiteFlash, Math.min(0.45, 0.08 * target.lv));
+  if (S.pk.arc && S.mode === 'play') {
+    const near = S.enemies.filter(e => shootable(e)).sort((a, b) => Math.hypot(a.x - q.x, a.y - q.y) - Math.hypot(b.x - q.x, b.y - q.y)).slice(0, 3);
+    for (const e of near) { S.fx.push({ kind: 'bolt', pts: [{ x: q.x, y: q.y - 20 }, { x: e.x, y: e.y }], t: 0, life: 0.35, col: '#9ad8ff' }); hitEnemy(e, e.maxHp * (e.boss ? 0.01 : 0.12) * target.lv * S.pk.arc, 'zap'); }
+    if (near.length) play('zapfx', 0.5, 0.9);
+  }
   shake(0.08 * target.lv);
   S.glitch = Math.max(S.glitch, 0.05 * target.lv);
   play('merge' + Math.min(5, Math.max(2, target.lv)), 0.55); play('latch', 0.3, 0.8);

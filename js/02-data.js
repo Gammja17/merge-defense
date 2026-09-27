@@ -339,21 +339,30 @@ function buildEndlessWave(w) {
   return ev.sort((a, b) => a.t - b.t);
 }
 const PERKS = [
-  { id: 'dmg', name: '화력 증폭', desc: '모든 기체 화력 +15%', col: '#ff8a4a', apply: () => { S.pk.dmg *= 1.15; } },
-  { id: 'spd', name: '냉각 개선', desc: '모든 기체 공격 속도 +12%', col: '#48c8ff', apply: () => { S.pk.spd *= 1.12; } },
-  { id: 'shield', name: '방어선 보강', desc: '기지 보호막 최대치 +3, 즉시 +3', col: '#5affc8', apply: () => { S.maxHp += 3; S.hp += 3; } },
-  { id: 'armor', name: '장갑 강화', desc: '모든 기체 최대 체력 +2', col: '#6ad0ff', apply: () => { S.pk.hp += 2; for (const u of allUnits()) { u.maxHp += 2; u.hp += 2; } } },
-  { id: 'cap', name: '보급 효율', desc: '캡슐을 까는 데 필요한 타수 -20%', col: '#ffd84a', apply: () => { S.pk.cap *= 0.8; } },
-  { id: 'front', name: '화력 정비', desc: '화력 칸 효과 +50%', col: '#ffb347', apply: () => { S.pk.front += 0.5; } },
-  { id: 'slow', name: '중력 교란', desc: '모든 적 이동 속도 -10%', col: '#b86bff', apply: () => { S.pk.enemySpd *= 0.9; } },
-  { id: 'repair', name: '자동 수리', desc: '웨이브를 넘길 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.regen += 1; } },
-  { id: 'gift', name: '긴급 증원', desc: '편성 기체 중 하나를 Lv3으로 지급', col: '#ffe24a', apply: () => {
+  { id: 'dmg', cat: 'atk', name: '화력 증폭', desc: '모든 기체 화력 +15%', col: '#ff8a4a', apply: () => { S.pk.dmg *= 1.15; } },
+  { id: 'spd', cat: 'atk', name: '냉각 개선', desc: '모든 기체 공격 속도 +12%', col: '#48c8ff', apply: () => { S.pk.spd *= 1.12; } },
+  { id: 'shield', cat: 'def', name: '방어선 보강', desc: '기지 보호막 최대치 +3, 즉시 +3', col: '#5affc8', apply: () => { S.maxHp += 3; S.hp += 3; } },
+  { id: 'armor', cat: 'def', name: '장갑 강화', desc: '모든 기체 최대 체력 +2', col: '#6ad0ff', apply: () => { S.pk.hp += 2; for (const u of allUnits()) { u.maxHp += 2; u.hp += 2; } } },
+  { id: 'cap', cat: 'sup', name: '보급 효율', desc: '캡슐을 까는 데 필요한 타수 -20%', col: '#ffd84a', apply: () => { S.pk.cap *= 0.8; } },
+  { id: 'front', cat: 'atk', name: '화력 정비', desc: '정비소 공격 칸 효과 +50%', col: '#ffb347', apply: () => { S.pk.front += 0.5; } },
+  { id: 'slow', cat: 'def', name: '중력 교란', desc: '모든 적 이동 속도 -10%', col: '#b86bff', apply: () => { S.pk.enemySpd *= 0.9; } },
+  { id: 'repair', cat: 'def', name: '자동 수리', desc: '웨이브를 넘길 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.regen += 1; } },
+  { id: 'gift', cat: 'sup', name: '긴급 증원', desc: '편성 기체 중 하나를 Lv3으로 지급', col: '#ffe24a', apply: () => {
       const pool = battleDeck().filter(t => UNIT[t].shape === 1); giveUnit(pool[Math.floor(Math.random() * pool.length)] || 'f', 3, W / 2, 420, '#ffe24a'); } },
-  { id: 'crit', name: '약점 분석', desc: '모든 공격이 15% 확률로 2배 피해', col: '#ff5a8a', apply: () => { S.pk.crit += 0.15; } },
+  { id: 'crit', cat: 'atk', name: '약점 분석', desc: '모든 공격이 15% 확률로 2배 피해', col: '#ff5a8a', apply: () => { S.pk.crit += 0.15; } },
+  { id: 'salvage', cat: 'sup', name: '부품 회수', desc: '격추한 적이 부품을 두 배 자주 떨궈요', col: '#ffc86a', apply: () => { S.pk.gear *= 2; } },
+  { id: 'summon', cat: 'sup', name: '소환 할인', desc: '소환에 드는 부품 -2', col: '#ffe08a', apply: () => { S.pk.summonOff += 2; } },
+  { id: 'cmdup', cat: 'sp', name: '지휘 통신', desc: '사령관 게이지가 60% 더 빨리 차요', col: '#ffd24a', ok: () => cmdOpen(), apply: () => { S.pk.cmd *= 1.6; } },
+  { id: 'chain', cat: 'sp', name: '연쇄 폭발', desc: '격추한 적이 터지며 주변 적에게 피해를 줘요', col: '#ff6a3a', apply: () => { S.pk.chain += 0.35; } },
+  { id: 'arc', cat: 'sp', name: '합체 방전', desc: '합체할 때마다 가까운 적 셋에게 번개가 떨어져요', col: '#9ad8ff', apply: () => { S.pk.arc += 1; } },
 ];
+const PERK_CAT = { atk: ['공격', '#ff8a4a'], def: ['방어', '#5affc8'], sup: ['보급', '#ffd84a'], sp: ['특수', '#b88aff'] };
 function rollPerks() {
-  const bag = PERKS.slice(), out = [];
-  while (out.length < 3 && bag.length) out.push(bag.splice(Math.floor(R() * bag.length), 1)[0]);
+  const bag = PERKS.filter(p => !p.ok || p.ok()), out = [];
+  for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+  for (const p of bag) if (out.length < 3 && !out.some(q => q.cat === p.cat)) out.push(p);
+  for (const p of bag) if (out.length < 3 && !out.includes(p)) out.push(p);
+  S.perkT0 = performance.now() / 1000;
   return out;
 }
 
@@ -377,7 +386,7 @@ function startStage(n, endless = false, daily = false) {
     shake: 0, time: 0, glitch: 0, lost: 0,
     parts: [], shieldHits: [], banner: null, warning: 0, whiteFlash: 0, skillPop: null,
     score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0, dmgBy: {}, used: {},
-    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0 },
+    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, cmd: 1, chain: 0, arc: 0 }, chainQ: [],
     gear: 0, cellFx: new Array(COLS * ROWS).fill(null), rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0,
   };
   if (daily) { S.daily = { day: dayKey(), deck: dailyDeck(dayKey()) }; lbFetchDaily(true); }

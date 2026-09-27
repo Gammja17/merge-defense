@@ -1139,23 +1139,54 @@ function drawPerk() {
   BUTTONS = [];
   ctx.fillStyle = 'rgba(2,3,12,.78)'; ctx.fillRect(0, 0, W, H);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = FT(26, 900); glitchText('UPGRADE', W / 2, 220, '#ffd24a', 5, Math.random() < 0.06 ? 4 : 0);
-  ctx.font = FK(18); ctx.fillStyle = '#e6ecff'; ctx.fillText(`웨이브 ${S.wave} 돌파! 강화를 하나 고르세요`, W / 2, 254);
+  const e = performance.now() / 1000 - (S.perkT0 || 0);
+  ctx.font = FT(26, 900); glitchText('UPGRADE', W / 2, 196, '#ffd24a', 5, e < 0.3 ? 5 : Math.random() < 0.06 ? 4 : 0);
+  ctx.font = FK(18); ctx.fillStyle = '#e6ecff'; ctx.fillText(`웨이브 ${S.wave} 돌파! 강화를 하나 고르세요`, W / 2, 232);
+  ctx.font = FK(14); ctx.fillStyle = 'rgba(180,205,240,.75)'; ctx.fillText(S.stage.endless ? '고른 강화는 이번 도전이 끝날 때까지 이어져요' : '고른 강화는 이번 스테이지 동안만 이어져요', W / 2, 258);
   (S.perkChoices || []).forEach((pk, i) => {
-    const x = 50, y = 290 + i * 132, w = W - 100, h = 116;
-    ctx.fillStyle = 'rgba(8,20,50,.95)'; chamfer(x, y, w, h, 14); ctx.fill();
+    const k = Math.max(0, Math.min(1, (e - i * 0.09) / 0.28)), ease = 1 - Math.pow(1 - k, 3);
+    const x = 44 + (1 - ease) * 80, y = 284 + i * 140, w = W - 88, h = 124, [cn, cc] = PERK_CAT[pk.cat];
+    ctx.globalAlpha = k;
+    ctx.fillStyle = 'rgba(8,20,50,.96)'; chamfer(x, y, w, h, 14); ctx.fill();
     ctx.strokeStyle = pk.col; ctx.lineWidth = 2; ctx.stroke();
-    drawGlow(pk.col, x + 60, y + h / 2, 44, 0.35);
-    ctx.fillStyle = pk.col; hexPath(x + 60, y + h / 2, 26); ctx.fill();
-    ctx.font = FT(16, 900); ctx.fillStyle = '#041020'; ctx.fillText(String(i + 1), x + 60, y + h / 2 + 1);
+    drawGlow(pk.col, x + 62, y + h / 2, 50, 0.3 + 0.08 * Math.sin(e * 4 + i));
+    ctx.fillStyle = 'rgba(4,12,30,.95)'; hexPath(x + 62, y + h / 2, 34); ctx.fill(); ctx.strokeStyle = pk.col; ctx.lineWidth = 2.5; ctx.stroke();
+    perkIcon(pk.cat, x + 62, y + h / 2, pk.col);
     ctx.textAlign = 'left';
-    ctx.font = FK(24); outlineText(pk.name, x + 110, y + 42, '#fff', 4);
-    ctx.font = FK(16); ctx.fillStyle = 'rgba(220,235,255,.9)'; ctx.fillText(pk.desc, x + 110, y + 76);
+    ctx.font = FK(13); const tw = ctx.measureText(cn).width + 16;
+    ctx.fillStyle = cc + '33'; chamfer(x + 116, y + 18, tw, 22, 6); ctx.fill(); ctx.fillStyle = cc; ctx.fillText(cn, x + 124, y + 30);
+    ctx.font = FK(24); outlineText(pk.name, x + 116, y + 62, '#fff', 4);
+    ctx.font = FK(15); ctx.fillStyle = 'rgba(220,235,255,.9)';
+    wrapLines(pk.desc, w - 140).slice(0, 2).forEach((l, j) => ctx.fillText(l, x + 116, y + 92 + j * 20));
     const cnt = S.perks.filter(q => q === pk.id).length;
-    if (cnt) { ctx.font = FU(11); ctx.fillStyle = pk.col; ctx.fillText(`보유 ×${cnt}`, x + w - 80, y + 22); }
-    ctx.textAlign = 'center';
-    BUTTONS.push({ x, y, w, h, act: 'perk', i });
+    if (cnt) { ctx.textAlign = 'right'; ctx.font = FK(13); ctx.fillStyle = pk.col; ctx.fillText(`가진 것 ${cnt}개`, x + w - 16, y + 30); }
+    ctx.globalAlpha = 1; ctx.textAlign = 'center';
+    if (k >= 1) BUTTONS.push({ x, y, w, h, act: 'perk', i });
   });
+  if (S.perks.length) {   // 지금 가진 강화
+    ctx.font = FK(13); ctx.fillStyle = 'rgba(180,205,240,.75)'; ctx.fillText('지금 가진 강화', W / 2, 718);
+    const cnt = {}; for (const id of S.perks) cnt[id] = (cnt[id] || 0) + 1;
+    const chips = Object.keys(cnt).map(id => PERKS.find(p => p.id === id)).filter(Boolean);
+    ctx.font = FK(13);
+    const ws = chips.map(p => ctx.measureText(p.name + (cnt[p.id] > 1 ? ` ×${cnt[p.id]}` : '')).width + 20);
+    let row = 0, cx = 0; const rows = [[]];
+    ws.forEach((w2, j) => { if (cx + w2 > W - 60 && rows[row].length) { rows[++row] = []; cx = 0; } rows[row].push(j); cx += w2 + 8; });
+    rows.forEach((r, ri) => {
+      let x = W / 2 - (r.reduce((a, j) => a + ws[j] + 8, 0) - 8) / 2;
+      for (const j of r) { const p = chips[j]; ctx.fillStyle = p.col + '26'; chamfer(x, 732 + ri * 30, ws[j], 24, 6); ctx.fill(); ctx.fillStyle = p.col; ctx.textAlign = 'left'; ctx.fillText(p.name + (cnt[p.id] > 1 ? ` ×${cnt[p.id]}` : ''), x + 10, 744 + ri * 30); x += ws[j] + 8; }
+    });
+    ctx.textAlign = 'center';
+  }
+}
+// 강화 갈래 그림: 공격 과녁, 방어 방패, 보급 상자, 특수 번개
+function perkIcon(cat, x, y, col) {
+  ctx.save(); ctx.translate(x, y); ctx.strokeStyle = ctx.fillStyle = col; ctx.lineWidth = 3; ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (cat === 'atk') { ctx.arc(0, 0, 12, 0, Math.PI * 2); for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { ctx.moveTo(dx * 8, dy * 8); ctx.lineTo(dx * 19, dy * 19); } ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill(); }
+  else if (cat === 'def') { ctx.moveTo(0, -17); ctx.lineTo(14, -10); ctx.lineTo(12, 4); ctx.lineTo(0, 17); ctx.lineTo(-12, 4); ctx.lineTo(-14, -10); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(-1, 5); ctx.lineTo(7, -5); ctx.stroke(); }
+  else if (cat === 'sup') { ctx.rect(-14, -8, 28, 22); ctx.moveTo(-14, -8); ctx.lineTo(-8, -16); ctx.lineTo(8, -16); ctx.lineTo(14, -8); ctx.moveTo(0, -8); ctx.lineTo(0, 14); ctx.stroke(); }
+  else { ctx.moveTo(4, -18); ctx.lineTo(-8, 2); ctx.lineTo(2, 2); ctx.lineTo(-4, 18); ctx.lineTo(10, -4); ctx.lineTo(0, -4); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
 }
 function drawRecords() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

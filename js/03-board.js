@@ -73,7 +73,7 @@ const FX_KEYS = ['atk', 'spd', 'def', 'rng'];
 const CELL_UP = [5, 8];              // 2단계, 3단계로 올리는 값
 const START_ROWS = 2, ROW_ADD = [5, 9];   // 3줄, 4줄로 늘리는 값
 const SHOP_BX = 286;   // 판 위 줄의 정비소 버튼 왼쪽 끝
-const summonCost = () => 3 + (S.summons || 0);
+const summonCost = () => Math.max(1, 3 + (S.summons || 0) - S.pk.summonOff);
 const cellNewCost = () => 3 + S.cellFx.filter(Boolean).length;   // 새로 찍을수록 조금씩 비싸진다
 const openRows = () => S.rowsOpen || START_ROWS;
 const cellVal = (i, k) => { const f = S.cellFx && S.cellFx[i]; return f && f.k === k ? CELL_FX[k].v[f.lv - 1] * (k === 'atk' ? 1 + S.pk.front : 1) : 0; };

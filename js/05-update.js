@@ -219,6 +219,10 @@ function updateAuras(dt) {
     if (u.type === 'w' && u.lv >= 5) { u.baseT = (u.baseT || 0) + dt; if (u.baseT >= 15) { u.baseT = 0; if (S.hp < S.maxHp) { S.hp++; addText(W / 2, LINE_Y - 30, '방어선 복구 +1', '#6ad0ff', 18); } } }
   }
   S.baseGuardT = Math.max(0, S.baseGuardT - dt);
+  if (S.chainQ && S.chainQ.length) {
+    const q = S.chainQ.splice(0, 6);
+    for (const c of q) { S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.35, color: '#ff8a4a' }); blast(c.x, c.y, 80, c.d); }
+  }
   S.cmdGuardT = Math.max(0, (S.cmdGuardT || 0) - dt); S.iceT = Math.max(0, (S.iceT || 0) - dt * 1.5);
   for (const rb of S.rebuilds) {
     rb.t -= dt;
@@ -529,6 +533,7 @@ function update(dt) {
     S.crisis = false;
     if (st.endless && S.wave >= 10) ach('endless_10');
     if (st.endless && S.wave >= 30) ach('endless_30');
+    if (!st.endless && S.wave === 3 && st.n >= 2 && !S.tut) { S.mode = 'perk'; S.perkChoices = rollPerks(); S.banner = null; }
     if (st.endless) { S.score += 100; if (S.wave % 5 === 0) { S.mode = 'perk'; if (S.daily) S.rng = mulberry(seedOf('perk' + S.daily.day + S.wave)); S.perkChoices = rollPerks(); S.rng = null; S.banner = null; } }
   }
 }
