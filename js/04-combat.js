@@ -523,8 +523,40 @@ function shieldBreak(e) {
   addText(e.x, e.y - e.r - 10, '보호막 파괴!', '#8fe0ff', e.boss ? 26 : 18);
   if (e.boss) { S.shake = Math.max(S.shake, 0.5); S.glitch = Math.max(S.glitch, 0.25); }
 }
+// ── 사령관 스킬: 격추로 게이지를 채워 쓰는 기지의 비상 수단 (스테이지 3부터) ──
+const CMD = [
+  { k: 'orbit', name: '궤도 포격', cost: 50, col: '#ff7a3a' },
+  { k: 'guard', name: '비상 방어막', cost: 40, col: '#5affc8' },
+  { k: 'freeze', name: '전체 빙결', cost: 70, col: '#8fe6ff' },
+];
+const cmdOpen = () => S.stage && !S.tut && (S.stage.endless || S.stage.n >= 3);
+function useCmd(k, x, y) {
+  const c = CMD.find(q => q.k === k);
+  if (!c || (S.cmd || 0) < c.cost || S.mode !== 'play') return denied();
+  S.cmd -= c.cost; UI.aim = null;
+  if (k === 'orbit') {
+    DMG_BY = null;
+    S.fx.push({ kind: 'pillar', x, y, t: 0, life: 0.7, nuke: true });
+    boom(x, y, 3, '#ffb347'); blastFx(x, y, 3); shockwave(x, y, 420);
+    for (const e of S.enemies) if (shootable(e) && Math.hypot(e.x - x, e.y - y) < 130 + e.r) hitEnemy(e, e.boss ? e.maxHp * 0.08 : e.hp + (e.shield || 0) + 1, 'blast', true);
+    play('beam', 0.6, 0.6); play('boom_big', 0.8); play('kaboom', 0.8, 0.7); S.whiteFlash = Math.max(S.whiteFlash, 0.5); shake(0.9); S.hitStop = 0.08;
+  } else if (k === 'guard') {
+    S.cmdGuardT = 10; S.hp = Math.min(S.maxHp, S.hp + 1);
+    for (const a of S.attacks) if (a.t < a.warn && !a.cancelled) { a.cancelled = true; const m = cellsCenter(a.cells); addText(m.x, m.y - 20, '공격 취소!', '#7fffd4', 22); }
+    S.fx.push({ kind: 'ring', x: W / 2, y: LINE_Y, t: 0, life: 0.7, color: '#5affc8' });
+    addText(W / 2, LINE_Y - 40, '비상 방어막 10초', '#5affc8', 26); play('shieldUp', 0.6); play('up_fx', 0.5, 0.8);
+  } else {
+    for (const e of S.enemies) if (!e.dead) { if (e.boss) { e.slow = Math.max(e.slow, 0.5); e.slowT = Math.max(e.slowT, 4); } else e.frozen = Math.max(e.frozen, 4); }
+    S.iceT = 1; addText(W / 2, 300, '전체 빙결', '#bff4ff', 30); play('capbreak', 0.7, 0.8); play('zapfx', 0.5, 0.6);
+  }
+}
 function killEnemy(e) {
   e.dead = true;
+  if (S.mode === 'play' && cmdOpen()) {
+    const was = S.cmd || 0;
+    S.cmd = Math.min(100, was + (e.boss ? 30 : e.k === 'elite' ? 15 : ENEMY[e.k].atk ? 4 : e.k === 'rock' || e.k === 'splitS' ? 0.5 : 1.5));
+    if (was < 40 && S.cmd >= 40) hintOnce('cmd', '적을 격추하면 왼쪽 사령관 게이지가 차요. 버튼을 눌러 궤도 포격, 비상 방어막, 전체 빙결을 써 보세요.');
+  }
   const drop = e.boss ? 30 : e.k === 'elite' ? 10 : ENEMY[e.k].atk ? 2 : (e.k === 'tank' || e.k === 'shield' || e.k === 'healer') && Math.random() < 0.35 ? 1 : 0;
   if (drop) {
     S.cores += drop;

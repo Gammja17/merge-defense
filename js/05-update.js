@@ -219,6 +219,7 @@ function updateAuras(dt) {
     if (u.type === 'w' && u.lv >= 5) { u.baseT = (u.baseT || 0) + dt; if (u.baseT >= 15) { u.baseT = 0; if (S.hp < S.maxHp) { S.hp++; addText(W / 2, LINE_Y - 30, '방어선 복구 +1', '#6ad0ff', 18); } } }
   }
   S.baseGuardT = Math.max(0, S.baseGuardT - dt);
+  S.cmdGuardT = Math.max(0, (S.cmdGuardT || 0) - dt); S.iceT = Math.max(0, (S.iceT || 0) - dt * 1.5);
   for (const rb of S.rebuilds) {
     rb.t -= dt;
     if (rb.t <= 0 && !rb.done) { rb.done = true; if (giveUnit(rb.type, 1, rb.from.x, rb.from.y, '#6dff8a') !== 'lost') addText(rb.from.x, rb.from.y - 30, '재건 완료', '#6dff8a', 18); }
@@ -327,6 +328,7 @@ function update(dt) {
     if (!e.dead && e.y + (e.boss ? e.h * 0.35 : 0) >= LINE_Y) {
       e.dead = true;
       if (e.carry) e.carry.carrier = null;
+      if (!e.boss && S.cmdGuardT > 0) { boom(e.x, LINE_Y, 1.2, '#5affc8'); S.shieldHits.push({ x: e.x, t: 0 }); continue; }
       const guard = !e.boss && S.baseGuardT <= 0 && gridUnits().some(u => u.type === 'g' && u.lv >= 5);
       if (guard) {
         S.baseGuardT = 12;

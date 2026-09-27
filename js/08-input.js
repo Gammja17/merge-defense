@@ -35,6 +35,9 @@ function doAction(b) {
       return;
     case 'revealDetail': if (S.mode === 'win') S.endT = performance.now() / 1000 - (S.introDur || 0); UI.reveal = null; UI.card = { type: b.type, isNew: true }; PROG.newUnits = (PROG.newUnits || []).filter(k => k !== b.type); save(); play('ui_open', 0.3); return;
     case 'introOk': UI.enemyIntro = null; return;
+    case 'cmd':
+      if (b.k === 'orbit') { if (UI.aim) { UI.aim = null; return; } if ((S.cmd || 0) < CMD[0].cost || S.mode !== 'play') return denied(); UI.aim = 'orbit'; return; }
+      useCmd(b.k); return;
     case 'revealOk': if (S.mode === 'win') S.endT = performance.now() / 1000 - (S.introDur || 0); UI.reveal = null; return;
     case 'scrapInfo': if (UI.card && UI.card.u) scrapUnit(UI.card.u); UI.card = null; return;
     case 'closecard': UI.card = null; return;
@@ -134,6 +137,7 @@ cv.addEventListener('pointerdown', ev => {
   const b = hitButton(p);
   if (UI.reveal || UI.enemyIntro || UI.settings || UI.card || UI.shop || S.paused || ['map', 'hangar', 'records', 'win', 'lose', 'perk'].includes(S.mode)) { if (b) { if (b.act !== 'slider') play(b.act === 'closecard' || b.act === 'closesettings' || b.act === 'closeshop' ? 'close' : 'click', 0.35); doAction(b); } return; }
   if (b) { play('click', 0.35); doAction(b); return; }
+  if (UI.aim) { if (p.y < LINE_Y && S.mode === 'play') useCmd('orbit', p.x, p.y); else UI.aim = null; return; }
   const c = cellAt(p.x, p.y), k = resAt(p.x, p.y);
   const u = c >= 0 ? S.slots[c] : k >= 0 ? S.reserve[k] : null;
   if (u) {
@@ -162,6 +166,7 @@ cv.addEventListener('contextmenu', ev => {
   if (u) { drag = null; openUnitInfo(u); }
 });
 cv.addEventListener('pointermove', ev => {
+  if (UI.aim) UI.hoverP = toLocal(ev);
   if (UI.sliding && ev.buttons) { setSlider(UI.sliding, toLocal(ev).x); return; }
   if (!drag || ev.pointerId !== drag.id) return;
   const p = toLocal(ev);
@@ -271,6 +276,7 @@ function loop(now) {
   let gdt = dt;
   if (S.hitStop > 0) { S.hitStop -= dt; gdt = dt * 0.15; }
   if (drag && drag.moved && (S.mode === 'play' || S.mode === 'break')) gdt *= 0.3;   // 기체를 들고 있는 동안은 전투가 느려진다
+  if (UI.aim) { if (S.mode !== 'play') UI.aim = null; else gdt *= 0.35; }   // 포격 조준 중에도
   if (S.stage && !S.paused && !UI.settings && !UI.enemyIntro) {
     if (S.bossCine) { S.bossCine.t += dt; if (S.bossCine.t < 1.9) gdt *= 0.15; if (S.bossCine.t > 2.4) S.bossCine = null; }
     if (S.slowmo > 0) { S.slowmo -= dt; gdt *= 0.25 + 0.75 * Math.max(0, 1 - S.slowmo / 1.3) ** 2; }

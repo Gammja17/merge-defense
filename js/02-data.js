@@ -362,7 +362,7 @@ let S = { mode: 'title' };
 let BUTTONS = [];
 let UI = { card: null, settings: false, resetArm: 0, toast: null, coreShown: null, upFx: null, parts: [], lastT: 0 };
 function startStage(n, endless = false, daily = false) {
-  UI.enemyIntro = null; UI.introQ = null;
+  UI.enemyIntro = null; UI.introQ = null; UI.aim = null;
   const st = endless ? { n: 0, s: 0, i: 0, sector: SECTORS[0], boss: false, waves: Infinity, endless: true } : stageInfo(n);
   S = {
     mode: 'play', stage: st, paused: false,
