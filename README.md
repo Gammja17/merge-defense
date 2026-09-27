@@ -12,3 +12,4 @@
 - 효과음: [Kenney](https://kenney.nl) — Sci-Fi Sounds, Impact Sounds, Interface Sounds, UI Audio, Digital Audio (CC0). 일부는 ffmpeg로 섞고 다듬었어요.
 - 음악: OpenGameArt의 CC0 곡 — MintoDog, wipics, Deva. 곡별 출처는 `assets/bgm/CREDITS.txt`.
 - 폰트: Orbitron, Chakra Petch, Do Hyeon (SIL OFL, Google Fonts).
+- 폭발 애니메이션: [Sinestesia, 2D Explosion Animations](https://opengameart.org/content/2d-explosion-animations-frame-by-frame) (CC0). 게임용으로 잘라 줄였어요.

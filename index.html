@@ -51,7 +51,7 @@ const IMG_NAMES = ['f1','f2','f3','tbase','t1','t2','t3','laser','hit','missile'
   'e_heal','e_thief','b_rock','b_ufo','b_flag','cap_f','cap_t','cap_up','cap_heal',
   'puff','aura1','aura2','star','wall','life',
   'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b',
-  ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl'].map(n => 'fx/' + n)];
+  ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl','ex1','ex2','ex3','ex4'].map(n => 'fx/' + n)];
 const IMG = {};
 function loadImages() {
   return Promise.all(IMG_NAMES.map(n => new Promise(res => {
@@ -304,8 +304,8 @@ const ENEMY_HINT = {
   tank:    '중장갑 함선은 아주 튼튼해요. 기체를 합쳐서 한 방을 키워야 뚫려요.',
   rocks:   '운석 떼는 약하지만 수가 많아요. 폭발 공격이 잘 들어요.',
   split:   '분열 운석은 깨지면 작은 운석 세 개로 갈라져요.',
-  rusher:  '돌격기는 아주 빨라요. 사거리에 들어오자마자 잡아야 해요.',
-  shield:  '보호막함의 보호막은 레이저를 대부분 막아요. 폭발이나 번개로 먼저 깨세요.',
+  rusher:  '돌격기는 붉게 번쩍인 다음 급가속해요. 번쩍일 때가 잡을 기회예요.',
+  shield:  '보호막함은 레이저를 대부분 막고, 선으로 이어진 주변 적이 받는 피해도 줄여요. 폭발이나 번개로 먼저 깨세요.',
   healer:  '수리선은 주변 적을 계속 고쳐요. 먼저 떨어뜨리는 게 좋아요.',
   thief:   '캡슐 도둑이 캡슐을 낚아채 달아나요. 놓치기 전에 격추하면 캡슐이 다시 떨어져요.',
   sniper:  '저격함이 내 기체를 노려요! 붉게 표시된 칸에서 기체를 빼거나, 저격함을 탭해 먼저 격추하세요.',
@@ -330,7 +330,7 @@ function stageInfo(n) {
   const s = Math.floor((n - 1) / 5), i = (n - 1) % 5;
   return { n, s, i, sector: SECTORS[s], boss: i === 4, waves: 5 };
 }
-let WAVE_GROWTH = 0.4, IN_SECTOR = 0.05, BOSS_MUL = 0.85;
+let WAVE_GROWTH = 0.4, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
 let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0];
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
 const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2]];
@@ -391,6 +391,7 @@ function buildWave(st, w) {
   if (twist === 'ambush') for (let k = 0; k < 4; k++) ev.push({ t: 4 + k * 4.5, k: 'ambush' });
   if (twist === 'meteors') for (let k = 0; k < 3; k++) { ev.push({ t: 5 + k * 5.5, k: 'meteor' }); ev.push({ t: 3 + k * 6, k: 'rocks' }); }
   if (bossWave) ev.push({ t: 1.5, k: st.sector.boss });
+  if (st.n >= 2 && w >= 2 && !bossWave && Math.random() < 0.3) ev.push({ t: 6 + Math.random() * 10, k: 'gold' });
   let capT = bossWave ? [6, 14, 24, 32, 40] : w === 5 ? [3, 9, 15, 21, 26] : [3, 9, 15, 21];
   if (twist === 'supply') {
     capT = [2, 5, 8, 11, 14, 17, 20];
@@ -703,11 +704,11 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 
 // ── 스폰 ──────────────────────────────────────────────────
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s];
-let ENDLESS_GROWTH = 1.22;
+let ENDLESS_GROWTH = 1.24;
 const hpMul = () => S.stage.endless ? 0.9 * Math.pow(ENDLESS_GROWTH, S.wave - 1) * (S.crisis ? 1.5 : 1) * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (S.wave - 1)) * stageMul();
 function spawnEnemy(k, x, y) {
   const d = ENEMY[k];
-  const hp = d.hp * (d.boss ? BOSS_MUL * (S.stage.endless ? 0.6 * Math.pow(ENDLESS_GROWTH, S.wave - 10) : 1) : hpMul());
+  const hp = d.hp * (d.boss ? BOSS_MUL * (S.stage.endless ? 0.7 * Math.pow(ENDLESS_GROWTH, S.wave - 10) : 1) : hpMul());
   const sh = d.shield ? d.shield * hp : mutOn('shield') && !d.boss && k !== 'rock' && k !== 'splitS' ? 0.3 * hp : 0;
   const e = { k, x, y, hp, maxHp: hp, shield: sh, maxShield: sh, downT: 0, pending: 0, r: d.r, speed: d.speed,
               vx: 0, rot: 0, spin: d.spin ? d.spin * (Math.random() < 0.5 ? -1 : 1) : 0, t: 0, flash: 0,
@@ -728,6 +729,14 @@ function runEvent(ev) {
       break;
     }
     case 'meteor': launchAttack('meteor', null, 3); break;
+    case 'gold': {
+      const deck = PROG.deck.filter(t => isOwned(t) && UNIT[t].shape === 1);
+      const left = Math.random() < 0.5, c = makeCap({ type: deck[Math.floor(Math.random() * deck.length)] || 'f', lv: 3, n: 1, gold: true }, left ? -40 : W + 40, 1);
+      c.y = 250 + Math.random() * 80; c.vx = left ? 115 : -115; c.speed = 4; c.lock = true; c.hits = c.maxHits = Math.round(22 * (1 + 0.04 * S.stage.n));
+      addText(W / 2, 300, '황금 캡슐!', '#ffd24a', 28, 1.4); play('unlock', 0.4, 1.2);
+      hintOnce('gold', '황금 캡슐은 금방 지나가요. 탭해서 집중 사격하면 Lv3 기체가 나와요.');
+      break;
+    }
     case 'ambush': {
       const left = Math.random() < 0.5;
       for (let i = 0; i < 3; i++) { const e = spawnEnemy('rusher', left ? 20 : W - 20, 120 + i * 50); e.vx = left ? 160 : -160; }
@@ -749,7 +758,11 @@ function runEvent(ev) {
         if (ev.x) b.cx = ev.x;
         if (!S.boss || S.boss.dead) S.boss = b;
         if (ev.k === 'boss3') hintOnce('b3', 'UFO 모선의 보호막은 레이저가 잘 안 먹혀요. 폭발이나 번개로 깨야 해요.');
-      } else spawnEnemy(ev.k, rx(), -50);
+      } else if (ev.k === 'grunt' && S.wave >= 2 && Math.random() < 0.25) {
+        const x = 110 + Math.random() * (W - 220);
+        for (const [dx, dy] of [[0, 0], [-46, -40], [46, -40]]) { const g = spawnEnemy('grunt', x + dx, -50 + dy); g.hp = g.maxHp = g.maxHp * 0.45; }
+        S.fx.push({ kind: 'warp', x, y: 24, t: 0, life: 0.45 });
+      } else { const e = spawnEnemy(ev.k, rx(), -50); S.fx.push({ kind: 'warp', x: e.x, y: 24, t: 0, life: 0.35 }); }
   }
 }
 function makeCap(rw, x, mul) {
@@ -761,6 +774,7 @@ function makeCap(rw, x, mul) {
 }
 function capLook(rw) {
   if (rw.heal) return { cap: 'cap_heal', col: '#6dff8a', label: '수리' };
+  if (rw.gold) return { cap: 'cap_up', col: '#ffd24a', label: '황금' };
   if (UNIT[rw.type].shape !== 1) return { cap: 'cap_t', col: '#ff8a4a', label: '대형' };
   if (rw.lv >= 2) return { cap: 'cap_up', col: '#ffd84a', label: 'Lv' + rw.lv };
   return { cap: 'cap_f', col: '#48c8ff', label: '+' + rw.n };
@@ -880,7 +894,7 @@ function damageUnit(u, dmg) {
     unplace(u);
     if (drag && drag.unit === u) drag = null;
     S.lost++;
-    boom(p.x, p.y, 1.6, '#ff5a3a');
+    boom(p.x, p.y, 1.6, '#ff5a3a'); sheetFx(4, p.x, p.y, 300, 1);
     play('boom_big', 0.5, 1.1); play('kaboom', 0.6, 0.9); punch(0.8);
     sparks(p.x, p.y, '#c8d0e0', 16, 300, 'shard');
     S.glitch = Math.max(S.glitch, 0.35); S.shake = Math.max(S.shake, 0.7);
@@ -1174,6 +1188,8 @@ const SKILL_CD = { f: 4, b: 5, t: 6, r: 9, s: 5, e: 6, c: 7, n: 9 };
 function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   if (e.dead) return;
   if (e.frozen > 0 && S.shatter) dmg *= 2;
+  if (e.guarded) dmg *= 0.7;
+  if (e.boss && e.weak > 0) dmg *= 2;
   if (S.pk.crit && Math.random() < S.pk.crit) dmg *= 2;
   if (S.scan) dmg *= 1.15;
   if (e.shield > 0) {
@@ -1191,8 +1207,12 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   e.hp -= dmg;
   if (!quiet) {
     e.flash = 0.1; e.jit = 0.12;
+    const heavy = dmg / e.maxHp;
+    e.sq = Math.min(0.4, (e.sq || 0) + 0.1 + Math.min(0.25, heavy));
+    e.tilt = (Math.random() - .5) * (e.boss ? 0.08 : 0.35);
+    if (heavy > 0.12 || (e.boss && dmg > 60)) { sheetFx(1, e.x + (Math.random() - .5) * e.r, e.y + (Math.random() - .5) * e.r * 0.6, 60 + Math.min(60, heavy * 200), 0.35); play('hit', 0.18, 0.8); if (heavy > 0.3) shake(0.1); }
     if (!e.boss && !(e.hacked > 0) && dmg > e.maxHp * 0.08) e.y -= Math.min(3, dmg / e.maxHp * 10);
-    play('hit', 0.07, 1.1);
+    play('hit', 0.08 + Math.min(0.12, heavy * 0.5), 1.15 - Math.min(0.3, heavy));
     if (e.boss) play('bosshit', 0.22, 1.35);
     if (SET().nums && dmg >= 20 && S.texts.length < 45) addText(e.x + (Math.random() - .5) * 20, e.y - e.r * 0.6, String(Math.round(dmg)), dmg >= 200 ? '#ffd24a' : '#e6f4ff', dmg >= 200 ? 24 : 16, 0.55, true);
   }
@@ -1224,6 +1244,7 @@ function killEnemy(e) {
   }
   const size = e.boss ? 3 : e.k === 'elite' ? 2.2 : e.k === 'tank' || e.k === 'shield' || e.k === 'gunship' ? 1.4 : e.k === 'split' ? 1.3 : e.k === 'rock' || e.k === 'splitS' ? 0.6 : 1;
   boom(e.x, e.y, size, e.k === 'healer' ? '#7dff9a' : '#ffb347');
+  blastFx(e.x, e.y, size);
   // 연속 격추 콤보
   S.combo = S.time - (S.comboT || -9) < 1.3 ? (S.combo || 0) + 1 : 1; S.comboT = S.time;
   if (S.combo >= 3) S.comboPop = 0.25;
@@ -1342,6 +1363,25 @@ function mergeInto(t, from) {
 }
 
 // ── 이펙트 ────────────────────────────────────────────────
+// 폭발 애니메이션 (8칸 × 4줄 = 32프레임). delay만큼 늦게 터지고, rot을 주면 돌려서 그린다
+function sheetFx(n, x, y, size, life, delay = 0, rot = 0) {
+  if (S.fx.length > 260) return;
+  S.fx.push({ kind: 'sheet', img: 'fx/ex' + n, x, y, size, life, t: -delay, rot });
+}
+// 격추 폭발: 크기에 따라 시트를 고르고, 큰 적은 한 번 더 터진다
+function blastFx(x, y, size) {
+  if (size < 1) sheetFx(1, x, y, 70 + 40 * size, 0.42);
+  else if (size < 1.3) sheetFx(3, x, y, 200, 0.55);
+  else if (size < 2) {
+    sheetFx(3, x, y, 250, 0.6);
+    sheetFx(2, x + (Math.random() - .5) * 40, y + (Math.random() - .5) * 30, 240, 0.65, 0.16, Math.random() * 6.28);
+    const g = S; setTimeout(() => { if (S === g) { play('kaboom', 0.4, 1.05); shake(0.2); } }, 160);
+  } else {
+    sheetFx(4, x, y, 200 * size, 1.1);
+    sheetFx(3, x + (Math.random() - .5) * 60, y + (Math.random() - .5) * 40, 300, 0.6, 0.22);
+    const g = S; setTimeout(() => { if (S === g) { play('kaboom', 0.6, 0.85); punch(0.6); } }, 220);
+  }
+}
 function boom(x, y, size = 1, color = '#ffb347') {
   S.fx.push({ kind: 'boom', x, y, t: 0, life: 0.62, size, color, rot0: Math.random() * 6 });
   if (size >= 1.3) S.fx.push({ kind: 'light', x, y, t: 0, life: 0.45, r: 110 + 110 * size, color });
@@ -1399,9 +1439,11 @@ function updateEnemy(e, dt) {
   e.t += dt;
   e.flash = Math.max(0, e.flash - dt);
   e.jit = Math.max(0, (e.jit || 0) - dt);
+  e.sq = Math.max(0, (e.sq || 0) - dt * 3); e.tilt = (e.tilt || 0) * Math.pow(0.01, dt);
   e.sflash = Math.max(0, (e.sflash || 0) - dt);
   const d = ENEMY[e.k];
   // 해킹된 적: 멈춰서 주변 적을 쏜다
+  if (e.trail) { for (const g of e.trail) g.a -= dt * 1.6; e.trail = e.trail.filter(g => g.a > 0); }
   if (e.hacked > 0) {
     e.hacked -= dt; e.hackT += dt;
     if (e.hackT >= 0.6) {
@@ -1441,11 +1483,33 @@ function updateEnemy(e, dt) {
       if (launchAttack(d.atk, e, d.atkDmg)) { e.atkLeft--; e.atkT = d.atkCd * (mutOn('rapid') ? 0.7 : 1); } else e.atkT = 1;
     }
   }
+  if (e.boss && e.y > 80) {
+    e.weakCd = (e.weakCd == null ? 7 : e.weakCd) - dt;
+    if (e.weak > 0) e.weak -= dt;
+    if (e.weakCd <= 0) { e.weakCd = 10; e.weak = 3.5; play('twoTone', 0.35, 0.8); addText(e.x, e.y + e.h * 0.2, '약점 노출!', '#ffd24a', 26, 1.2); hintOnce('weak', '보스가 약점을 드러냈어요. 그동안은 피해가 2배예요. 보스를 탭해서 집중 사격하세요.'); }
+  }
   if (e.boss && d.atk && e.y > 60) {
     e.atkT -= dt;
     if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) e.atkT = launchAttack(d.atk, e, d.atkDmg) ? d.atkCd * (mutOn('rapid') ? 0.7 : 1) : 1;
   }
+  // 부서질수록 연기, 더 부서지면 불
+  if (!e.boss && e.maxHp > 90 && e.k !== 'rock') {
+    const r = e.hp / e.maxHp;
+    if (r < 0.5 && Math.random() < dt * 8) smoke(e.x + (Math.random() - .5) * e.r, e.y - e.r * 0.3);
+    if (r < 0.25 && Math.random() < dt * 12) ember(e.x + (Math.random() - .5) * e.r, e.y, '#ff8a2a');
+  }
   switch (e.k) {
+    case 'rusher': {
+      e.dashT = (e.dashT == null ? 0.6 + Math.random() : e.dashT) - dt;
+      if (e.dashT <= 0 && !e.tell && !e.dash && e.y > 40) { e.tell = 0.35; play('twoTone', 0.12, 1.6); }
+      if (e.tell > 0) { e.tell -= dt; if (e.tell <= 0) { e.tell = 0; e.dash = 0.35; } return; }
+      if (e.dash > 0) {
+        e.dash -= dt; e.y += e.speed * 1.6 * spd * dt;
+        (e.trail = e.trail || []).push({ x: e.x, y: e.y, a: 0.35 });
+        if (e.dash <= 0) { e.dash = 0; e.dashT = 1.6 + Math.random() * 0.8; }
+      }
+      break;
+    }
     case 'thief': {
       if (e.carry && e.carry.dead) e.carry = null;
       if (e.carry) {
@@ -1640,6 +1704,8 @@ function update(dt) {
     if ((S.clearT > 1.1 && calm) || S.clearT > 3.2) { S.enemies = S.enemies.filter(x => !x.dead); endStage(true); return; }
   }
 
+  const guards = S.enemies.filter(g => g.k === 'shield' && !g.dead && !(g.hacked > 0));
+  for (const e of S.enemies) e.guarded = e.k !== 'shield' && !e.boss && guards.some(g => Math.hypot(g.x - e.x, g.y - e.y) < 120);
   for (const e of S.enemies) {
     if (e.dead) continue;
     if (S.mode === 'clearing') continue;
@@ -1680,6 +1746,7 @@ function update(dt) {
     if (c.carrier && !c.carrier.dead) continue;
     c.carrier = null;
     c.y += c.speed * dt;
+    if (c.vx) { c.x += c.vx * dt; if (!c.dead && (c.x < -70 || c.x > W + 70)) { c.dead = true; if (S.focus === c) S.focus = null; } }
     if (c.y > LINE_Y + 10 && !c.dead) {
       c.dead = true;
       addText(c.x, LINE_Y - 20, '놓침', '#aaa', 20);
@@ -1784,7 +1851,7 @@ function update(dt) {
     if (m.boom > 0) continue;
     m.done = true;
     if (m.lv >= 4) for (const e of S.enemies) if (!e.boss && shootable(e)) { const d = Math.hypot(e.x - m.x, e.y - m.y); if (d < 110 && d > 1) { e.x += (m.x - e.x) * 0.5; e.y += (m.y - e.y) * 0.5; } }
-    boom(m.x, m.y, 1, '#ff4a6a');
+    boom(m.x, m.y, 1, '#ff4a6a'); sheetFx(3, m.x, m.y, 180, 0.5);
     blast(m.x, m.y, m.lv >= 3 ? 75 : 60, m.dmg, null);
     if (m.lv >= 3) for (const o of S.mines) if (!o.done && !o.boom && Math.hypot(o.x - m.x, o.y - m.y) < 90) o.boom = 0.12;
   }
@@ -1795,7 +1862,7 @@ function update(dt) {
     if (!k.done && k.t >= k.delay) {
       k.done = true;
       for (const e of S.enemies) if (shootable(e) && Math.hypot(e.x - k.x, e.y - k.y) < k.r + e.r) hitEnemy(e, k.dmg, 'blast');
-      boom(k.x, k.y, k.nuke ? 3.4 : 2.6, k.nuke ? '#ff8a5a' : '#ffcf5a');
+      boom(k.x, k.y, k.nuke ? 3.4 : 2.6, k.nuke ? '#ff8a5a' : '#ffcf5a'); sheetFx(4, k.x, k.y, k.nuke ? 640 : 500, 1.1);
       play('boom_big', k.nuke ? 0.7 : 0.5, k.nuke ? 0.8 : 1); play('kaboom', 0.8, k.nuke ? 0.7 : 0.9); play('thud', 0.75, k.nuke ? 0.75 : 0.9); punch(k.nuke ? 1.3 : 0.9); shockwave(k.x, k.y, k.nuke ? 440 : 320);
       sparks(k.x, k.y, '#fff2b0', 30, 520);
       S.fx.push({ kind: 'pillar', x: k.x, y: k.y, t: 0, life: 0.6, nuke: k.nuke });
@@ -1846,7 +1913,7 @@ function impact(s, t) {
   switch (s.type) {
     case 't': {
       const r = UNIT.t.splash * (1 + 0.12 * (s.lv - 1));
-      boom(s.x, s.y, 0.5 + r / 140, '#ff9a3c');
+      boom(s.x, s.y, 0.5 + r / 140, '#ff9a3c'); sheetFx(3, s.x, s.y, 120 + r, 0.5);
       blast(s.x, s.y, r, s.dmg, t);
       if (s.lv >= 3) S.zones.push({ x: s.x, y: s.y, r: 58 + s.lv * 4, dps: s.dmg * 0.45, t: 0, life: 2 });
       if (s.lv >= 4) for (let k = 0; k < 4; k++) { const a = Math.PI * 2 * k / 4 + Math.random() * 0.8; S.shots.push({ type: 'bomb', x: s.x, y: s.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320, dmg: s.dmg * 0.35, lv: s.lv, t: 0, life: 0.35 }); }
@@ -1856,7 +1923,7 @@ function impact(s, t) {
     case 'plasma': boom(s.x, s.y, 2.4, '#7fe8ff'); sparks(s.x, s.y, '#bff6ff', 26, 460); blast(s.x, s.y, 150, s.dmg, t); shake(0.6); punch(0.6); play('kaboom', 0.6, 1.1); shockwave(s.x, s.y, 220); S.glitch = Math.max(S.glitch, 0.2); break;
     case 'r': {
       const r = UNIT.r.splash * (1 + 0.1 * (s.lv - 1));
-      boom(s.x, s.y, 1.5, '#ffb0a0'); shake(0.25);
+      boom(s.x, s.y, 1.5, '#ffb0a0'); sheetFx(3, s.x, s.y, 230, 0.55); shake(0.25);
       blast(s.x, s.y, r, s.dmg, t, s.lv >= 3 ? { stun: 0.5 } : null);
       if (s.lv >= 4) for (let k = 0; k < 6; k++) { const a = Math.PI * 2 * k / 6 + Math.random() * 0.5; S.shots.push({ type: 'bomb', x: s.x, y: s.y, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, dmg: s.dmg * 0.25, lv: s.lv, t: 0, life: 0.35 }); }
       break;
@@ -2446,6 +2513,11 @@ function drawEnemy(e) {
   }
   if (e.k === 'healer') drawGlow('#6dff8a', e.x, e.y, 60, 0.25 + 0.1 * Math.sin(S.time * 5));
   if (e.k === 'thief') drawGlow('#ff4a5a', e.x, e.y, 50, 0.3);
+  if (e.k === 'shield' && !(e.hacked > 0)) for (const o of S.enemies) if (o.guarded && o !== e && Math.hypot(o.x - e.x, o.y - e.y) < 120) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(90,200,255,${0.35 + 0.2 * Math.sin(S.time * 8)})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(o.x, o.y); ctx.stroke(); ctx.restore();
+    drawGlow('#4ab8ff', o.x, o.y, o.r * 1.2, 0.2);
+  }
   const charging = S.attacks.some(a => a.src === e);
   if (charging) drawGlow('#ff2a4a', e.x, e.y, e.r * 2.4, 0.35 + 0.3 * Math.sin(S.time * 18));
   if (e.boss) {
@@ -2457,10 +2529,22 @@ function drawEnemy(e) {
     drawGlow(ENGINE_COL[e.k], e.x, e.y - e.h / 2 + 6, 14 + e.w * 0.12, 0.5 + 0.25 * Math.sin(S.time * 20 + e.x), 1.3);
   }
   const jx = e.jit > 0 ? (Math.random() - .5) * 7 * (e.boss ? 0.4 : 1) : 0, jy = e.jit > 0 ? (Math.random() - .5) * 5 * (e.boss ? 0.4 : 1) : 0;
-  spr(e.img + '_sh', e.x + jx + 10, e.y + jy + 18, e.w * 0.92, e.h * 0.92, e.rot, 0.32);
-  spr(e.img, e.x + jx, e.y + jy, e.w, e.h, e.rot, 1);
-  if (e.flash > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const fa = Math.min(1, e.flash * 12); spr(e.img, e.x + jx, e.y + jy, e.w, e.h, e.rot, fa); spr(e.img, e.x + jx, e.y + jy, e.w, e.h, e.rot, fa * 0.6); ctx.restore(); }
+  // 맞으면 찌그러졌다 돌아오고 살짝 기운다
+  const sq = (e.sq || 0) * (e.boss ? 0.35 : 1), ew = e.w * (1 + sq * 0.45), eh = e.h * (1 - sq * 0.3), er = e.rot + (e.tilt || 0);
+  if (e.trail) for (const g of e.trail) spr(e.img, g.x, g.y, e.w, e.h, e.rot, g.a);
+  spr(e.img + '_sh', e.x + jx + 10, e.y + jy + 18, ew * 0.92, eh * 0.92, er, 0.32);
+  spr(e.img, e.x + jx, e.y + jy, ew, eh, er, 1);
+  if (e.flash > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const fa = Math.min(1, e.flash * 12); spr(e.img, e.x + jx, e.y + jy, ew, eh, er, fa); spr(e.img, e.x + jx, e.y + jy, ew, eh, er, fa * 0.6); ctx.restore(); }
+  if (e.tell > 0) drawGlow('#ff3a3a', e.x, e.y, e.r * 2, 0.5 + 0.5 * Math.sin(S.time * 40));
   if (e.heal > 0) drawGlow('#6dff8a', e.x, e.y, e.r * 1.4, e.heal * 1.5);
+  if (e.boss && e.weak > 0) {
+    const pz = 0.5 + 0.5 * Math.sin(S.time * 10);
+    drawGlow('#ffd24a', e.x, e.y + 10, 70 + 20 * pz, 0.7);
+    ctx.save(); ctx.translate(e.x, e.y + 10); ctx.rotate(S.time * 2);
+    ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 34 + 6 * pz, 0, Math.PI * 2); ctx.stroke();
+    for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(0, -48); ctx.lineTo(0, -30); ctx.stroke(); }
+    ctx.restore();
+  }
   // 상태 이상
   if (e.frozen > 0) {
     drawGlow('#9ff0ff', e.x, e.y, e.r * 1.5, 0.55);
@@ -2812,6 +2896,23 @@ function drawFx() {
         for (let k = 0; k < 3; k++) { ctx.rotate(S.time * (k % 2 ? -4 : 5)); ctx.beginPath(); ctx.arc(0, 0, 30 + k * 12 + p * 20, 0, Math.PI * (0.6 + k * 0.3)); ctx.stroke(); }
         ctx.restore();
         break;
+      case 'sheet': {
+        const im = IMG[f.img];
+        if (!im || !im.width) break;
+        const fs = im.width / 8, fr = Math.min(31, Math.floor(p * 32));
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); if (f.rot) ctx.rotate(f.rot);
+        ctx.drawImage(im, fr % 8 * fs, Math.floor(fr / 8) * fs, fs, fs, -f.size / 2, -f.size / 2, f.size, f.size);
+        ctx.restore();
+        break;
+      }
+      case 'warp': {
+        const a = 1 - p;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createLinearGradient(0, 0, 0, 90); g.addColorStop(0, `rgba(200,120,255,${0.5 * a})`); g.addColorStop(1, 'rgba(200,120,255,0)');
+        ctx.fillStyle = g; ctx.fillRect(f.x - 3 - 8 * a, 0, 6 + 16 * a, 90); ctx.restore();
+        drawGlow('#d49bff', f.x, f.y, 40 * a + 10, a);
+        break;
+      }
       case 'light': if (SET().fx) drawGlow(f.color, f.x, f.y, f.r, 0.4 * (1 - p) * (1 - p), 0.85); break;
       case 'pillar': {
         const bw = (f.nuke ? 170 : 120) * (1 - p * 0.7);
@@ -4342,6 +4443,12 @@ function setupShot(k) {
     for (let i = 0; i < (k === 'tut1' ? 150 : 420); i++) update(1 / 60);
     S.hint = null; S.frozen = true;
   }
+  else if (k === 'tiers') {
+    PROG.deck = ['f', 't', 'e']; startStage(12); S.enemies = []; S.events = []; S.caps = [];
+    for (const u of allUnits()) unplace(u);
+    [['f', 0], ['e', 6], ['t', 12]].forEach(([ty, base]) => [1, 2, 3, 5, 6, 8].forEach((lv, i) => place(makeUnit(ty, lv), [base + i])));
+    S.hint = null; S.hintQueue = []; S.banner = null; S.frozen = true;
+  }
   else if (k === 'dragout') { PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(12); shotArmy(army); S.wave = 2; startWave(3); shotRun(60 * 5); S.hint = null; S.hintQueue = []; const du = gridUnits().find(u => u.type === 'c') || gridUnits()[0]; drag = { unit: du, x: 300, y: 560, sx: 0, sy: 0, moved: true, id: -1 }; S.frozen = true; }
   else if (k === 'trans') {
     PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(15);
@@ -4352,7 +4459,8 @@ function setupShot(k) {
     PROG.deck = ['f', 't', 'e', 'b', 'c'];
     startStage(0, true); shotArmy(army); S.mut = ['shield', 'fast']; S.wave = 18; startWave(19); shotRun(60 * 7); S.hint = null; S.hintQueue = [];
   }
-  else if (k === 'hits') { PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(12); shotArmy(army); S.wave = 3; startWave(4); shotRun(60 * 6); }
+  else if (k === 'hits') { PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(12); shotArmy(army); S.wave = 3; startWave(4); shotRun(60 * 6);
+    blastFx(150, 330, 1.4); blastFx(390, 250, 2.2); blastFx(300, 480, 1); for (const f of S.fx) if (f.kind === 'sheet') f.t = Math.max(f.t, 0) + f.life * 0.3; S.frozen = true; }
 }
 Promise.all([loadImages(), fontsReady()]).then(() => { buildTints(); if (SHOT) setupShot(SHOT); requestAnimationFrame(loop); });
 </script>
