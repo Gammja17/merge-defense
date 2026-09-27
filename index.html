@@ -1122,6 +1122,16 @@ function shoot(type, x, y, dmg, lv, fan = 0, tgt = null, extra = null) {
   s.ut = DMG_BY; S.shots.push(s);
   return s;
 }
+// 탭한 목표로 곧바로: 날아가던 추적탄도 방향을 틀고, 기체들은 바로 다음 발을 쏜다
+function snapFocus(f) {
+  const cap = !!f.maxHits;
+  for (const sh of S.shots) {
+    if (!sh.tgt || sh.tgt === f || sh.hitSet || !sh.turn || sh.done) continue;
+    const old = sh.tgt; old.pending = Math.max(0, (old.pending || 0) - (sh.isCap ? 1 : sh.dmg));
+    sh.tgt = f; sh.isCap = cap; f.pending = (f.pending || 0) + (cap ? 1 : sh.dmg); sh.turn = Math.max(sh.turn, 10);
+  }
+  for (const u of gridUnits()) u.cd = Math.min(u.cd, 0.08);
+}
 function pierce(x, y, dmg, lv, tgt = null, col = '#b86bff', extra = null) {
   tgt = tgt || pickTarget();
   if (!tgt) return null;
@@ -4948,7 +4958,7 @@ cv.addEventListener('pointerdown', ev => {
   let best = null, bd = 1e9;
   for (const cp of S.caps) { const d = Math.hypot(cp.x - p.x, cp.y - p.y); if (d < 60 && d < bd) { bd = d; best = cp; } }
   for (const e of S.enemies) { const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < e.r + 22 && d < bd && !(e.hacked > 0)) { bd = d; best = e; } }
-  if (best) { if (best.lock) best.lock = false; S.focus = S.focus === best ? null : best; }
+  if (best) { if (best.lock) best.lock = false; S.focus = S.focus === best ? null : best; if (S.focus) snapFocus(S.focus); }
 });
 function unitAt(p) {
   if (!S.slots || !['play', 'break'].includes(S.mode)) return null;
