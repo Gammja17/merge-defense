@@ -77,6 +77,28 @@ function buildTints() {
 // ── 온라인 순위표 (docs/leaderboard: 구글 시트 + Apps Script). 비어 있으면 내 기록만 ──
 const LB_URL = 'https://script.google.com/macros/s/AKfycbynNTAN-EhnufymMQg-Oy1ESt2GS9uYpC119zx1HBN6YlFHBAYDstlPyYE5v4dlo9uv/exec';
 const LB = { top: null, t: 0, loading: false, err: '' };
+// ── 오늘의 도전: 한국 시간 날짜가 같으면 모두 같은 편성, 같은 웨이브, 같은 강화 후보 ──
+const dayKey = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+function seedOf(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
+function mulberry(a) { return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const R = () => (S.rng ? S.rng() : Math.random());   // 웨이브를 짤 때만 씨앗을 쓴다 (전투 중 우연은 그대로)
+function dailyDeck(day) {
+  const r = mulberry(seedOf('deck' + day)), ones = UNIT_ORDER.filter(t => UNIT[t].shape === 1), deck = [];
+  while (deck.length < 2) { const t = ones[Math.floor(r() * ones.length)]; if (!deck.includes(t)) deck.push(t); }   // 1칸 기체 둘은 꼭 (시작 기체와 캡슐)
+  while (deck.length < DECK_N) { const t = UNIT_ORDER[Math.floor(r() * UNIT_ORDER.length)]; if (!deck.includes(t)) deck.push(t); }
+  return deck;
+}
+const battleDeck = () => S.daily ? S.daily.deck : PROG.deck.filter(t => isOwned(t));
+const LBD = { top: null, t: 0, loading: false, err: '', day: '', ok: null };
+function lbFetchDaily(force) {
+  const day = dayKey();
+  if (!LB_URL || LBD.loading || (!force && LBD.day === day && LBD.t && performance.now() - LBD.t < 30000)) return;
+  LBD.loading = true; LBD.err = ''; LBD.day = day;
+  fetch(LB_URL + '?daily=' + day).then(r => r.json()).then(d => {
+    LBD.ok = d.v >= 2; LBD.top = LBD.ok ? d.top || [] : []; LBD.total = d.total || 0; LBD.t = performance.now();
+    if (!LBD.ok) LBD.err = '오늘의 순위는 준비 중이에요';
+  }).catch(() => { LBD.err = '순위를 불러오지 못했어요'; LBD.t = performance.now(); }).finally(() => { LBD.loading = false; });
+}
 function lbFetch(force) {
   if (!LB_URL || LB.loading || (!force && LB.top && performance.now() - LB.t < 30000)) return;
   LB.loading = true; LB.err = '';
@@ -87,10 +109,11 @@ function lbSubmit() {
   const name = (NICK.el ? NICK.el.value : '').trim().slice(0, 12);
   if (!name) { UI.lbMsg = '닉네임을 입력해 주세요'; return; }
   if (S.lbSending || S.lbSent) return;
+  if (S.daily && !LBD.ok) { UI.lbMsg = LBD.loading ? '잠시 뒤에 다시 눌러 주세요' : '오늘의 순위는 준비 중이에요'; lbFetchDaily(true); return; }
   PROG.nick = name; save(); S.lbSending = true; UI.lbMsg = '올리는 중...';
-  fetch(LB_URL, { method: 'POST', body: JSON.stringify({ name, score: S.score, wave: S.wave, deck: PROG.deck.join(''), board: S.lastBoard || '' }) })
+  fetch(LB_URL, { method: 'POST', body: JSON.stringify({ name, score: S.score, wave: S.wave, deck: battleDeck().join(''), board: S.lastBoard || '', mode: S.daily ? 'daily' : undefined, day: S.daily ? S.daily.day : undefined }) })
     .then(r => r.json()).then(d => {
-      if (d.ok) { S.lbSent = true; UI.lbMsg = `온라인 ${d.rank}위! (전체 ${d.total}명)`; LB.t = 0; play('levelup', 0.4); }
+      if (d.ok) { S.lbSent = true; UI.lbMsg = `${S.daily ? '오늘의 도전' : '온라인'} ${d.rank}위! (전체 ${d.total}명)`; LB.t = 0; LBD.t = 0; play('levelup', 0.4); }
       else UI.lbMsg = d.err === 'wait' ? '잠시 뒤에 다시 올려 주세요' : '올리지 못했어요';
     }).catch(() => { UI.lbMsg = '연결에 실패했어요. 다시 눌러 주세요'; }).finally(() => { S.lbSending = false; });
 }
@@ -127,7 +150,9 @@ const endlessOpen = () => (PROG.stars[5] || 0) > 0;
 // 연구소: 기체 종류별 영구 강화 Mk.0~10
 const MK_MAX = 10;
 const mkOf = t => (PROG.mk && PROG.mk[t]) || 0;
-const mkMul = t => 1 + 0.08 * mkOf(t);
+// 오늘의 도전은 모두 같은 조건: 연구 강화를 빼고 겨룬다
+const mkNow = t => S.daily ? 0 : mkOf(t);
+const mkMul = t => 1 + 0.08 * mkNow(t);
 const mkCost = t => Math.round(100 * Math.pow(1.5, mkOf(t)));
 const SET = () => PROG.settings;
 // SKEAM 업적: SKEAM 안에서 돌 때만 알린다. 같은 업적을 또 알려도 한 번만 센다. 촬영 모드에서는 알리지 않는다

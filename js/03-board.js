@@ -150,7 +150,7 @@ function runEvent(ev) {
     case 'meteor': launchAttack('meteor', null, 3); break;
     case 'freeze': launchAttack('freeze', null, 0); break;
     case 'gold': {
-      const deck = PROG.deck.filter(t => isOwned(t) && UNIT[t].shape === 1);
+      const deck = battleDeck().filter(t => UNIT[t].shape === 1);
       const left = Math.random() < 0.5, c = makeCap({ type: deck[Math.floor(Math.random() * deck.length)] || 'f', lv: 3, n: 1, gold: true }, left ? -40 : W + 40, 1);
       c.y = 250 + Math.random() * 80; c.vx = left ? 115 : -115; c.speed = 4; c.lock = true; c.hits = c.maxHits = Math.round(22 * (1 + 0.04 * S.stage.n));
       addText(W / 2, 300, '황금 캡슐!', '#ffd24a', 28, 1.4); play('unlock', 0.4, 1.2);

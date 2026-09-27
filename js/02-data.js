@@ -135,7 +135,7 @@ const SKILLS = {
   y: [['주포', '무거운 포탄을 쏘고 드론 3기를 띄워요.'], ['드론 증원', '드론이 4기로 늘어요.'], ['편대', '드론이 6기로 늘어요.'], ['자폭 드론', '5초마다 드론 하나가 강한 적에게 돌진해 터져요.'], ['함재기 폭격', '8초마다 적이 가장 많은 곳에 폭격을 떨어뜨려요.']],
   k: [['해킹', '7초마다 적 하나를 4초 동안 아군으로 만들어요.'], ['빠른 해킹', '해킹 간격이 짧아져요.'], ['자폭 명령', '해킹이 끝나면 그 적이 자폭해요.'], ['다중 해킹', '한 번에 두 기를 해킹해요.'], ['시스템 장악', '해킹이 6초로 길어지고 간격도 짧아져요.']],
 };
-const unitMaxHp = (type, lv) => Math.round(UNIT[type].hp * (1 + 0.3 * (lv - 1))) + Math.floor(mkOf(type) / 3) + (S && S.pk ? S.pk.hp : 0);
+const unitMaxHp = (type, lv) => Math.round(UNIT[type].hp * (1 + 0.3 * (lv - 1))) + Math.floor(mkNow(type) / 3) + (S && S.pk ? S.pk.hp : 0);
 // 레벨별 대표 수치: 공격 기체는 DPS(초당 피해, 단일 대상 기준), 지원 기체는 핵심 효과
 function levelStat(type, lv) {
   const d = UNIT[type], m = LV_MUL[lv - 1];
@@ -233,20 +233,20 @@ const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3,
 function pickWeighted(pool, fresh) {
   const bag = [];
   for (const k of pool) { bag.push(k); if (fresh.includes(k)) bag.push(k, k); }
-  return bag[Math.floor(Math.random() * bag.length)];
+  return bag[Math.floor(R() * bag.length)];
 }
 // 캡슐 내용: 편성한 5종에서만 나온다
 function rollReward(n, w, avoid) {
-  if (Math.random() < 0.05 + 0.01 * Math.floor((n - 1) / 5)) return { heal: 2 };
-  const deck = PROG.deck.filter(t => isOwned(t));
+  if (R() < 0.05 + 0.01 * Math.floor((n - 1) / 5)) return { heal: 2 };
+  const deck = battleDeck();
   let type, guard = 0;
-  do { type = deck[Math.floor(Math.random() * deck.length)]; } while (avoid && type === avoid.type && guard++ < 8);
-  const r = Math.random() + 0.035 * (n - 1) + 0.12 * (w - 1);
+  do { type = deck[Math.floor(R() * deck.length)]; } while (avoid && type === avoid.type && guard++ < 8);
+  const r = R() + 0.035 * (n - 1) + 0.12 * (w - 1);
   let lv = 1, cnt = 1;
   if (UNIT[type].shape !== 1) { lv = 1; cnt = 1; }
-  else if (r < 0.55) cnt = type === 'f' ? 1 + Math.floor(Math.random() * 2) : 1;
-  else if (r < 1.05) { if (Math.random() < 0.5) lv = 2; else cnt = type === 'f' ? 3 : 2; }
-  else lv = Math.random() < 0.5 ? 3 : 2;
+  else if (r < 0.55) cnt = type === 'f' ? 1 + Math.floor(R() * 2) : 1;
+  else if (r < 1.05) { if (R() < 0.5) lv = 2; else cnt = type === 'f' ? 3 : 2; }
+  else lv = R() < 0.5 ? 3 : 2;
   return { type, lv, n: cnt };
 }
 // 한 판 = 5웨이브. 기(정찰) 승(본대) 승(공격형 합류) 전(반전 이벤트) 결(총공세 또는 보스)
@@ -278,7 +278,7 @@ function buildWave(st, w) {
     const atkN = Math.min(3, (w >= 3 ? 1 : 0) + (w >= 5 ? 1 : 0) + (st.i >= 3 ? 1 : 0) + (st.s >= 2 ? 1 : 0) + (st.n === 2 && w === 2 ? 1 : 0));
     for (let k = 0; k < atkN; k++) {
       const pool2 = st.sector.atk;
-      const type = k === 0 && st.i === 0 ? pool2[pool2.length - 1] : pool2[Math.floor(Math.random() * pool2.length)];
+      const type = k === 0 && st.i === 0 ? pool2[pool2.length - 1] : pool2[Math.floor(R() * pool2.length)];
       ev.push({ t: 4 + (k + 0.3) * (dur - 8) / Math.max(1, atkN), k: type });
     }
   }
@@ -286,7 +286,7 @@ function buildWave(st, w) {
   if (twist === 'ambush') for (let k = 0; k < 4; k++) ev.push({ t: 4 + k * 4.5, k: 'ambush' });
   if (twist === 'meteors') for (let k = 0; k < 3; k++) { ev.push({ t: 5 + k * 5.5, k: 'meteor' }); ev.push({ t: 3 + k * 6, k: 'rocks' }); }
   if (bossWave) ev.push({ t: 1.5, k: st.sector.boss });
-  if (st.n >= 2 && w >= 2 && !bossWave && Math.random() < 0.3) ev.push({ t: 6 + Math.random() * 10, k: 'gold' });
+  if (st.n >= 2 && w >= 2 && !bossWave && R() < 0.3) ev.push({ t: 6 + R() * 10, k: 'gold' });
   let capT = bossWave ? [6, 14, 24, 32, 40] : w === 5 ? [3, 8, 13, 18, 22, 26] : [3, 7.5, 12, 16.5, 21];   // 판이 작게 시작하니 기체가 자주 와야 한다
   if (twist === 'supply') {
     capT = [2, 5, 8, 11, 14, 17, 20];
@@ -317,7 +317,7 @@ const LULL = ci => ci === 1 || ci === 6;
 function buildEndlessWave(w) {
   const ci = cyclePos(w), cyc = Math.floor((w - 1) / 10);
   const tier = Math.min(3, Math.floor((w - 1) / 6));
-  const bossW = ci === 10, bs = Math.floor(Math.random() * SECTORS.length), supply = ci === 1 && w > 10;
+  const bossW = ci === 10, bs = Math.floor(R() * SECTORS.length), supply = ci === 1 && w > 10;
   S.crisis = ci === 9;
   S.stage.s = bossW ? bs : tier; S.stage.sector = SECTORS[S.stage.s];
   const st = { n: Math.min(20, 3 + w), s: tier, i: Math.min(3, Math.floor(w / 5)), sector: SECTORS[S.stage.s], boss: bossW, waves: 5, twist: supply ? 'supply' : TWISTS[1 + cyc % 2] };
@@ -329,11 +329,11 @@ function buildEndlessWave(w) {
     for (let k = 0; k < 3; k++) add(atk[k % atk.length], 5 + k * 5);
     for (let t = 2; t < 26; t += 1.6) add('grunt', t);
   }
-  if (mutOn('raid') && !bossW) for (let k = 0; k < 2; k++) add(atk[Math.floor(Math.random() * atk.length)], 6 + k * 7);
+  if (mutOn('raid') && !bossW) for (let k = 0; k < 2; k++) add(atk[Math.floor(R() * atk.length)], 6 + k * 7);
   if (mutOn('swarm')) { const gs = ev.filter(e => e.k === 'grunt'); for (let k = 0; k < Math.round(gs.length * 0.6); k++) add('grunt', gs[k].t + 0.5); }
   if (bossW && w >= 30) {
     const b1 = ev.find(e => ENEMY[e.k] && ENEMY[e.k].boss);
-    let k2; do { k2 = SECTORS[Math.floor(Math.random() * SECTORS.length)].boss; } while (k2 === b1.k);
+    let k2; do { k2 = SECTORS[Math.floor(R() * SECTORS.length)].boss; } while (k2 === b1.k);
     b1.x = 160; add(k2, 4, W - 160);
   }
   return ev.sort((a, b) => a.t - b.t);
@@ -348,12 +348,12 @@ const PERKS = [
   { id: 'slow', name: '중력 교란', desc: '모든 적 이동 속도 -10%', col: '#b86bff', apply: () => { S.pk.enemySpd *= 0.9; } },
   { id: 'repair', name: '자동 수리', desc: '웨이브를 넘길 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.regen += 1; } },
   { id: 'gift', name: '긴급 증원', desc: '편성 기체 중 하나를 Lv3으로 지급', col: '#ffe24a', apply: () => {
-      const pool = PROG.deck.filter(t => UNIT[t].shape === 1); giveUnit(pool[Math.floor(Math.random() * pool.length)] || 'f', 3, W / 2, 420, '#ffe24a'); } },
+      const pool = battleDeck().filter(t => UNIT[t].shape === 1); giveUnit(pool[Math.floor(Math.random() * pool.length)] || 'f', 3, W / 2, 420, '#ffe24a'); } },
   { id: 'crit', name: '약점 분석', desc: '모든 공격이 15% 확률로 2배 피해', col: '#ff5a8a', apply: () => { S.pk.crit += 0.15; } },
 ];
 function rollPerks() {
   const bag = PERKS.slice(), out = [];
-  while (out.length < 3 && bag.length) out.push(bag.splice(Math.floor(Math.random() * bag.length), 1)[0]);
+  while (out.length < 3 && bag.length) out.push(bag.splice(Math.floor(R() * bag.length), 1)[0]);
   return out;
 }
 
@@ -361,7 +361,7 @@ function rollPerks() {
 let S = { mode: 'title' };
 let BUTTONS = [];
 let UI = { card: null, settings: false, resetArm: 0, toast: null, coreShown: null, upFx: null, parts: [], lastT: 0 };
-function startStage(n, endless = false) {
+function startStage(n, endless = false, daily = false) {
   UI.enemyIntro = null; UI.introQ = null;
   const st = endless ? { n: 0, s: 0, i: 0, sector: SECTORS[0], boss: false, waves: Infinity, endless: true } : stageInfo(n);
   S = {
@@ -380,7 +380,8 @@ function startStage(n, endless = false) {
     pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0 },
     gear: 0, cellFx: new Array(COLS * ROWS).fill(null), rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0,
   };
-  const types = PROG.deck.filter(t => isOwned(t) && UNIT[t].shape === 1).sort((a, b) => UNIT[b].stat[0] * UNIT[b].stat[1] - UNIT[a].stat[0] * UNIT[a].stat[1]);
+  if (daily) { S.daily = { day: dayKey(), deck: dailyDeck(dayKey()) }; lbFetchDaily(true); }
+  const types = battleDeck().filter(t => UNIT[t].shape === 1).sort((a, b) => UNIT[b].stat[0] * UNIT[b].stat[1] - UNIT[a].stat[0] * UNIT[a].stat[1]);
   START_LV[endless ? 1 : st.s].forEach((lv, j) => { const u = makeUnit(types[j % types.length] || 'f', lv); S.used[u.type] = (S.used[u.type] || 0) + Math.pow(2, lv - 1); const sp = findSpot(u); if (sp) place(u, sp); });
   hintOnce('focus', '가까이 온 적이 없으면 기체들이 알아서 캡슐을 쏴요. 캡슐을 탭하면 적이 있어도 그쪽부터 집중 사격해요.');
   hintOnce('info', '기체를 꾹 누르거나 우클릭하면 스킬과 성능을 볼 수 있어요.');
@@ -412,10 +413,13 @@ function startWave(n) {
     let mut = null;
     if (ci === 6) {
       const left = MUTATORS.filter(m => !S.mut.includes(m.id));
-      mut = left.length ? left[Math.floor(Math.random() * left.length)] : MUTATORS.find(m => m.id === 'armor');
+      if (S.daily) S.rng = mulberry(seedOf('mut' + S.daily.day + n));
+      mut = left.length ? left[Math.floor(R() * left.length)] : MUTATORS.find(m => m.id === 'armor');
       S.mut.push(mut.id);
     }
+    if (S.daily) S.rng = mulberry(seedOf('wave' + S.daily.day + n));
     S.events = buildEndlessWave(n);
+    S.rng = null;
     S.warnText = null;
     if (ci === 10) { S.warning = 3; S.banner = null; play('drums', 0.7); if (n >= 30) S.warnText = '보스 두 척이 한꺼번에 접근하고 있어요'; }
     else if (mut) { S.banner = { text: 'MUTATION', sub: `${mut.name}: ${mut.desc}`, color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.55, 1.1); S.glitch = 0.5; }

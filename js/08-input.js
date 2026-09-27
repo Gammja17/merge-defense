@@ -25,7 +25,7 @@ function doAction(b) {
       if (unlocked(b.n)) startStage(b.n); else S.toast = { text: '앞 스테이지를 먼저 깨야 열려요', until: now + 1.6 };
       return;
     case 'next': startStage(S.stage.n + 1); return;
-    case 'retry': UI.shop = false; if (S.stage.endless) startStage(0, true); else startStage(S.stage.n); return;
+    case 'retry': UI.shop = false; if (S.stage.endless) startStage(0, true, !!S.daily); else startStage(S.stage.n); return;
     case 'map':
       if (S.mode === 'hangar' && !PROG.deck.length) { toast('기체를 하나 이상 편성해야 해요'); return; }
       goMap(); return;
@@ -44,7 +44,7 @@ function doAction(b) {
       if (S.mode !== 'play' && S.mode !== 'break') return;
       const cost = summonCost(), p = { x: W - 77, y: LINE_Y - 26 };
       if (S.gear < cost) { addText(p.x, p.y - 26, `부품 ${cost - S.gear}개 부족`, '#ffb0b0', 16, 0.9); denied(); return; }
-      const deck = PROG.deck.filter(t => isOwned(t)), type = deck[Math.floor(Math.random() * deck.length)] || 'f';
+      const deck = battleDeck(), type = deck[Math.floor(Math.random() * deck.length)] || 'f';
       if (giveUnit(type, 1, p.x, p.y, UNIT[type].col) === 'lost') { addText(p.x, p.y - 26, '빈자리가 없어요', '#ffb0b0', 16, 0.9); denied(); return; }
       S.gear -= cost; S.summons = (S.summons || 0) + 1;
       play('unlock', 0.35, 1.3); sparks(p.x, p.y, '#ffb347', 12, 220);
@@ -98,8 +98,11 @@ function doAction(b) {
       if (!endlessOpen()) return;
       if (!PROG.deck.length) { toast('격납고에서 기체를 하나 이상 편성해 주세요'); return; }
       UI.card = null; startStage(0, true); return;
-    case 'records': S = { mode: 'records' }; UI.card = null; UI.recSel = null; lbFetch(true); return;
-    case 'recTab': UI.recTab = b.tab; UI.recSel = null; if (b.tab === 'online') lbFetch(true); return;
+    case 'daily':
+      if (!endlessOpen()) return;
+      UI.card = null; startStage(0, true, true); return;
+    case 'records': S = { mode: 'records' }; UI.card = null; UI.recSel = null; if (b.tab) UI.recTab = b.tab; lbFetch(true); lbFetchDaily(true); return;
+    case 'recTab': UI.recTab = b.tab; UI.recSel = null; if (b.tab === 'online') lbFetch(true); if (b.tab === 'daily') lbFetchDaily(true); return;
     case 'recRow': UI.recSel = b.r; return;
     case 'recClose': UI.recSel = null; return;
     case 'lbSubmit': lbSubmit(); return;

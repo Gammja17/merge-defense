@@ -527,7 +527,7 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   }
   }
   if (u.buffSpd > 0 && u.cells) drawGlow('#48ffd8', x + 22, y - 26, 6, 0.8);
-  const rank = Math.floor(mkOf(u.type) / 3);
+  const rank = Math.floor(mkNow(u.type) / 3);
   if (rank > 0) {
     const cx0 = x - (wide > 1 ? 58 : 26), cy0 = y + 14;
     ctx.globalAlpha = alpha; ctx.fillStyle = '#ffd24a'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 1;

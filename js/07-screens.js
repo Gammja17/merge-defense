@@ -193,7 +193,7 @@ function drawHud() {
 
   ctx.textAlign = 'center';
   ctx.font = FT(15, 900);
-  glitchText(st.endless ? 'ENDLESS' : `STAGE ${st.n}`, 330, 22, st.sector.color, 3, S.glitch * 6);
+  glitchText(S.daily ? 'DAILY' : st.endless ? 'ENDLESS' : `STAGE ${st.n}`, 330, 22, st.sector.color, 3, S.glitch * 6);
   ctx.font = FK(13); ctx.fillStyle = 'rgba(210,225,255,.8)';
   ctx.fillText(st.endless ? `SCORE ${S.score}` : st.sector.name, 330, 42);
 
@@ -490,13 +490,13 @@ function drawEndlessEnd() {
   const ph = 336 + Math.max(1, types.length) * 46 + 4 + (LB_URL ? 76 : 0) + 124, top = Math.max(40, (H - ph) / 2 - 20);
   panel(40, top, W - 80, ph, col);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = FU(13); ctx.fillStyle = col; ctx.fillText('// ENDLESS DEFENSE / LINE BROKEN', W / 2, top + 30);
+  ctx.font = FU(13); ctx.fillStyle = col; ctx.fillText(S.daily ? `// DAILY CHALLENGE / ${S.daily.day}` : '// ENDLESS DEFENSE / LINE BROKEN', W / 2, top + 30);
   ctx.font = FK(32); glitchText('방어선 붕괴', W / 2, top + 70, '#fff', 6, S.glitch * 8);
   ctx.font = FT(42, 900); glitchText(String(S.score), W / 2, top + 122, '#ffd24a', 6, S.rank === 1 ? 2 : 0);
   ctx.font = FU(12); ctx.fillStyle = 'rgba(255,230,160,.8)'; ctx.fillText('SCORE', W / 2, top + 152);
-  if (S.rank === 1) { ctx.font = FK(18); glitchText('최고 기록 갱신!', W / 2, top + 174, '#5affc8', 4, 2); }
+  if (S.rank === 1) { ctx.font = FK(18); glitchText(S.daily ? '오늘 최고 기록!' : '최고 기록 갱신!', W / 2, top + 174, '#5affc8', 4, 2); }
   ctx.font = FK(17);
-  [['도달 웨이브', `${S.wave}`], ['내 기록 순위', S.rank ? `${S.rank}위` : '순위 밖'], ['획득 코어', '']].forEach(([k, v], i) => {
+  [['도달 웨이브', `${S.wave}`], S.daily ? ['오늘 내 최고', `${fmt(PROG.dailyBest.score)}점`] : ['내 기록 순위', S.rank ? `${S.rank}위` : '순위 밖'], ['획득 코어', '']].forEach(([k, v], i) => {
     const y = top + 204 + i * 28;
     ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(180,215,255,.75)'; ctx.fillText(k, 76, y);
     ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; if (v) ctx.fillText(v, W - 76, y);
@@ -524,8 +524,8 @@ function drawEndlessEnd() {
     if (UI.lbMsg) { ctx.font = FK(15); ctx.textAlign = 'center'; ctx.fillStyle = S.lbSent ? '#5affc8' : '#ffd6a0'; ctx.fillText(UI.lbMsg, W / 2, y2 + 58); }
     y2 += 76;
   }
-  button(W / 2 - 110, y2, 220, 48, '다시 도전', 'endless', 'primary');
-  button(W / 2 - 110, y2 + 58, 105, 36, '기록 보기', 'records', 'ghost');
+  button(W / 2 - 110, y2, 220, 48, '다시 도전', S.daily ? 'daily' : 'endless', 'primary');
+  button(W / 2 - 110, y2 + 58, 105, 36, '기록 보기', 'records', 'ghost', S.daily ? { tab: 'daily' } : undefined);
   button(W / 2 + 5, y2 + 58, 105, 36, '지도로', 'map', 'ghost');
 }
 // 결과창 전에 뜨는 짧은 클리어/실패 연출
@@ -1125,8 +1125,7 @@ function drawRecords() {
   ctx.font = FT(26, 900); glitchText('LEADERBOARD', W / 2, 44, '#d8f6ff', 5, Math.random() < 0.04 ? 5 : 0);
   const tab = UI.recTab || (LB_URL ? 'online' : 'mine');
   if (LB_URL) {
-    button(W / 2 - 164, 66, 160, 38, '온라인 순위', 'recTab', tab === 'online' ? 'primary' : 'ghost', { tab: 'online' });
-    button(W / 2 + 4, 66, 160, 38, '내 기록', 'recTab', tab === 'mine' ? 'primary' : 'ghost', { tab: 'mine' });
+    [['online', '온라인 순위'], ['daily', '오늘의 도전'], ['mine', '내 기록']].forEach(([k, l], i) => button(24 + i * 168, 66, 156, 38, l, 'recTab', tab === k ? 'primary' : 'ghost', { tab: k }));
   } else { ctx.font = FK(16); ctx.fillStyle = 'rgba(200,230,255,.8)'; ctx.fillText('무한 방어선 내 기록 순위', W / 2, 80); }
   panel(24, 116, W - 48, 604, '#48c8ff');
   let rows = [], note = '';
@@ -1135,13 +1134,27 @@ function drawRecords() {
     rows = (LB.top || []).slice(0, 10).map((r, i) => ({ ...r, rank: i + 1, deck: [...(r.deck || '')] }));
     note = '닉네임마다 최고 기록으로 매겨요. 점수가 같으면 웨이브가 높은 쪽이 위예요.';
     if (!rows.length) { ctx.font = FK(18); ctx.fillStyle = 'rgba(200,220,255,.7)'; ctx.fillText(LB.loading || !LB.t ? '불러오는 중...' : LB.err || '아직 기록이 없어요. 첫 기록을 올려 보세요!', W / 2, 400); }
+  } else if (tab === 'daily') {
+    lbFetchDaily();
+    const day = dayKey(), deck = dailyDeck(day);
+    ctx.font = FK(14); ctx.fillStyle = 'rgba(140,220,255,.9)'; ctx.fillText(`${day} 오늘의 편성, 모두 같은 기체로 겨뤄요`, W / 2, 138);
+    deck.forEach((t2, k) => {
+      const def = UNIT[t2], x = W / 2 + (k - 2) * 84, y = 186;
+      ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(x - 38, y - 32, 76, 64, 9); ctx.fill(); ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.stroke();
+      drawUnitArt(t2, 1, x, y - 6, Math.min(46 / def.iw, 36 / def.ih), 1, null);
+      ctx.font = FK(12); ctx.fillStyle = '#e6f0ff'; ctx.fillText(def.name, x, y + 22);
+    });
+    rows = (LBD.top || []).slice(0, 8).map((r, i) => ({ ...r, rank: i + 1, deck: [], y0: 250 }));
+    note = '한국 시간 0시에 바뀌어요. 연구 강화 없이 모두 같은 조건이에요.';
+    if (!rows.length) { ctx.font = FK(18); ctx.fillStyle = 'rgba(200,220,255,.7)'; ctx.fillText(LBD.loading || !LBD.t ? '불러오는 중...' : LBD.err || '아직 오늘 기록이 없어요. 첫 기록을 올려 보세요!', W / 2, 440); }
+    if (PROG.dailyBest && PROG.dailyBest.day === day) { ctx.font = FK(14); ctx.fillStyle = '#5affc8'; ctx.fillText(`오늘 내 최고 ${fmt(PROG.dailyBest.score)}점, 웨이브 ${PROG.dailyBest.wave}`, W / 2, 700); }
   } else {
     rows = (PROG.records || []).map((r, i) => ({ ...r, rank: i + 1, name: r.date }));
     note = '이 기기에 저장된 내 기록이에요. 줄을 누르면 쓴 조합이 보여요.';
     if (!rows.length) { ctx.font = FK(18); ctx.fillStyle = 'rgba(200,220,255,.7)'; ctx.fillText('아직 기록이 없어요. 무한 방어선에 도전해 보세요!', W / 2, 400); }
   }
   rows.forEach((r, i) => {
-    const y = 150 + i * 57, top = i === 0, mine = tab === 'online' && PROG.nick && r.name === PROG.nick;
+    const y = (r.y0 || 150) + i * 57, top = i === 0, mine = tab !== 'mine' && PROG.nick && r.name === PROG.nick;
     ctx.fillStyle = mine ? 'rgba(90,255,200,.12)' : top ? 'rgba(255,210,74,.12)' : 'rgba(255,255,255,.03)'; chamfer(40, y - 23, W - 80, 50, 8); ctx.fill();
     if (mine) { ctx.strokeStyle = '#5affc8'; ctx.lineWidth = 1.5; ctx.stroke(); }
     ctx.textAlign = 'left'; ctx.font = FT(18, 900); ctx.fillStyle = top ? '#ffd24a' : i < 3 ? '#bfefff' : 'rgba(200,220,255,.7)';
@@ -1153,7 +1166,7 @@ function drawRecords() {
   });
   ctx.font = FK(13); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(180,205,240,.65)';
   ctx.fillText(note, W / 2, 740);
-  if (endlessOpen()) button(W / 2 - 130, 772, 260, 54, '무한 방어선 도전', 'endless', 'primary');
+  if (endlessOpen()) button(W / 2 - 130, 772, 260, 54, tab === 'daily' ? '오늘의 도전 시작' : '무한 방어선 도전', tab === 'daily' ? 'daily' : 'endless', tab === 'daily' ? 'gold' : 'primary');
   else { ctx.font = FK(16); ctx.fillStyle = 'rgba(255,200,140,.9)'; ctx.fillText('스테이지 5를 깨면 무한 방어선이 열려요', W / 2, 798); }
   button(W / 2 - 110, 844, 220, 46, '지도로', 'map', 'ghost');
   // 고른 기록의 조합: 편성 5종과 마지막 판의 기체

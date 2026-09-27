@@ -527,7 +527,7 @@ function update(dt) {
     S.crisis = false;
     if (st.endless && S.wave >= 10) ach('endless_10');
     if (st.endless && S.wave >= 30) ach('endless_30');
-    if (st.endless) { S.score += 100; if (S.wave % 5 === 0) { S.mode = 'perk'; S.perkChoices = rollPerks(); S.banner = null; } }
+    if (st.endless) { S.score += 100; if (S.wave % 5 === 0) { S.mode = 'perk'; if (S.daily) S.rng = mulberry(seedOf('perk' + S.daily.day + S.wave)); S.perkChoices = rollPerks(); S.rng = null; S.banner = null; } }
   }
 }
 function impact(s, t) {
@@ -590,9 +590,15 @@ function endStage(win) {
     S.baseEarned = 20 + S.wave * 12; S.earned = S.baseEarned + S.cores; S.endT = performance.now() / 1000;
     PROG.credits += S.earned;
     S.lastBoard = gridUnits().sort((a, b) => b.lv - a.lv).map(u => u.type + Math.min(u.lv, 8)).join(','); UI.lbMsg = '';
-    const rec = { score, wave: S.wave, date: new Date().toISOString().slice(0, 10), deck: PROG.deck.slice(), board: S.lastBoard };
-    PROG.records = (PROG.records || []).concat([rec]).sort((a, b) => b.score - a.score || b.wave - a.wave).slice(0, 10);
-    S.rank = PROG.records.indexOf(rec) + 1;
+    if (S.daily) {
+      const b = PROG.dailyBest && PROG.dailyBest.day === S.daily.day ? PROG.dailyBest : null;
+      S.rank = !b || score > b.score || (score === b.score && S.wave > b.wave) ? 1 : 0;
+      if (S.rank) PROG.dailyBest = { day: S.daily.day, score, wave: S.wave };
+    } else {
+      const rec = { score, wave: S.wave, date: new Date().toISOString().slice(0, 10), deck: PROG.deck.slice(), board: S.lastBoard };
+      PROG.records = (PROG.records || []).concat([rec]).sort((a, b) => b.score - a.score || b.wave - a.wave).slice(0, 10);
+      S.rank = PROG.records.indexOf(rec) + 1;
+    }
     save(); play('lose', 0.5); S.glitch = 0.6;
     return;
   }
