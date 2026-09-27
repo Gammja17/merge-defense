@@ -102,6 +102,42 @@ function buildTints() {
   makeTint('u_v', '#b86bff', 'u_v2', 0.45);
 }
 
+// ── 온라인 순위표 (docs/leaderboard: 구글 시트 + Apps Script). 비어 있으면 내 기록만 ──
+const LB_URL = '';
+const LB = { top: null, t: 0, loading: false, err: '' };
+function lbFetch(force) {
+  if (!LB_URL || LB.loading || (!force && LB.top && performance.now() - LB.t < 30000)) return;
+  LB.loading = true; LB.err = '';
+  fetch(LB_URL).then(r => r.json()).then(d => { LB.top = d.top || []; LB.total = d.total || 0; LB.t = performance.now(); })
+    .catch(() => { LB.err = '순위를 불러오지 못했어요'; LB.t = performance.now(); }).finally(() => { LB.loading = false; });
+}
+function lbSubmit() {
+  const name = (NICK.el ? NICK.el.value : '').trim().slice(0, 12);
+  if (!name) { UI.lbMsg = '닉네임을 입력해 주세요'; return; }
+  if (S.lbSending || S.lbSent) return;
+  PROG.nick = name; save(); S.lbSending = true; UI.lbMsg = '올리는 중...';
+  fetch(LB_URL, { method: 'POST', body: JSON.stringify({ name, score: S.score, wave: S.wave, deck: PROG.deck.join(''), board: S.lastBoard || '' }) })
+    .then(r => r.json()).then(d => {
+      if (d.ok) { S.lbSent = true; UI.lbMsg = `온라인 ${d.rank}위! (전체 ${d.total}명)`; LB.t = 0; play('levelup', 0.4); }
+      else UI.lbMsg = d.err === 'wait' ? '잠시 뒤에 다시 올려 주세요' : '올리지 못했어요';
+    }).catch(() => { UI.lbMsg = '연결에 실패했어요. 다시 눌러 주세요'; }).finally(() => { S.lbSending = false; });
+}
+// 닉네임 입력칸: 캔버스 위에 진짜 입력칸을 띄운다 (그린 프레임에만 보인다)
+const NICK = { el: null, show: false };
+function nickInput(x, y, w, h) {
+  if (!NICK.el) {
+    const el = document.createElement('input');
+    el.maxLength = 12; el.placeholder = '닉네임'; el.autocomplete = 'off'; el.value = PROG.nick || '';
+    Object.assign(el.style, { position: 'fixed', zIndex: 5, background: 'rgba(8,16,40,.96)', color: '#fff', border: '2px solid #ffd24a', borderRadius: '8px', padding: '0 10px', outline: 'none', boxSizing: 'border-box', fontFamily: '"Plex KR", "Do Hyeon", sans-serif', fontWeight: 700 });
+    el.addEventListener('keydown', ev => { if (ev.key === 'Enter') lbSubmit(); });
+    document.body.appendChild(el); NICK.el = el;
+  }
+  const r = cv.getBoundingClientRect(), k = r.width / W;
+  Object.assign(NICK.el.style, { left: r.left + x * k + 'px', top: r.top + y * k + 'px', width: w * k + 'px', height: h * k + 'px', fontSize: Math.max(16, Math.round(17 * k)) + 'px', display: 'block' });
+  NICK.show = true;
+}
+const boardList = b => (b || '').split(',').filter(x => /^[a-z][1-8]$/.test(x) && UNIT[x[0]]).map(x => ({ t: x[0], lv: +x[1] }));
+
 // ── 저장 (이 브라우저에만) ────────────────────────────────
 const SAVE_KEY = 'mergeDefense.v1';
 const DEFAULT_SETTINGS = { sfxVol: 0.8, bgmVol: 0.7, shake: true, fx: true, nums: true };
@@ -2177,8 +2213,9 @@ function endStage(win) {
     const score = S.score;
     S.baseEarned = 20 + S.wave * 12; S.earned = S.baseEarned + S.cores; S.endT = performance.now() / 1000;
     PROG.credits += S.earned;
-    const rec = { score, wave: S.wave, date: new Date().toISOString().slice(0, 10), deck: PROG.deck.slice() };
-    PROG.records = (PROG.records || []).concat([rec]).sort((a, b) => b.score - a.score).slice(0, 10);
+    S.lastBoard = gridUnits().sort((a, b) => b.lv - a.lv).map(u => u.type + Math.min(u.lv, 8)).join(','); UI.lbMsg = '';
+    const rec = { score, wave: S.wave, date: new Date().toISOString().slice(0, 10), deck: PROG.deck.slice(), board: S.lastBoard };
+    PROG.records = (PROG.records || []).concat([rec]).sort((a, b) => b.score - a.score || b.wave - a.wave).slice(0, 10);
     S.rank = PROG.records.indexOf(rec) + 1;
     save(); play('lose', 0.5); S.glitch = 0.6;
     return;
@@ -3926,7 +3963,7 @@ function drawEndlessEnd() {
   const col = '#ffd24a';
   ctx.fillStyle = 'rgba(2,3,12,.78)'; ctx.fillRect(0, 0, W, H);
   drawGlow(col, W / 2, 400, 220, 0.16);
-  panel(50, 240, W - 100, 440, col);
+  panel(50, 240, W - 100, LB_URL ? 510 : 440, col);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FU(13); ctx.fillStyle = col; ctx.fillText('// ENDLESS DEFENSE / LINE BROKEN', W / 2, 276);
   ctx.font = FK(34); glitchText('방어선 붕괴', W / 2, 318, '#fff', 6, S.glitch * 8);
@@ -3940,9 +3977,16 @@ function drawEndlessEnd() {
     ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; if (v) ctx.fillText(v, W - 90, y);
   });
   drawEarned(W - 90, 534);
-  button(W / 2 - 110, 572, 220, 48, '다시 도전', 'endless', 'primary');
-  button(W / 2 - 110, 630, 105, 36, '기록 보기', 'records', 'ghost');
-  button(W / 2 + 5, 630, 105, 36, '지도로', 'map', 'ghost');
+  const oy = LB_URL ? 70 : 0;
+  if (LB_URL) {   // 온라인 순위에 올리기
+    if (!S.lbSent) nickInput(84, 566, 236, 42);
+    else { ctx.font = FK(18); ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.fillText(PROG.nick || '', 96, 587); }
+    button(328, 566, 128, 42, S.lbSent ? '올렸어요' : S.lbSending ? '올리는 중' : '순위 올리기', 'lbSubmit', S.lbSent ? 'ghost' : 'gold');
+    if (UI.lbMsg) { ctx.font = FK(15); ctx.textAlign = 'center'; ctx.fillStyle = S.lbSent ? '#5affc8' : '#ffd6a0'; ctx.fillText(UI.lbMsg, W / 2, 622); }
+  }
+  button(W / 2 - 110, 572 + oy, 220, 48, '다시 도전', 'endless', 'primary');
+  button(W / 2 - 110, 630 + oy, 105, 36, '기록 보기', 'records', 'ghost');
+  button(W / 2 + 5, 630 + oy, 105, 36, '지도로', 'map', 'ghost');
 }
 // 결과창 전에 뜨는 짧은 클리어/실패 연출
 function drawEndIntro(win, e) {
@@ -4538,24 +4582,68 @@ function drawPerk() {
 function drawRecords() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FT(26, 900); glitchText('LEADERBOARD', W / 2, 44, '#d8f6ff', 5, Math.random() < 0.04 ? 5 : 0);
-  ctx.font = FK(16); ctx.fillStyle = 'rgba(200,230,255,.8)'; ctx.fillText('무한 방어선 내 기록 순위', W / 2, 74);
-  const recs = PROG.records || [];
-  panel(24, 96, W - 48, 620, '#48c8ff');
-  if (!recs.length) { ctx.font = FK(18); ctx.fillStyle = 'rgba(200,220,255,.7)'; ctx.fillText('아직 기록이 없어요. 무한 방어선에 도전해 보세요!', W / 2, 380); }
-  recs.forEach((r, i) => {
-    const y = 130 + i * 58, top = i === 0;
-    ctx.fillStyle = top ? 'rgba(255,210,74,.12)' : 'rgba(255,255,255,.03)'; chamfer(40, y - 22, W - 80, 50, 8); ctx.fill();
+  const tab = UI.recTab || (LB_URL ? 'online' : 'mine');
+  if (LB_URL) {
+    button(W / 2 - 164, 66, 160, 38, '온라인 순위', 'recTab', tab === 'online' ? 'primary' : 'ghost', { tab: 'online' });
+    button(W / 2 + 4, 66, 160, 38, '내 기록', 'recTab', tab === 'mine' ? 'primary' : 'ghost', { tab: 'mine' });
+  } else { ctx.font = FK(16); ctx.fillStyle = 'rgba(200,230,255,.8)'; ctx.fillText('무한 방어선 내 기록 순위', W / 2, 80); }
+  panel(24, 116, W - 48, 604, '#48c8ff');
+  let rows = [], note = '';
+  if (tab === 'online') {
+    lbFetch();
+    rows = (LB.top || []).slice(0, 10).map((r, i) => ({ ...r, rank: i + 1, deck: [...(r.deck || '')] }));
+    note = '닉네임마다 최고 기록으로 매겨요. 점수가 같으면 웨이브가 높은 쪽이 위예요.';
+    if (!rows.length) { ctx.font = FK(18); ctx.fillStyle = 'rgba(200,220,255,.7)'; ctx.fillText(LB.loading || !LB.t ? '불러오는 중...' : LB.err || '아직 기록이 없어요. 첫 기록을 올려 보세요!', W / 2, 400); }
+  } else {
+    rows = (PROG.records || []).map((r, i) => ({ ...r, rank: i + 1, name: r.date }));
+    note = '이 기기에 저장된 내 기록이에요. 줄을 누르면 쓴 조합이 보여요.';
+    if (!rows.length) { ctx.font = FK(18); ctx.fillStyle = 'rgba(200,220,255,.7)'; ctx.fillText('아직 기록이 없어요. 무한 방어선에 도전해 보세요!', W / 2, 400); }
+  }
+  rows.forEach((r, i) => {
+    const y = 150 + i * 57, top = i === 0, mine = tab === 'online' && PROG.nick && r.name === PROG.nick;
+    ctx.fillStyle = mine ? 'rgba(90,255,200,.12)' : top ? 'rgba(255,210,74,.12)' : 'rgba(255,255,255,.03)'; chamfer(40, y - 23, W - 80, 50, 8); ctx.fill();
+    if (mine) { ctx.strokeStyle = '#5affc8'; ctx.lineWidth = 1.5; ctx.stroke(); }
     ctx.textAlign = 'left'; ctx.font = FT(18, 900); ctx.fillStyle = top ? '#ffd24a' : i < 3 ? '#bfefff' : 'rgba(200,220,255,.7)';
-    ctx.fillText(String(i + 1).padStart(2, '0'), 54, y + 3);
-    ctx.font = FT(17, 900); ctx.fillStyle = '#fff'; ctx.fillText(String(r.score), 100, y - 4);
-    ctx.font = FK(13); ctx.fillStyle = 'rgba(190,215,245,.8)'; ctx.fillText(`웨이브 ${r.wave} / ${r.date}`, 100, y + 15);
+    ctx.fillText(String(r.rank).padStart(2, '0'), 54, y + 3);
+    ctx.font = FK(15); ctx.fillStyle = '#fff'; ctx.fillText(r.name, 100, y - 7);
+    ctx.font = FK(13); ctx.fillStyle = 'rgba(190,215,245,.85)'; ctx.fillText(`${fmt(r.score)}점, 웨이브 ${r.wave}`, 100, y + 13);
     (r.deck || []).forEach((t2, k) => { const def = UNIT[t2]; if (def) drawUnitArt(t2, 1, 330 + k * 34, y + 2, Math.min(28 / def.iw, 26 / def.ih), 0.9, null); });
+    BUTTONS.push({ x: 40, y: y - 23, w: W - 80, h: 50, act: 'recRow', r });
   });
   ctx.font = FK(13); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(180,205,240,.65)';
-  ctx.fillText('기록은 이 기기에만 저장돼요. 온라인 순위는 앱 출시 때 연결할 예정이에요.', W / 2, 740);
+  ctx.fillText(note, W / 2, 740);
   if (endlessOpen()) button(W / 2 - 130, 772, 260, 54, '무한 방어선 도전', 'endless', 'primary');
   else { ctx.font = FK(16); ctx.fillStyle = 'rgba(255,200,140,.9)'; ctx.fillText('스테이지 5를 깨면 무한 방어선이 열려요', W / 2, 798); }
   button(W / 2 - 110, 844, 220, 46, '지도로', 'map', 'ghost');
+  // 고른 기록의 조합: 편성 5종과 마지막 판의 기체
+  const sel = UI.recSel;
+  if (sel) {
+    BUTTONS = [];
+    ctx.fillStyle = 'rgba(2,3,12,.8)'; ctx.fillRect(0, 0, W, H);
+    const px = 40, py = 200, pw = W - 80, ph = 520;
+    panel(px, py, pw, ph, '#ffd24a');
+    ctx.textAlign = 'center'; ctx.font = FK(24); outlineText(sel.name, W / 2, py + 40, '#fff', 4);
+    ctx.font = FK(15); ctx.fillStyle = '#ffd6a0'; ctx.fillText(`${fmt(sel.score)}점, 웨이브 ${sel.wave}`, W / 2, py + 70);
+    ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)'; ctx.fillText('// 출격 편성', W / 2, py + 104);
+    (sel.deck || []).forEach((t2, k, a) => {
+      const def = UNIT[t2]; if (!def) return;
+      const x = W / 2 + (k - (a.length - 1) / 2) * 84, y = py + 150;
+      ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(x - 38, y - 34, 76, 76, 9); ctx.fill(); ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.stroke();
+      drawUnitArt(t2, 1, x, y - 4, Math.min(50 / def.iw, 44 / def.ih), 1, null);
+      ctx.font = FK(12); ctx.fillStyle = '#e6f0ff'; ctx.fillText(def.name, x, y + 30);
+    });
+    const bl = boardList(sel.board);
+    ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)'; ctx.fillText(bl.length ? '// 마지막 판의 기체' : '// 마지막 판 기록이 없어요', W / 2, py + 218);
+    bl.forEach((u, k) => {
+      const col = k % 6, row = Math.floor(k / 6), x = px + 44 + col * 66, y = py + 262 + row * 70, def = UNIT[u.t];
+      ctx.fillStyle = 'rgba(12,24,52,.9)'; chamfer(x - 30, y - 30, 60, 60, 8); ctx.fill();
+      ctx.strokeStyle = rankCol(u.lv); ctx.lineWidth = u.lv >= 5 ? 2.5 : 1.5; ctx.stroke();
+      drawUnitArt(u.t, u.lv, x, y - 2, Math.min(44 / def.iw, 40 / def.ih), 1, null);
+      lvBadge(u.lv, x, y + 27, rankCol(u.lv), 0.85);
+    });
+    button(W / 2 - 90, py + ph - 64, 180, 46, '닫기', 'recClose', 'ghost');
+    BUTTONS.push({ x: 0, y: 0, w: W, h: py, act: 'recClose' }); BUTTONS.push({ x: 0, y: py + ph, w: W, h: H - py - ph, act: 'recClose' });
+  }
 }
 function drawOverlays() {
   if (S.mode === 'perk') drawPerk();
@@ -4775,7 +4863,11 @@ function doAction(b) {
       if (!endlessOpen()) return;
       if (!PROG.deck.length) { toast('격납고에서 기체를 하나 이상 편성해 주세요'); return; }
       UI.card = null; startStage(0, true); return;
-    case 'records': S = { mode: 'records' }; UI.card = null; return;
+    case 'records': S = { mode: 'records' }; UI.card = null; UI.recSel = null; lbFetch(true); return;
+    case 'recTab': UI.recTab = b.tab; UI.recSel = null; if (b.tab === 'online') lbFetch(true); return;
+    case 'recRow': UI.recSel = b.r; return;
+    case 'recClose': UI.recSel = null; return;
+    case 'lbSubmit': lbSubmit(); return;
     case 'perk': {
       const pk = S.perkChoices[b.i];
       pk.apply(); S.perks.push(pk.id);
@@ -4944,6 +5036,8 @@ function loop(now) {
   if (S.stage && !S.paused && !S.frozen && !UI.settings && !UI.reveal && !UI.shop && !(UI.card && S.mode !== 'win')) update(gdt);
   updateMusic(dt);
   draw(dt);
+  if (NICK.el && !NICK.show) NICK.el.style.display = 'none';
+  NICK.show = false;
 }
 function fontsReady() {
   if (!document.fonts || !document.fonts.load) return Promise.resolve();
