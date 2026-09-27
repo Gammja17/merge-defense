@@ -4153,6 +4153,8 @@ function drawHangar() {
 }
 
 // 기체 소개 카드 (해금 팝업 겸용)
+// 받침이 있으면 '과', 없으면 '와'
+const josaWa = w => { const c = w.charCodeAt(w.length - 1) - 0xac00; return c >= 0 && c < 11172 && c % 28 ? '과' : '와'; };
 function drawCard() {
   const c = UI.card, t2 = c.type, def = UNIT[t2], own = isOwned(t2), inDeck = PROG.deck.includes(t2), t = performance.now() / 1000;
   BUTTONS = [];
@@ -4227,7 +4229,8 @@ function drawCard() {
     if (c.u.cells || c.u.res != null) button(x + 30, by, 190, 46, '해체하기', 'scrapInfo', 'danger');
   } else if (own) {
     if (inDeck) button(x + 30, by, 190, 46, '편성에서 빼기', 'undeploy', 'ghost', { type: t2 });
-    else button(x + 30, by, 190, 46, PROG.deck.length < DECK_N ? '편성하기' : '편성이 꽉 찼어요', 'deploy', PROG.deck.length < DECK_N ? 'primary' : 'danger', { type: t2 });
+    else if (PROG.deck.length < DECK_N) button(x + 30, by, 190, 46, '편성하기', 'deploy', 'primary', { type: t2 });
+    else button(x + 30, by, 190, 46, '교체하기', 'swapOpen', 'gold', { type: t2 });
   } else if (def.unlock.shop) {
     const can = PROG.credits >= def.unlock.shop;
     button(x + 30, by, 190, 46, can ? `◆ ${def.unlock.shop} 구매` : `◆ ${def.unlock.shop} 필요`, 'buy', can ? 'gold' : 'danger', { type: t2 });
@@ -4236,6 +4239,20 @@ function drawCard() {
     ctx.fillText(`스테이지 ${def.unlock.stage}을 깨면 해금돼요`, x + 125, by + 25);
   }
   button(x + w - 220, by, 190, 46, '닫기', 'closecard', 'ghost');
+  if (c.swap && !c.inGame) {   // 편성이 꽉 찼을 때: 누구와 바꿀지 고른다
+    const py = y + 690, ph = 170;
+    ctx.fillStyle = 'rgba(4,10,28,.97)'; chamfer(x + 16, py, w - 32, ph, 12); ctx.fill();
+    ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FK(20); outlineText(`${def.name}${josaWa(def.name)} 바꿀 기체를 고르세요`, W / 2, py + 26, '#fff', 4);
+    PROG.deck.forEach((ot, k) => {
+      const sw = 76, sx = W / 2 - (DECK_N * (sw + 6) - 6) / 2 + k * (sw + 6), sy = py + 50, od = UNIT[ot];
+      ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(sx, sy, sw, 104, 9); ctx.fill();
+      ctx.strokeStyle = od.col; ctx.lineWidth = 1.5; ctx.stroke();
+      drawUnitArt(ot, 1, sx + sw / 2, sy + 42, Math.min(54 / od.iw, 54 / od.ih), 1, null);
+      ctx.font = FK(13); ctx.fillStyle = '#e6f0ff'; ctx.fillText(od.name, sx + sw / 2, sy + 90);
+      BUTTONS.push({ x: sx, y: sy, w: sw, h: 104, act: 'swapWith', type: t2, old: ot });
+    });
+  }
   if (UI.toast && UI.toast.until > t) { ctx.font = FK(16); ctx.textAlign = 'center'; outlineText(UI.toast.text, W / 2, y + 766, '#ffb0b0', 4); }
   // 카드 오른쪽 위 코어 계기
   coreLabel(x + w - 22, y + 30, UI.coreShown, 14, 'right');
@@ -4733,6 +4750,8 @@ function doAction(b) {
     case 'deploy':
       if (PROG.deck.length >= DECK_N) { toast('편성에서 하나를 먼저 빼 주세요'); return; }
       PROG.deck.push(b.type); save(); UI.card = null; return;
+    case 'swapOpen': if (UI.card) UI.card.swap = !UI.card.swap; return;
+    case 'swapWith': { const i = PROG.deck.indexOf(b.old); if (i >= 0 && !PROG.deck.includes(b.type)) { PROG.deck[i] = b.type; save(); play('confirm', 0.5); } UI.card = null; return; }
     case 'undeploy': PROG.deck = PROG.deck.filter(t => t !== b.type); save(); UI.card = null; return;
     case 'buy': {
       const price = UNIT[b.type].unlock.shop;
