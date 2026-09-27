@@ -161,15 +161,15 @@ const SET = () => PROG.settings;
 // SKEAM 업적: SKEAM 안에서 돌 때만 알린다. 같은 업적을 또 알려도 한 번만 센다. 촬영 모드에서는 알리지 않는다
 const ach = id => { if (!SHOT && window.SKEAM) SKEAM.unlock(id); };
 
-const SFX_FILES = ['laser1', 'zap', 'twoTone', 'shieldDown', 'shieldUp', 'lose', 'shot_a', 'shot_b', 'shot_c', 'shot_big', 'shot_retro',
-  'boom_s1', 'boom_s2', 'boom_low', 'boom_big', 'hit_1', 'hit_2', 'shield_hit', 'shield_break', 'upgrade', 'ui_open', 'coin_1', 'coin_2', 'coin_3', 'base_hit',
-  'pick', 'drop', 'latch', 'swap', 'deny', 'click', 'open', 'close', 'confirm', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule', 'levelup', 'unlock', 'scrap', 'scrap_low',
-  'pew1', 'pew2', 'pew3', 'pew4', 'kaboom1', 'kaboom2', 'kaboom_s1', 'kaboom_s2', 'thud', 'drums', 'crackle1', 'crackle2', 'shield_crack',
-  'imp_l1', 'imp_l2', 'imp_l3', 'imp_h1', 'imp_h2', 'imp_h3', 'imp_s1', 'imp_s2', 'imp_p1', 'imp_p2', 'debris1', 'debris2', 'debris3',
-  'gun_l1', 'gun_l2', 'gun_l3', 'gun_l4', 'gun_h1', 'gun_h2', 'gun_h3', 'gun_sg', 'thwack1', 'thwack2', 'thwack3'];   // gun_: Gunshot Sounds (Vincent Sevedge, OpenGameArt)   // imp_, debris: Kenney Impact Sounds (CC0)
+const SFX_FILES = [
+  'twoTone', 'shieldUp', 'lose', 'shot_a', 'shot_b', 'shot_c', 'shot_big', 'shot_retro', 'boom_s1', 'boom_s2', 'boom_low', 'boom_big', 'hit_1',
+  'hit_2', 'shield_hit', 'shield_break', 'coin_1', 'coin_2', 'coin_3', 'base_hit', 'swap', 'deny', 'click', 'open', 'close', 'confirm', 'capsule',
+  'scrap', 'scrap_low', 'kaboom1', 'kaboom2', 'kaboom_s1', 'kaboom_s2', 'thud', 'drums', 'crackle1', 'crackle2', 'shield_crack', 'imp_l1', 'imp_l2',
+  'imp_l3', 'imp_h1', 'imp_h2', 'imp_h3', 'imp_s1', 'imp_s2', 'imp_p1', 'imp_p2', 'debris1', 'debris2', 'debris3', 'fire_a', 'fire_b', 'beam', 'tap',
+  'hitfx', 'merge_fx', 'up_fx', 'vo_access', 'zapfx', 'vo_shields', 'vo_prox', 'vo_welcome'];   // 발사 fire_, 빔, 명중, 합체, 강화, 전자전, 음성 vo_: Lentikula (CC0). tap: Owlish Media (CC0)   // fire_, beam: Sci-Fi Weapon Shots (Lentikula, CC0), tap: Kenney Impact Sounds   // gun_: Gunshot Sounds (Vincent Sevedge, OpenGameArt)   // imp_, debris: Kenney Impact Sounds (CC0)
 // 같은 소리의 최소 재생 간격(초). 연사가 많아도 귀가 따갑지 않게
-const SFX_GAP = { thwack: 0.06, twoTone: 1, pew: 0.06, pick: 0.08, drop: 0.08, imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.09, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
-const VARIANTS = { thwack: ['thwack1', 'thwack2', 'thwack3'], imp_l: ['imp_l1', 'imp_l2', 'imp_l3'], imp_h: ['imp_h1', 'imp_h2', 'imp_h3'], imp_s: ['imp_s1', 'imp_s2'], imp_p: ['imp_p1', 'imp_p2'], debris: ['debris1', 'debris2', 'debris3'], shot: ['gun_l1', 'gun_l2', 'gun_l3', 'gun_l4'], shot_retro: ['gun_l1', 'gun_l2', 'gun_l3', 'gun_l4'], shot_big: ['gun_h1', 'gun_h2', 'gun_h3'], pew: ['pew1', 'pew2', 'pew3', 'pew4'], boom_s: ['kaboom_s1', 'kaboom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2', 'coin_3'],
+const SFX_GAP = { vo_access: 3, vo_shields: 5, vo_prox: 6, vo_welcome: 5, zapfx: 0.12, hitfx: 0.06, merge_fx: 0.1, up_fx: 0.15, beam: 0.5, tap: 0.06, thwack: 0.06, twoTone: 1, pew: 0.06, pick: 0.08, drop: 0.08, imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.09, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
+const VARIANTS = { thwack: ['hitfx'], imp_l: ['imp_l1', 'imp_l2', 'imp_l3'], imp_h: ['imp_h1', 'imp_h2', 'imp_h3'], imp_s: ['imp_s1', 'imp_s2'], imp_p: ['imp_p1', 'imp_p2'], debris: ['debris1', 'debris2', 'debris3'], shot: ['fire_a'], shot_retro: ['fire_a'], shot_big: ['fire_b'], pew: ['pew1', 'pew2', 'pew3', 'pew4'], boom_s: ['kaboom_s1', 'kaboom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2', 'coin_3'],
   kaboom: ['kaboom1', 'kaboom2'], crackle: ['crackle1', 'crackle2'], bosshit: ['thud'] };
 let AC = null, MASTER = null;
 const BUF = {}, lastPlay = {};
@@ -185,25 +185,31 @@ function loadSfx() {
   MASTER.connect(lo); lo.connect(hi); hi.connect(comp); comp.connect(AC.destination);
   for (const n of SFX_FILES) fetch('assets/sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b)).then(buf => { BUF[n] = buf; }).catch(() => {});
 }
-const UI_SFX = new Set(['click', 'open', 'close', 'confirm', 'deny', 'pick', 'drop', 'latch', 'swap', 'ui_open', 'coin', 'levelup', 'unlock', 'upgrade', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule']);
+const UI_SFX = new Set(['tap', 'merge_fx', 'up_fx', 'click', 'open', 'close', 'confirm', 'deny', 'pick', 'drop', 'latch', 'swap', 'ui_open', 'coin', 'levelup', 'unlock', 'upgrade', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule']);
 const SWEEP_SFX = new Set(['pew', 'laser1']);   // 총소리는 미끄러지지 않게
+// 사운드 고르기에서 뺀 전자음: 없애거나 고른 계열의 묵직한 소리로 바꾼다
+const SFX_REMAP = { zap: ['zapfx', 1], levelup: ['up_fx', 1], upgrade: ['up_fx', 1], unlock: ['vo_access', 1], shieldDown: null, ui_open: null, laser1: ['zapfx', 1.1],
+  merge2: ['merge_fx', 1.05], merge3: ['merge_fx', 1], merge4: ['merge_fx', 0.95], merge5: ['merge_fx', 0.9], latch: ['tap', 1], drop: ['tap', 0.9], pick: ['tap', 1.1] };
 function play(n, vol = 0.4, rate = 1, jitter = 0.06) {
   if (!SET().sfxVol || !AC) return;
+  if (n in SFX_REMAP) { const m = SFX_REMAP[n]; if (!m) return false; n = m[0]; rate *= m[1]; }
+  if (n.startsWith('vo_')) { rate = 1; jitter = 0; }   // 음성은 원래 목소리 그대로
   const now = AC.currentTime;
-  if (lastPlay[n] && now - lastPlay[n] < (SFX_GAP[n] || 0.02)) return;
+  if (lastPlay[n] && now - lastPlay[n] < (SFX_GAP[n] || 0.02)) return false;
   lastPlay[n] = now;
   const name = VARIANTS[n] ? VARIANTS[n][Math.floor(Math.random() * VARIANTS[n].length)] : n;
   const buf = BUF[name];
-  if (!buf) return;
+  if (!buf) return false;
   const src = AC.createBufferSource(), g = AC.createGain();
   src.buffer = buf;
   // 무기와 타격음은 음을 낮춰 무게감을, 발사음은 높은음에서 낮은음으로 미끄러져 "쥐잉". 버튼 같은 소리는 그대로
   let r = rate * (1 + (Math.random() - .5) * 2 * jitter);
-  if (!UI_SFX.has(n)) r *= 0.94;
+  if (!UI_SFX.has(n) && !n.startsWith('vo_')) r *= 0.94;
   src.playbackRate.value = r;
   if (SWEEP_SFX.has(n)) { src.playbackRate.setValueAtTime(r * 1.2, now); src.playbackRate.exponentialRampToValueAtTime(r * 0.8, now + 0.14); }
   g.gain.value = vol * SET().sfxVol * 1.25;
   src.connect(g); g.connect(MASTER); src.start();
+  return true;
 }
 // ── 배경음악: 상황별 곡, 교차 페이드 ──
 const MUS = { tracks: {} };
@@ -581,6 +587,7 @@ function startStage(n, endless = false) {
   if (endless) hintOnce('endless3', '무한 방어선은 10웨이브가 한 주기예요. 5웨이브째는 미니보스, 10웨이브째는 보스예요. 1, 6웨이브째는 잠잠하니 그때 정비하세요. 미니보스를 넘기면 강화를 골라요.');
   if (n === 1 && !endless && !PROG.tut && !PROG.stars[1] && !SHOT) S.tut = { step: 1, t: 0 };
   startWave(1);
+  if (!SHOT) play('vo_welcome', 0.6);   // 전투 시작 음성
 }
 function makeUnit(type, lv) {
   const hp = unitMaxHp(type, lv);
@@ -1296,9 +1303,8 @@ function fireUnit(u) {
     case 'y': ok = shoot('b', p.x, p.y - 34, base, Math.min(L, 3)); break;
   }
   if (ok) {
-    const snd = { w: 'shot_retro', l: 'shot_big', q: 'zap', y: 'shot_big', t: 'shot_retro', a: 'shot_retro', v: 'shot_retro', s: 'shot_big', b: 'shot_big', r: 'boom_low', c: 'shot', g: 'shot', m: 'shot', e: 'zap' }[u.type];
-    if (snd) play(snd, snd === 'shot_big' ? 0.3 : snd === 'boom_low' ? 0.3 : 0.14, snd === 'shot' ? 1.15 : snd === 'shot_retro' ? 0.85 : 1);
-    if (u.type === 'b' || u.type === 'y') play('gun_sg', 0.18, 0.8);   // 전함 주포는 산탄 한 방을 겹쳐 더 묵직하게
+    const snd = { w: 'shot_retro', l: 'shot_big', q: 'beam', y: 'shot_big', t: 'shot_retro', a: 'shot_retro', v: 'shot_retro', s: 'shot_big', b: 'shot_big', r: 'boom_low', c: 'shot', g: 'shot', m: 'shot', e: 'zapfx' }[u.type];
+    if (snd) play(snd, snd === 'shot_big' ? 0.3 : snd === 'boom_low' || snd === 'beam' ? 0.3 : snd === 'zapfx' ? 0.18 : 0.14, snd === 'shot' ? 1.1 : snd === 'shot_retro' ? 0.85 : 1);
     if (u.type === 'e') play('crackle', 0.16, 1.1);
     const t = ok.tgt || null;
     if (t && u.type !== 'h') u.ang = Math.atan2(t.y - p.y, t.x - p.x);
@@ -1995,7 +2001,7 @@ function update(dt) {
       else S.hp -= ENEMY[e.k].dmg;
       shake(0.5);
       S.shieldHits.push({ x: e.x, t: 0 });
-      play('base_hit', 0.55);
+      play('vo_shields', 0.7) || play('base_hit', 0.45);
       boom(e.x, LINE_Y, 1.2, '#ff5050');
       addText(e.x, LINE_Y - 30, e.boss ? '방어막 붕괴!' : `방어막 -${ENEMY[e.k].dmg}`, '#ff6060', 24); S.baseHitT = 0.6;
       play('shieldDown', 0.4);
@@ -3731,7 +3737,7 @@ function drawHud() {
       ctx.globalAlpha = 0.5 + 0.5 * k * pulse; ctx.fillStyle = '#ff3a4a';
       ctx.beginPath(); ctx.moveTo(e.x, y + 12); ctx.lineTo(e.x - 11, y - 4); ctx.lineTo(e.x - 4, y - 4); ctx.lineTo(e.x - 4, y - 14); ctx.lineTo(e.x + 4, y - 14); ctx.lineTo(e.x + 4, y - 4); ctx.lineTo(e.x + 11, y - 4); ctx.closePath(); ctx.fill();
       ctx.globalAlpha = 1;
-      if (!e.nearWarned) { e.nearWarned = true; play('twoTone', 0.22, 1.5); }
+      if (!e.nearWarned) { e.nearWarned = true; play('vo_prox', 0.6); }
     }
   }
   { // 화면 가장자리 붉은 빛: 맞은 순간 크게, 방어막이 3 이하면 약하게 맥박
@@ -5003,7 +5009,7 @@ cv.addEventListener('pointermove', ev => {
   if (!drag || ev.pointerId !== drag.id) return;
   const p = toLocal(ev);
   drag.x = p.x; drag.y = p.y;
-  if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) { drag.moved = true; play('pick', 0.22, 0.72, 0.03); }
+  if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) { drag.moved = true; play('tap', 0.3, 1.1, 0.03); }
 });
 function doMerge(target, from) {
   mergeInto(target, from);
@@ -5073,7 +5079,7 @@ function scrapUnit(u) {
   play('scrap', 0.55); play('scrap_low', 0.35);
   addGear(val, p.x, p.y);
 }
-function clunk(rate = 1) { play('thud', 0.3, 1.25 * rate, 0.03); play('latch', 0.16, 0.7 * rate, 0.03); }   // 낮고 짧은 '턱'
+function clunk(rate = 1) { play('tap', 0.4, 0.9 * rate, 0.03); }   // 놓을 때 '톡'
 function denied() { play('deny', 0.5); }
 function endDrag(ev) {
   if (!drag || ev.pointerId !== drag.id) return;

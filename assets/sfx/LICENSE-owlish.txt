@@ -1,0 +1,4 @@
+Sound Effects Pack by Owlish Media (Owlstorm), OpenGameArt.org
+https://opengameart.org/content/sound-effects-pack
+License: CC0 (public domain)
+Used: tap.mp3 (UI_023, trimmed)
