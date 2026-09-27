@@ -52,7 +52,7 @@ const IMG_NAMES = ['f1','f2','f3','tbase','t1','t2','t3','laser','hit','missile'
   'puff','aura1','aura2','star','wall','life',
   'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b',
   ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl','ex1','ex2','ex3','ex4'].map(n => 'fx/' + n),
-  ...[...'ftsgmedcabrhnxvk'].flatMap(t => [1, 2, 3, 4, 5, 6, 7, 8].map(k => 'units/' + t + k)),
+  ...[...'ftsgmedcabrhnxvkwlqy'].flatMap(t => [1, 2, 3, 4, 5, 6, 7, 8].map(k => 'units/' + t + k)),
   ...['grunt','tank','rusher','shield','minion','heal','thief','sniper','gunship','bomber','elite','rock1','rock2','split','splitS','boss1','boss2','boss3','boss4'].map(n => 'enemies/' + n)];
 const IMG = {};
 function loadImages() {
@@ -234,10 +234,18 @@ const UNIT = {
        desc: '주변 8칸 기체의 공격 속도와 화력을 올려요. 직접 쏘지는 않아요.', unlock: { shop: 500 } },
   v: { name: '중력포', role: '끌어모으기', img: 'u_v2', iw: 64, ih: 28, hp: 4, dmg: 40, cd: 2.2, sp: 360, turn: 3, shape: 1, cost: 16, col: '#b86bff', stat: [2, 1, 2],
        desc: '중력장으로 적을 한데 모으고 느리게 해요. 미사일과 잘 어울려요.', unlock: { shop: 600 } },
+  w: { name: '방벽 요새', role: '대형, ㄱ자 3칸', img: 'u_a', iw: 130, ih: 130, hp: 14, dmg: 5, cd: 0.8, sp: 1000, turn: 10, shape: 'L', cost: 30, col: '#6ad0ff', stat: [1, 3, 5],
+       desc: 'ㄱ자로 세 칸을 차지하는 요새예요. 받는 피해가 절반이고, 주변 칸을 노린 공격을 쏴서 막아요.', unlock: { stage: 6 } },
+  l: { name: '레일 포대', role: '대형, 가로 3칸', img: 'u_s', iw: 200, ih: 70, hp: 10, dmg: 70, cd: 2.2, shape: 'h3', cost: 40, col: '#5ae0ff', stat: [5, 2, 4],
+       desc: '가로 세 칸짜리 레일건이에요. 적을 꿰뚫는 레일탄으로 한 줄에 선 적을 모두 뚫어요.', unlock: { stage: 8 } },
+  q: { name: '이온 캐논', role: '대형, 세로 3칸', img: 'u_v2', iw: 60, ih: 200, hp: 12, dmg: 38, cd: 3, shape: 'v3', cost: 44, col: '#b86bff', stat: [4, 2, 4],
+       desc: '세로 한 줄을 통째로 쓰는 빔 포탑이에요. 자기 줄 위로 오는 적을 모두 태워요. 어느 줄에 둘지가 중요해요.', unlock: { stage: 11 } },
+  y: { name: '대형 모함', role: '대형, 2×2 4칸', img: 'u_b2', iw: 140, ih: 140, hp: 16, dmg: 24, cd: 1.4, sp: 620, turn: 4, splash: 55, shape: 'sq', cost: 50, col: '#5affc8', stat: [3, 4, 5],
+       desc: '네 칸을 차지하는 거대 모함이에요. 주포를 쏘고 드론 편대를 띄워 캡슐과 적을 동시에 노려요.', unlock: { stage: 14 } },
   k: { name: '해커', role: '적 탈취', img: 'u_k', iw: 50, ih: 44, hp: 3, dmg: 25, cd: 7, shape: 1, cost: 16, col: '#5aff9a', stat: [3, 1, 1],
        desc: '적 함선을 해킹해 잠시 우리 편으로 싸우게 해요.', unlock: { shop: 700 } },
 };
-const UNIT_ORDER = ['f', 't', 's', 'g', 'm', 'e', 'd', 'c', 'a', 'b', 'r', 'h', 'n', 'x', 'v', 'k'];
+const UNIT_ORDER = ['f', 't', 's', 'g', 'm', 'e', 'd', 'w', 'c', 'l', 'a', 'q', 'b', 'y', 'r', 'h', 'n', 'x', 'v', 'k'];
 const LV_MUL = [1, 2.3, 5.3, 12.2, 28, 64, 147, 338];
 const LV_COL = ['#48c8ff', '#48c8ff', '#5ae0ff', '#b86bff', '#ffd24a', '#4a8cff', '#ff3a5a', '#ff7ae0'];
 // 초월(Lv6~8): 합칠 때마다 화력 ×2.3, Lv5 주기 스킬 대기시간 -25%. 초월 III은 무지갯빛
@@ -248,7 +256,7 @@ const lvCol = lv => lv >= 8 ? RAINBOW[Math.floor(performance.now() / 180) % 6] :
 const lvIdx = lv => Math.min(lv, 5) - 1;   // 레벨별 표(5칸)는 초월해도 Lv5 값을 쓴다
 const tier = u => Math.max(0, u.lv - 5);
 const TRANSCEND = ['초월 I', '초월 II', '초월 III'];
-const TRANS_EXTRA = { g: '대신 받는 피해도 줄어요.', m: '수리 주기도 짧아져요.', x: '버프 효과도 커져요.', k: '해킹 간격도 짧아져요.', d: '드론도 더 빨리 쏴요.' };
+const TRANS_EXTRA = { w: '받는 피해가 더 줄어요.', g: '대신 받는 피해도 줄어요.', m: '수리 주기도 짧아져요.', x: '버프 효과도 커져요.', k: '해킹 간격도 짧아져요.', d: '드론도 더 빨리 쏴요.' };
 const transDesc = t => '화력 ×2.3, 체력도 늘어요. ' + (SKILL_CD[t] ? 'Lv5 주기 스킬이 25% 더 자주 터져요.' : TRANS_EXTRA[t] || '');
 const SKILLS = {
   f: [['단발 레이저', '레이저를 한 줄씩 빠르게 쏴요.'], ['쌍발 레이저', '레이저 두 줄을 나란히 쏴요.'], ['확산 레이저', '세 갈래로 퍼져서 여러 적을 한꺼번에 노려요.'], ['관통 레이저', '적을 뚫고 지나가며 한 줄에 선 적을 모두 맞혀요.'], ['대형 빔', '4초마다 금색 빔으로 한 줄을 통째로 녹여요.']],
@@ -266,6 +274,10 @@ const SKILLS = {
   n: [['기뢰', '적이 지나갈 길목에 기뢰를 깔아요.'], ['기뢰 2개', '한 번에 기뢰 2개를 깔아요.'], ['연쇄 기뢰', '폭발이 근처 기뢰를 함께 터뜨려요.'], ['중력 기뢰', '터지기 전에 주변 적을 끌어당겨요.'], ['블랙홀', '9초마다 적이 몰린 곳에 블랙홀을 열어요.']],
   x: [['신호 증폭', '주변 8칸 기체의 공격 속도 +20%.'], ['화력 보정', '주변 기체의 화력도 +15%.'], ['정밀 유도', '주변 기체 공격 속도 +30%, 화력 +25%.'], ['약점 스캔', '모든 적이 받는 피해 +15%.'], ['전군 강화', '모든 기체의 공격 속도와 화력 +15%.']],
   v: [['중력장', '맞은 자리에 적을 끌어당기고 느리게 하는 중력장을 만들어요.'], ['넓은 중력장', '중력장이 더 넓어져요.'], ['압착', '중력장 안의 적이 계속 피해를 받아요.'], ['쌍중력장', '중력탄 두 발을 쏴요.'], ['특이점', '중력장이 끝날 때 안쪽으로 붕괴하며 큰 피해를 줘요.']],
+  w: [['방벽', '받는 피해가 절반이고, 산탄으로 적을 쏴요.'], ['요격', '8초에 한 번, 주변 칸을 노린 저격, 폭격, 운석을 쏴서 막아요.'], ['엄호', '상하좌우로 붙은 기체가 받는 피해 -25%.'], ['빠른 요격', '요격 간격이 5초로 짧아져요.'], ['방어선 복구', '15초마다 기지 방어막을 1 회복해요.']],
+  l: [['레일탄', '적을 꿰뚫는 레일탄을 쏴요.'], ['쌍열 레일', '레일탄 두 발을 나란히 쏴요.'], ['삼열 레일', '레일탄 세 발을 부채꼴로 쏴요.'], ['과충전', '레일탄이 30% 확률로 2.5배 피해를 줘요.'], ['궤도 관통포', '6초마다 화면을 가르는 거대 레일로 한 줄의 적에게 막대한 피해를 줘요.']],
+  q: [['이온 빔', '3초마다 자기 세로줄 위로 빔을 쏴요.'], ['긴 조사', '빔이 더 오래 나가요.'], ['광폭 빔', '빔이 더 넓어져요.'], ['이온 감속', '빔에 맞은 적이 느려져요.'], ['궤도 낙뢰', '8초마다 세 배 굵은 빔을 2초 동안 내리꽂아요.']],
+  y: [['주포', '무거운 포탄을 쏘고 드론 3기를 띄워요.'], ['드론 증원', '드론이 4기로 늘어요.'], ['편대', '드론이 6기로 늘어요.'], ['자폭 드론', '5초마다 드론 하나가 강한 적에게 돌진해 터져요.'], ['함재기 폭격', '8초마다 적이 가장 많은 곳에 폭격을 떨어뜨려요.']],
   k: [['해킹', '7초마다 적 하나를 4초 동안 아군으로 만들어요.'], ['빠른 해킹', '해킹 간격이 짧아져요.'], ['자폭 명령', '해킹이 끝나면 그 적이 자폭해요.'], ['다중 해킹', '한 번에 두 기를 해킹해요.'], ['시스템 장악', '해킹이 6초로 길어지고 간격도 짧아져요.']],
 };
 const unitMaxHp = (type, lv) => Math.round(UNIT[type].hp * (1 + 0.3 * (lv - 1))) + Math.floor(mkOf(type) / 3) + (S && S.pk ? S.pk.hp : 0);
@@ -507,7 +519,14 @@ function makeUnit(type, lv) {
   return { type, lv, hp, maxHp: hp, cells: null, res: null, cd: Math.random() * 0.3, sk: 2, ang: -Math.PI / 2,
            pop: 0.4, hurt: 0, drones: [], t1: 0, t2: 0, t3: 0, buffSpd: 0, buffDmg: 0 };
 }
-const uSize = u => UNIT[u.type].shape === 1 ? 1 : 2;
+// 모양 = 기준 칸에서의 [행, 열] 목록
+const SHAPES = { 1: [[0, 0]], h2: [[0, 0], [0, 1]], v2: [[0, 0], [1, 0]], h3: [[0, 0], [0, 1], [0, 2]], v3: [[0, 0], [1, 0], [2, 0]], L: [[0, 0], [1, 0], [1, 1]], sq: [[0, 0], [0, 1], [1, 0], [1, 1]] };
+const shapePts = type => SHAPES[UNIT[type].shape];
+function shapeDims(type) {
+  const pts = shapePts(type);
+  return { h: Math.max(...pts.map(p => p[0])) + 1, w: Math.max(...pts.map(p => p[1])) + 1 };
+}
+const uSize = u => SHAPES[UNIT[u.type].shape].length;
 
 function startWave(n) {
   const st = S.stage;
@@ -622,9 +641,8 @@ const cellPos = i => ({ x: GRID_X + (i % COLS) * CW + CW / 2, y: GRID_Y + Math.f
 const resPos = k => ({ x: RES_X + RES_W / 2, y: GRID_Y + (k + 1) * CH + CH / 2 });
 function unitPos(u) {
   if (u.res != null) return resPos(u.res);
-  let x = 0, y = 0;
-  for (const c of u.cells) { const p = cellPos(c); x += p.x; y += p.y; }
-  return { x: x / u.cells.length, y: y / u.cells.length };
+  const xs = u.cells.map(c => cellPos(c).x), ys = u.cells.map(c => cellPos(c).y);
+  return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
 }
 function cellAt(x, y) {
   const c = Math.floor((x - GRID_X) / CW), r = Math.floor((y - GRID_Y) / CH);
@@ -639,13 +657,13 @@ function resAt(x, y) {
   return k >= 0 && k < RES_N ? k : -1;
 }
 function cellsFor(u, c) {
-  const sh = UNIT[u.type].shape;
-  if (sh === 'h2') { if (c % COLS === COLS - 1) c--; return [c, c + 1]; }
-  if (sh === 'v2') { if (Math.floor(c / COLS) === ROWS - 1) c -= COLS; return [c, c + COLS]; }
-  return [c];
+  // 누른 칸이 모양 가운데쯤 오게 두고, 판 밖으로 나가면 안쪽으로 민다
+  const pts = shapePts(u.type), { h, w } = shapeDims(u.type);
+  let r0 = Math.floor(c / COLS) - Math.floor((h - 1) / 2), c0 = c % COLS - Math.floor((w - 1) / 2);
+  r0 = Math.max(0, Math.min(ROWS - h, r0)); c0 = Math.max(0, Math.min(COLS - w, c0));
+  return pts.map(([r, cc]) => (r0 + r) * COLS + c0 + cc);
 }
 function canPlace(u, cells) {
-  if (UNIT[u.type].shape === 'h2' && Math.floor(cells[0] / COLS) !== Math.floor(cells[1] / COLS)) return false;
   return cells.every(c => c >= 0 && c < COLS * ROWS && (!S.slots[c] || S.slots[c] === u));
 }
 function unplace(u) {
@@ -842,8 +860,8 @@ function cellsCenter(cells) {
 function resolveAttack(a) {
   // 방공포 요격
   if (a.kind === 'snipe' || a.kind === 'diag' || a.kind === 'meteor') {
-    for (const u of gridUnits()) if (u.type === 'a' && u.lv >= 3 && u.t2 <= 0 && a.cells.some(c => u.cells.some(uc => cellDist(uc, c) <= 1))) {
-      u.t2 = 7;
+    for (const u of gridUnits()) if (((u.type === 'a' && u.lv >= 3) || (u.type === 'w' && u.lv >= 2)) && u.t2 <= 0 && a.cells.some(c => u.cells.some(uc => cellDist(uc, c) <= 1))) {
+      u.t2 = u.type === 'w' ? (u.lv >= 4 ? 5 : 8) : 7;
       const m = cellsCenter(a.cells), p = unitPos(u);
       S.fx.push({ kind: 'bolt', pts: [{ x: p.x, y: p.y - 20 }, { x: m.x, y: m.y - 60 }], t: 0, life: 0.25, col: '#ffffff' });
       boom(m.x, m.y - 60, 1.1, '#e0e8ff');
@@ -888,7 +906,10 @@ function resolveAttack(a) {
 }
 function damageUnit(u, dmg) {
   if (!u.cells && u.res == null) return;   // 이미 파괴된 기체
-  const p = unitPos(u), red = rowDef(u);
+  const p = unitPos(u);
+  let red = rowDef(u);
+  if (u.type === 'w') red = 1 - (1 - red) * (0.5 - 0.05 * tier(u));
+  else if (u.cells && gridUnits().some(o => o.type === 'w' && o.lv >= 3 && crossOf(o).has(u))) red = 1 - (1 - red) * 0.75;
   if (red) { const v = dmg * (1 - red); dmg = Math.floor(v) + (Math.random() < v % 1 ? 1 : 0); }
   if (dmg <= 0) { addText(p.x, p.y - 30, '막음', '#6ad0ff', 18, 0.8); play('shield_hit', 0.3); return; }
   u.hp -= dmg; u.hurt = 0.35;
@@ -1110,9 +1131,33 @@ function fireUnit(u) {
       break;
     }
     case 'x': return true;
+    case 'w': {
+      const n = [3, 3, 4, 4, 5][L - 1];
+      for (let k = 0; k < n; k++) { const s2 = shoot('a', p.x, p.y - 16, base, Math.min(L, 3), (k - (n - 1) / 2) * 0.18); if (s2) ok = s2; }
+      break;
+    }
+    case 'l': {
+      const n = L >= 3 ? 3 : L >= 2 ? 2 : 1, tgt = pickHeavy();
+      if (!tgt || tgt.maxHits) break;
+      for (let k = 0; k < n; k++) {
+        let dmg = base / (n === 1 ? 1 : 0.8 * n), crit = L >= 4 && Math.random() < 0.3;
+        if (crit) dmg *= 2.5;
+        const s2 = pierce(p.x + (k - (n - 1) / 2) * 30, p.y - 20, dmg, L, n === 3 && k !== 1 ? null : tgt, '#5ae0ff', { crit });
+        if (s2) ok = s2;
+      }
+      break;
+    }
+    case 'q': {
+      const wd = [18, 22, 30, 34, 40][L - 1];
+      if (!S.enemies.some(e => shootable(e) && e.y < p.y && Math.abs(e.x - p.x) < wd + e.r)) break;
+      S.beams.push({ u, x: p.x, y: p.y - 26, ang: -Math.PI / 2, t: 0, life: [1, 1.2, 1.4, 1.6, 1.8][L - 1], dps: base, capT: 0, col: '#b86bff', w: wd, slowB: L >= 4 });
+      ok = {};
+      break;
+    }
+    case 'y': ok = shoot('b', p.x, p.y - 34, base, Math.min(L, 3)); break;
   }
   if (ok) {
-    const snd = { t: 'shot_retro', a: 'shot_retro', v: 'shot_retro', s: 'shot_big', b: 'shot_big', r: 'boom_low', c: 'shot', g: 'shot', m: 'shot', e: 'zap' }[u.type];
+    const snd = { w: 'shot_retro', l: 'shot_big', q: 'zap', y: 'shot_big', t: 'shot_retro', a: 'shot_retro', v: 'shot_retro', s: 'shot_big', b: 'shot_big', r: 'boom_low', c: 'shot', g: 'shot', m: 'shot', e: 'zap' }[u.type];
     if (snd) play(snd, snd === 'shot_big' ? 0.22 : snd === 'boom_low' ? 0.3 : 0.1, snd === 'shot' ? 1.25 : 1);
     if (u.type === 'e') play('crackle', 0.16, 1.1);
     const t = ok.tgt || null;
@@ -1187,6 +1232,27 @@ function unitSkill(u) {
       S.fx.push({ kind: 'frost', x: p.x, y: p.y, t: 0, life: 0.7 });
       return true;
     }
+    case 'l': {
+      const tgt = pickHeavy();
+      if (!tgt || tgt.maxHits) return false;
+      const ang = Math.atan2(tgt.y - p.y, tgt.x - p.x);
+      for (const e of S.enemies) if (shootable(e) && distToRay(e.x, e.y, p.x, p.y, ang) < e.r + 22) hitEnemy(e, base * 10, 'laser');
+      S.fx.push({ kind: 'rail', x: p.x, y: p.y - 20, ang, t: 0, life: 0.35 });
+      S.shake = Math.max(S.shake, 0.45); play('zap', 0.35); punch(0.5);
+      return true;
+    }
+    case 'q': {
+      if (!S.enemies.some(e => shootable(e) && e.y < p.y && Math.abs(e.x - p.x) < 90 + e.r)) return false;
+      S.beams.push({ u, x: p.x, y: p.y - 26, ang: -Math.PI / 2, t: 0, life: 2, dps: base * 3, capT: 0, col: '#b86bff', w: 90, slowB: true });
+      S.shake = Math.max(S.shake, 0.4); play('zap', 0.4); punch(0.5);
+      return true;
+    }
+    case 'y': {
+      const best = densest(120);
+      if (!best) return false;
+      S.strikes.push({ x: best.x, y: Math.min(best.y + 30, LINE_Y - 60), t: 0, delay: 0.75, dmg: base * 4, r: 120, done: false, nuke: false });
+      return true;
+    }
     case 'n': {
       const best = densest(140);
       if (!best) return false;
@@ -1196,7 +1262,7 @@ function unitSkill(u) {
   }
   return false;
 }
-const SKILL_CD = { f: 4, b: 5, t: 6, r: 9, s: 5, e: 6, c: 7, n: 9 };
+const SKILL_CD = { f: 4, b: 5, t: 6, r: 9, s: 5, e: 6, c: 7, n: 9, l: 6, q: 8, y: 8 };
 
 // ── 피해 ──────────────────────────────────────────────────
 function hitEnemy(e, dmg, src = 'laser', quiet = false) {
@@ -1344,7 +1410,7 @@ function claimCap(c) {
     addText(c.x, c.y - 30, `${name} +${placed + reserved}`, '#7fe0ff', 20);
     if (reserved) addText(c.x, c.y - 6, `대기함으로 ${reserved}기`, '#ffd24a', 18);
     if (lost) { addText(c.x, c.y + 18, `자리 없음! ${lost}기 손실`, '#ff7070', 18); hint('칸과 대기함이 모두 차면 새 기체가 사라져요. 미리 합쳐서 자리를 비워 두세요.'); }
-    if (UNIT[rw.type].shape !== 1) hintOnce('big', '대형 기체는 두 칸을 차지해요. 옮길 때도 두 칸이 비어야 하니 회피할 자리를 미리 생각하세요.');
+    if (UNIT[rw.type].shape !== 1) hintOnce('big', '대형 기체는 여러 칸을 차지해요. 옮길 때도 그만큼 비어야 하니 회피할 자리를 미리 생각하세요.');
     checkMergeHint();
   }
   if (c.pair && !c.pair.dead) {
@@ -1623,7 +1689,8 @@ function updateAuras(dt) {
       }
       if (u.lv >= 3) { u.baseT = (u.baseT || 0) + dt; if (u.baseT >= 15) { u.baseT = 0; if (S.hp < S.maxHp) { S.hp++; addText(W / 2, LINE_Y - 30, '기지 수리 +1', '#6dff8a', 18); } } }
     }
-    if (u.type === 'd') updateDrones(u, dt);
+    if (u.type === 'd' || u.type === 'y') updateDrones(u, dt);
+    if (u.type === 'w' && u.lv >= 5) { u.baseT = (u.baseT || 0) + dt; if (u.baseT >= 15) { u.baseT = 0; if (S.hp < S.maxHp) { S.hp++; addText(W / 2, LINE_Y - 30, '방어선 복구 +1', '#6ad0ff', 18); } } }
   }
   if (S.row[2] >= 3) {
     S.rowT = (S.rowT || 0) + dt;
@@ -1637,7 +1704,7 @@ function updateAuras(dt) {
   S.rebuilds = S.rebuilds.filter(r => !r.done);
 }
 function updateDrones(u, dt) {
-  const n = [1, 2, 4, 4, 8][lvIdx(u.lv)], p = unitPos(u);
+  const n = (u.type === 'y' ? [3, 4, 6, 6, 8] : [1, 2, 4, 4, 8])[lvIdx(u.lv)], p = unitPos(u);
   while (u.drones.length < n) u.drones.push({ x: p.x, y: p.y, cd: Math.random() * 0.4, a: Math.random() * 6, gone: 0 });
   u.drones.length = n;
   const dmg = UNIT.d.dmg * LV_MUL[u.lv - 1] * [1, 0.8, 0.6, 0.6, 0.5][lvIdx(u.lv)] * (1 + u.buffDmg) * rowAtk(u) * mkMul('d') * S.pk.dmg;
@@ -1888,7 +1955,8 @@ function update(dt) {
   for (const b of S.beams) {
     b.t += dt;
     if (b.u.cells) { const p = unitPos(b.u); b.x = p.x; b.y = p.y - 26; }
-    for (const e of S.enemies) if (shootable(e) && distToRay(e.x, e.y, b.x, b.y, b.ang) < e.r + 18) {
+    for (const e of S.enemies) if (shootable(e) && distToRay(e.x, e.y, b.x, b.y, b.ang) < e.r + (b.w || 18)) {
+      if (b.slowB && !e.boss) { e.slow = Math.max(e.slow, 0.4); e.slowT = Math.max(e.slowT, 0.3); }
       hitEnemy(e, b.dps * dt, 'beam', true);
       if (Math.random() < 0.3) sparks(e.x, e.y, '#ffe27a', 1, 260);
     }
@@ -2385,8 +2453,9 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
   while (tier > 1 && !(NI && NI.width)) NI = IMG['units/' + type + --tier];   // 그 레벨 그림이 없으면 아래 단계 그림
   if (NI && NI.width) {
     // 칸 위의 기체는 단계별 고정 크기, 카드 같은 곳은 넘겨받은 배율에 맞춘다
-    const k = u ? s / U_SCALE / (1 + (lv - 1) * 0.05) : s * Math.max(def.iw, def.ih) / (def.shape === 1 ? 60 : 130);
-    const [bw, bh] = def.shape === 'h2' ? [[108, 60], [114, 63], [120, 66], [126, 69], [130, 71], [132, 72], [134, 73], [136, 74]][tier - 1] : def.shape === 'v2' ? [[58, 120], [61, 126], [63, 132], [65, 137], [67, 141], [68, 144], [69, 146], [70, 148]][tier - 1] : [[46, 46], [50, 50], [54, 54], [58, 58], [61, 61], [63, 63], [65, 65], [67, 67]][tier - 1];
+    const dm = shapeDims(type), fz = [0.84, 0.87, 0.9, 0.93, 0.95, 0.97, 0.99, 1][tier - 1];
+    const [bw, bh] = !['1', 'h2', 'v2'].includes(String(def.shape)) ? [(dm.w * CW - 10) * fz, (dm.h * CH - 10) * fz] : def.shape === 'h2' ? [[108, 60], [114, 63], [120, 66], [126, 69], [130, 71], [132, 72], [134, 73], [136, 74]][tier - 1] : def.shape === 'v2' ? [[58, 120], [61, 126], [63, 132], [65, 137], [67, 141], [68, 144], [69, 146], [70, 148]][tier - 1] : [[46, 46], [50, 50], [54, 54], [58, 58], [61, 61], [63, 63], [65, 65], [67, 67]][tier - 1];
+    const k = u ? s / U_SCALE / (1 + (lv - 1) * 0.05) : s * Math.max(def.iw, def.ih) / Math.max(bw, bh);
     const sc = Math.min(bw * k / NI.width, bh * k / NI.height), dw = NI.width * sc, dh = NI.height * sc, ky = kick * 30;
     const turns = def.rot || type === 't', rot = turns ? ang + Math.PI / 2 : 0;
     if (type === 'x') {
@@ -2454,7 +2523,7 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   const t = performance.now() / 1000;
   const s = (1 + u.pop * 0.8) * big * (1 + (u.lv - 1) * 0.05) * U_SCALE;
   const def = UNIT[u.type], col = u.type === 'f' || u.lv >= 5 ? lvCol(u.lv) : def.col;
-  const wide = def.shape === 'h2' ? 1.9 : 1, tall = def.shape === 'v2' ? 1.9 : 1;
+  const dm = shapeDims(u.type), wide = dm.w > 1 ? dm.w * 0.95 : 1, tall = dm.h > 1 ? dm.h * 0.95 : 1;
   drawGlow(def.col, x, y + 6, 40 * Math.max(wide, tall), (0.08 + 0.03 * Math.sin(t * 2 + x)) * alpha, 0.55 * tall / wide);   // 은은한 바탕 빛만 (레벨은 그림과 칸 테두리로 구분)
   // 발밑 그림자, 비행 기체는 살짝 둥실거린다
   ctx.fillStyle = `rgba(0,0,0,${0.35 * alpha})`; ctx.beginPath(); ctx.ellipse(x, y + 18 * tall, 26 * s * wide, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
@@ -2738,7 +2807,9 @@ function drawUnitFrames(top) {
         sc = ctx.createConicGradient(t * 2, x + w / 2, y + h / 2);
         RAINBOW.concat([RAINBOW[0]]).forEach((c, i) => sc.addColorStop(i / RAINBOW.length, c));
       }
-      ctx.strokeStyle = sc; ctx.lineWidth = u.lv >= 8 ? 4 : u.lv >= 5 ? 3.2 : u.lv >= 3 ? 2.4 : 1.6; chamfer(x, y, w, h, 9); ctx.stroke();
+      ctx.strokeStyle = sc; ctx.lineWidth = u.lv >= 8 ? 4 : u.lv >= 5 ? 3.2 : u.lv >= 3 ? 2.4 : 1.6;
+      if (uSize(u) === (w + 8) / CW * (h + 8) / CH) { chamfer(x, y, w, h, 9); ctx.stroke(); }
+      else for (const c of u.cells) { const q = cellPos(c); chamfer(q.x - CW / 2 + 4, q.y - CH / 2 + 4, CW - 8, CH - 8, 9); ctx.stroke(); }
     } else {
       if (u.maxHp) {
         // 체력: 칸 왼쪽 가장자리의 굵은 세로 게이지 (늘 또렷하게, 위험하면 빨갛게 깜빡)
@@ -2898,20 +2969,20 @@ function drawBeams() {
   for (const b of S.beams) {
     const p = b.t / b.life;
     const a = Math.min(1, b.t * 8) * Math.min(1, (1 - p) * 4);
-    const len = 1200, wid = 30 * (0.8 + 0.2 * Math.sin(b.t * 40));
+    const len = 1200, wid = (b.w ? b.w * 1.4 : 30) * (0.8 + 0.2 * Math.sin(b.t * 40)), pur = b.col === '#b86bff';
     ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.ang);
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = a;
     let gr = ctx.createLinearGradient(0, -wid, 0, wid);
-    gr.addColorStop(0, 'rgba(255,190,40,0)'); gr.addColorStop(0.5, 'rgba(255,200,60,.85)'); gr.addColorStop(1, 'rgba(255,190,40,0)');
+    gr.addColorStop(0, pur ? 'rgba(170,90,255,0)' : 'rgba(255,190,40,0)'); gr.addColorStop(0.5, pur ? 'rgba(190,120,255,.85)' : 'rgba(255,200,60,.85)'); gr.addColorStop(1, pur ? 'rgba(170,90,255,0)' : 'rgba(255,190,40,0)');
     ctx.fillStyle = gr; ctx.fillRect(0, -wid, len, wid * 2);
     gr = ctx.createLinearGradient(0, -wid * 0.3, 0, wid * 0.3);
     gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,240,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = gr; ctx.fillRect(0, -wid * 0.3, len, wid * 0.6);
     for (let k = 0; k < 8; k++) { const x = ((b.t * 900 + k * 150) % len); ctx.fillStyle = 'rgba(255,245,200,.6)'; ctx.fillRect(x, -wid * 0.55, 30, wid * 1.1); }
     ctx.restore();
-    drawGlow('#ffd24a', b.x, b.y, 50, a);
-    drawTex('p_flare', '#ffe27a', b.x, b.y, 130, b.t * 3, a);
+    drawGlow(pur ? '#b86bff' : '#ffd24a', b.x, b.y, 50, a);
+    drawTex('p_flare', pur ? '#d4a8ff' : '#ffe27a', b.x, b.y, 130, b.t * 3, a);
     drawGlow('#ffffff', b.x, b.y, 22, a);
     if (Math.random() < 0.6) sparks(b.x, b.y, '#ffe27a', 1, 200);
   }
@@ -3197,7 +3268,7 @@ function drawShots() {
   }
 }
 function drawDrones() {
-  for (const u of gridUnits()) if (u.type === 'd') for (const d of u.drones) {
+  for (const u of gridUnits()) if (u.type === 'd' || u.type === 'y') for (const d of u.drones) {
     if (d.gone > 0) continue;
     drawGlow('#ff6a5a', d.x, d.y, 12, 0.7);
     ctx.fillStyle = '#ffd0c8';
@@ -3249,7 +3320,7 @@ function draw(dt) {
   drawAttacks();
   for (const u of gridUnits()) { const p = unitPos(u); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 1, 1, true); }
   drawUnitFrames(true);
-  S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.85, uSize(u) === 2 ? 0.45 : 0.8); });
+  S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.85, uSize(u) > 2 ? 0.34 : uSize(u) === 2 ? 0.45 : 0.8); });
   drawDrones();
   drawBeams();
   drawShots();
@@ -3745,27 +3816,27 @@ function drawHangar() {
       ctx.font = FK(14); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(160,210,255,.5)'; ctx.fillText('빈 칸', x + 47, y + 40);
     }
   }
-  // 기체 목록 4×4
-  const cw = 120, ch = 150, gx = 16, gy = 206;
+  // 기체 목록 4×5
+  const cw = 120, ch = 118, gx = 16, gy = 204;
   UNIT_ORDER.forEach((t2, i) => {
     const x = gx + (i % 4) * (cw + 6), y = gy + Math.floor(i / 4) * (ch + 6), def = UNIT[t2];
     const own = isOwned(t2), inDeck = PROG.deck.includes(t2);
     ctx.fillStyle = own ? 'rgba(10,24,54,.88)' : 'rgba(8,10,24,.8)'; chamfer(x, y, cw, ch, 12); ctx.fill();
     ctx.strokeStyle = inDeck ? def.col : own ? 'rgba(120,220,255,.3)' : 'rgba(255,255,255,.1)'; ctx.lineWidth = inDeck ? 2.5 : 1.2; ctx.stroke();
     if (inDeck) drawGlow(def.col, x + cw / 2, y + 56, 50, 0.18);
-    const k2 = Math.min(78 / def.iw, 64 / def.ih);
+    const k2 = Math.min(76 / def.iw, 50 / def.ih);
     ctx.globalAlpha = own ? 1 : 0.35;
-    drawUnitArt(t2, 1, x + cw / 2, y + 54, k2, own ? 1 : 0.35, null);
+    drawUnitArt(t2, 1, x + cw / 2, y + 42, k2, own ? 1 : 0.35, null);
     ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
-    ctx.font = FK(16); ctx.fillStyle = own ? '#fff' : 'rgba(255,255,255,.5)'; ctx.fillText(def.name, x + cw / 2, y + 104);
-    ctx.font = FK(12); ctx.fillStyle = own ? def.col : 'rgba(200,210,230,.45)'; ctx.fillText(def.role, x + cw / 2, y + 122);
+    ctx.font = FK(16); ctx.fillStyle = own ? '#fff' : 'rgba(255,255,255,.5)'; ctx.fillText(def.name, x + cw / 2, y + 80);
+    ctx.font = FK(12); ctx.fillStyle = own ? def.col : 'rgba(200,210,230,.45)'; ctx.fillText(def.role, x + cw / 2, y + 96);
     ctx.font = FU(10);
-    if (inDeck) { ctx.fillStyle = def.col; ctx.fillText('● DEPLOYED', x + cw / 2, y + 140); }
+    if (inDeck) { ctx.fillStyle = def.col; ctx.fillText('● DEPLOYED', x + cw / 2, y + 110); }
     else if (!own) {
       const u = def.unlock;
       ctx.fillStyle = u.shop ? '#ffd24a' : 'rgba(255,190,120,.8)';
-      if (u.shop) coreLabel(x + cw / 2, y + 140, u.shop, 11, 'center', '#ffd24a'); else ctx.fillText(`STAGE ${u.stage} 클리어`, x + cw / 2, y + 140);
+      if (u.shop) coreLabel(x + cw / 2, y + 110, u.shop, 11, 'center', '#ffd24a'); else ctx.fillText(`STAGE ${u.stage} 클리어`, x + cw / 2, y + 110);
     }
     if (!own) { ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fillRect(x + cw - 24, y + 12, 12, 10); ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x + cw - 18, y + 12, 4, Math.PI, 0); ctx.stroke(); }
     if (own && mkOf(t2)) { const mk = mkOf(t2); ctx.fillStyle = mk >= 10 ? '#ffd24a' : 'rgba(255,210,74,.2)'; hexPath(x + 20, y + 20, 13); ctx.fill(); ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.font = FT(11, 900); ctx.textAlign = 'center'; ctx.fillStyle = mk >= 10 ? '#2a1600' : '#ffe9a8'; ctx.fillText(String(mk), x + 20, y + 21); }
@@ -3778,7 +3849,7 @@ function drawHangar() {
     BUTTONS.push({ x, y, w: cw, h: ch, act: 'card', type: t2 });
   });
   ctx.font = FK(14); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(200,225,255,.7)';
-  ctx.fillText('카드를 누르면 스킬과 성능을 볼 수 있어요', W / 2, 838);
+  ctx.fillText('카드를 누르면 스킬과 성능을 볼 수 있어요', W / 2, 843);
   button(W / 2 - 110, 862, 220, 52, '지도로', 'map', PROG.deck.length >= 1 ? 'primary' : 'danger');
 }
 
@@ -3802,7 +3873,7 @@ function drawCard() {
   drawUnitArt(t2, showLv, W / 2, y + 140, k2 * (1 + (showLv - 1) * 0.04), 1, null);
   ctx.font = FT(11); ctx.fillStyle = LV_COL[showLv - 1]; ctx.fillText(`LV.${showLv}`, W / 2 + 110, y + 70);
   ctx.font = FK(32); outlineText(def.name + (mkOf(t2) ? `  Mk.${mkOf(t2)}` : ''), W / 2, y + 232, mkOf(t2) ? '#ffe9a8' : '#fff', 5);
-  ctx.font = FK(16); ctx.fillStyle = def.col; ctx.fillText(def.role + (def.shape === 'h2' ? '' : def.shape === 'v2' ? '' : ', 1칸'), W / 2, y + 262);
+  ctx.font = FK(16); ctx.fillStyle = def.col; ctx.fillText(def.role + (def.shape === 1 ? ', 1칸' : ''), W / 2, y + 262);
   ctx.font = FK(16); ctx.fillStyle = 'rgba(220,235,255,.9)';
   wrapLines(def.desc, w - 70).forEach((l, i) => ctx.fillText(l, W / 2, y + 292 + i * 22));
   // 레벨별 성장 그래프
@@ -3819,7 +3890,7 @@ function drawCard() {
     ctx.font = FU(10); ctx.fillStyle = LV_COL[i]; ctx.fillText(`LV${i + 1}`, bx + bw / 2, gy0 + 10);
   });
   // 합체 비교: 같은 기체 두 대를 그대로 둘 때와 합쳤을 때
-  const cmpL = Math.min(showLv, 4), two = st5[cmpL - 1].v * 2, one = st5[cmpL].v, cells = def.shape === 1 ? 1 : 2, nextT = TRANSCEND[showLv - 5];
+  const cmpL = Math.min(showLv, 4), two = st5[cmpL - 1].v * 2, one = st5[cmpL].v, cells = SHAPES[def.shape].length, nextT = TRANSCEND[showLv - 5];
   ctx.font = FK(14); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(220,235,255,.9)';
   const cmpTxt = showLv < 5 ? `Lv${cmpL} 두 대 ${fmt(two)} (${cells * 2}칸)  →  Lv${cmpL + 1} 한 대 ${fmt(one)} (${cells}칸) + 새 스킬`
     : nextT ? `Lv${showLv} 두 대를 합치면 ${nextT}: 화력 ×2.3, 스킬 더 자주` : '최고 단계 초월 III';
@@ -4417,7 +4488,7 @@ function dropUnit(u, x, y) {
   }
   denied();
   const q = cellPos(c);
-  addText(q.x, q.y - 20, uSize(u) === 2 ? '두 칸이 비어야 해요' : '자리가 없어요', '#ff9a9a', 16, 0.9);
+  addText(q.x, q.y - 20, uSize(u) > 1 ? `${uSize(u)}칸이 비어야 해요` : '자리가 없어요', '#ff9a9a', 16, 0.9);
 }
 // 해체: 기체를 부품으로 바꾼다. 부품은 정비소(해체 칸을 탭)에서 줄 강화에 쓴다
 const SCRAP_GEAR = [1, 2, 4, 7, 12, 18, 26, 36];
@@ -4547,6 +4618,13 @@ function setupShot(k) {
     PROG.deck = ['f', 't']; PROG.stars = {}; startStage(1); S.tut = { step: k === 'tut1' ? 1 : 3, t: 0 };
     for (let i = 0; i < (k === 'tut1' ? 150 : 420); i++) update(1 / 60);
     S.hint = null; S.frozen = true;
+  }
+  else if (k === 'shapes') {
+    PROG.deck = ['w', 'l', 'q', 'y', 'f']; startStage(14); S.enemies = []; S.events = []; S.caps = [];
+    for (const u of allUnits()) unplace(u);
+    const add = (t, lv, c) => { const u = makeUnit(t, lv); const cs = cellsFor(u, c); if (canPlace(u, cs)) place(u, cs); };
+    add('l', 3, 1); add('q', 5, 9); add('y', 4, 4); add('w', 6, 6); add('f', 2, 8); add('f', 4, 14);
+    S.hint = null; S.hintQueue = []; S.banner = null; shotRun(60 * 4, 8); S.frozen = true;
   }
   else if (k === 'tiers') {
     PROG.deck = ['f', 't', 'e']; startStage(12); S.enemies = []; S.events = []; S.caps = [];
