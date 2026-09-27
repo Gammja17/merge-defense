@@ -52,7 +52,7 @@ const IMG_NAMES = ['f1','f2','f3','tbase','t1','t2','t3','laser','hit','missile'
   'puff','aura1','aura2','star','wall','life',
   'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b',
   ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl','ex1','ex2','ex3','ex4'].map(n => 'fx/' + n),
-  ...[...'ftsgmedcabrhnxvk'].flatMap(t => [1, 2, 3].map(k => 'units/' + t + k)),
+  ...[...'ftsgmedcabrhnxvk'].flatMap(t => [1, 2, 3, 4, 5].map(k => 'units/' + t + k)),
   ...['grunt','tank','rusher','shield','minion','heal','thief','sniper','gunship','bomber','elite','rock1','rock2','split','splitS','boss1','boss2','boss3','boss4'].map(n => 'enemies/' + n)];
 const IMG = {};
 function loadImages() {
@@ -85,7 +85,7 @@ function fitEnemySizes() {
 }
 function buildTints() {
   // 초월 광택: 최종 단계 그림에 빨강(Lv6), 분홍(Lv7), 청록(Lv8 무지개 순환용)
-  setTimeout(() => { for (const t of 'ftsgmedcabrhnxvk') { const n = 'units/' + t + '3'; makeTint(n, '#ff4a3a', n + '_l6', 0.6); makeTint(n, '#ff4ad2', n + '_l7', 0.6); makeTint(n, '#48e0ff', n + '_l8', 0.6); } }, 0);
+  setTimeout(() => { for (const t of 'ftsgmedcabrhnxvk') { const n = 'units/' + t + '5'; makeTint(n, '#ff4a3a', n + '_l6', 0.6); makeTint(n, '#ff4ad2', n + '_l7', 0.6); makeTint(n, '#48e0ff', n + '_l8', 0.6); } }, 0);
   const lvImgs = ['f1', 'f2', 'f3', 'tbase', 't1', 't2', 't3', ...Object.values(UNIT).map(d => d.img)];
   setTimeout(() => { for (const n of lvImgs) { makeTint(n, '#c07bff', n + '_l4', 0.32); makeTint(n, '#ffc83a', n + '_l5', 0.4);
     makeTint(n, '#3a7cff', n + '_l6', 0.45); makeTint(n, '#ff2a4a', n + '_l7', 0.45); makeTint(n, '#f4f0ff', n + '_l8', 0.4);
@@ -2381,11 +2381,12 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
   const shine = lv >= 4 ? (lv >= 8 ? 0.45 : lv >= 6 ? 0.3 : lv >= 5 ? 0.22 : 0.14) + 0.12 * Math.sin(t * 3 + x * 0.1) : 0;
   const ang = u ? u.ang : -Math.PI / 2, kick = u ? (u.kick || 0) : 0, flash = u ? (u.flash || 0) : 0;
   const col = type === 'f' || lv >= 5 ? lvCol(lv) : def.col;
-  const tier = lv >= 5 ? 3 : lv >= 3 ? 2 : 1, NI = IMG['units/' + type + tier];
+  let tier = Math.min(lv, 5), NI = IMG['units/' + type + tier];
+  while (tier > 1 && !(NI && NI.width)) NI = IMG['units/' + type + --tier];   // 그 레벨 그림이 없으면 아래 단계 그림
   if (NI && NI.width) {
     // 칸 위의 기체는 단계별 고정 크기, 카드 같은 곳은 넘겨받은 배율에 맞춘다
     const k = u ? s / U_SCALE / (1 + (lv - 1) * 0.05) : s * Math.max(def.iw, def.ih) / (def.shape === 1 ? 60 : 130);
-    const [bw, bh] = def.shape === 'h2' ? [[112, 62], [124, 68], [136, 74]][tier - 1] : def.shape === 'v2' ? [[60, 124], [64, 136], [70, 148]][tier - 1] : [[50, 50], [58, 58], [64, 64]][tier - 1];
+    const [bw, bh] = def.shape === 'h2' ? [[108, 60], [116, 64], [124, 68], [130, 71], [136, 74]][tier - 1] : def.shape === 'v2' ? [[58, 120], [62, 128], [65, 136], [68, 142], [70, 148]][tier - 1] : [[46, 46], [50, 50], [54, 54], [58, 58], [62, 62]][tier - 1];
     const sc = Math.min(bw * k / NI.width, bh * k / NI.height), dw = NI.width * sc, dh = NI.height * sc, ky = kick * 30;
     const turns = def.rot || type === 't', rot = turns ? ang + Math.PI / 2 : 0;
     if (type === 'x') {
@@ -2395,11 +2396,12 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
       ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 44 * k, -0.4, 0.4); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
+    if (lv >= 6 && u) drawGlow(rankCol(lv), x, y + 4, 44 * k * (lv >= 8 ? 1.15 : 1), 0.35 + 0.12 * Math.sin(t * 4), 0.8);
     if (def.air) drawFlame(x, y + dh * 0.44 + ky, (8 + lv * 3) * (0.8 + Math.random() * 0.35) * k, 3 + tier, col, alpha * 0.8);
     ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y - 2 + ky); if (rot) ctx.rotate(rot);
     ctx.drawImage(NI, -dw / 2, -dh / 2, dw, dh);
     if (lv >= 6) {
-      const TI = IMG['units/' + type + '3_' + (lv >= 8 ? ['l6', 'l7', 'l8'][Math.floor(t * 4) % 3] : 'l' + lv)];
+      const TI = IMG['units/' + type + '5_' + (lv >= 8 ? ['l6', 'l7', 'l8'][Math.floor(t * 4) % 3] : 'l' + lv)];
       if (TI && TI.width) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha * (0.28 + 0.12 * Math.sin(t * 3 + x * 0.1)); ctx.drawImage(TI, -dw / 2, -dh / 2, dw, dh); }
     }
     ctx.restore();
@@ -2726,7 +2728,12 @@ function drawUnitFrames(top) {
     ctx.globalAlpha = drag && drag.unit === u && drag.moved ? 0.3 : 1;
     if (!top) {
       if (u.lv >= 3) drawGlow(col, x + w / 2, y + h / 2, Math.max(w, h) * 0.62, (u.lv >= 5 ? 0.28 : 0.14) + 0.06 * Math.sin(t * 3), 1);
-      ctx.strokeStyle = col; ctx.lineWidth = u.lv >= 5 ? 3.2 : u.lv >= 3 ? 2.4 : 1.6; chamfer(x, y, w, h, 9); ctx.stroke();
+      let sc = col;
+      if (u.lv >= 8 && ctx.createConicGradient) {
+        sc = ctx.createConicGradient(t * 2, x + w / 2, y + h / 2);
+        RAINBOW.concat([RAINBOW[0]]).forEach((c, i) => sc.addColorStop(i / RAINBOW.length, c));
+      }
+      ctx.strokeStyle = sc; ctx.lineWidth = u.lv >= 8 ? 4 : u.lv >= 5 ? 3.2 : u.lv >= 3 ? 2.4 : 1.6; chamfer(x, y, w, h, 9); ctx.stroke();
     } else {
       if (u.maxHp) {
         // 체력: 칸 왼쪽 가장자리의 세로 배터리 게이지. 가득 차 있으면 흐리게, 닳으면 또렷하게
@@ -4542,7 +4549,7 @@ function setupShot(k) {
   else if (k === 'tiers') {
     PROG.deck = ['f', 't', 'e']; startStage(12); S.enemies = []; S.events = []; S.caps = [];
     for (const u of allUnits()) unplace(u);
-    [['f', 0], ['e', 6], ['t', 12]].forEach(([ty, base]) => [1, 2, 3, 5, 6, 8].forEach((lv, i) => place(makeUnit(ty, lv), [base + i])));
+    [['f', 0], ['e', 6], ['t', 12]].forEach(([ty, base]) => [1, 2, 3, 4, 5, 8].forEach((lv, i) => place(makeUnit(ty, lv), [base + i])));
     S.hint = null; S.hintQueue = []; S.banner = null; S.frozen = true;
   }
   else if (k === 'dragout') { PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(12); shotArmy(army); S.wave = 2; startWave(3); shotRun(60 * 5); S.hint = null; S.hintQueue = []; const du = gridUnits().find(u => u.type === 'c') || gridUnits()[0]; drag = { unit: du, x: 300, y: 560, sx: 0, sy: 0, moved: true, id: -1 }; S.frozen = true; }
