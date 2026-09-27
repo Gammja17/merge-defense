@@ -3414,22 +3414,34 @@ function draw(dt) {
         outlineText('합체', bx + bw / 2, by - 10 - 4 * pulse, '#caffd0', 4);
       }
     }
-    { // 해체 구역: 끄는 동안 전장 아래쪽을 붉게. 들어가면 더 진하게
-      const hot = drag.y < SCRAP_Y, hg = ctx.createLinearGradient(0, SCRAP_Y - 280, 0, SCRAP_Y);
-      hg.addColorStop(0, 'rgba(255,50,30,0)'); hg.addColorStop(1, `rgba(255,50,30,${hot ? 0.5 + 0.08 * Math.sin(S.time * 10) : 0.2})`);
-      ctx.fillStyle = hg; ctx.fillRect(0, SCRAP_Y - 280, W, 280);
-      ctx.font = FK(hot ? 40 : 32); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.globalAlpha = hot ? 1 : 0.55; outlineText('해체', W / 2, SCRAP_Y - 70, '#ffb08a', 5); ctx.globalAlpha = 1;
+    { // 해체 구역: 끄는 동안 선 위 전장을 붉게 덮고, 들어가면 번쩍인다
+      const hot = drag.y < SCRAP_Y, zt = SCRAP_Y - 360, fl = hot ? 0.5 + 0.5 * Math.sin(S.time * 12) : 0;
+      if (hot && !drag.wasHot) { play('zap', 0.3, 0.6); shake(0.12); }
+      drag.wasHot = hot;
+      const hg = ctx.createLinearGradient(0, zt, 0, SCRAP_Y);
+      hg.addColorStop(0, 'rgba(120,0,10,0)'); hg.addColorStop(0.45, `rgba(170,10,24,${hot ? 0.35 + 0.1 * fl : 0.22})`); hg.addColorStop(1, `rgba(255,40,40,${hot ? 0.7 + 0.15 * fl : 0.45})`);
+      ctx.fillStyle = hg; ctx.fillRect(0, zt, W, SCRAP_Y - zt);
+      // 경계: 움직이는 경고 줄무늬 띠
+      const by = SCRAP_Y - 9;
+      ctx.save(); ctx.beginPath(); ctx.rect(0, by, W, 18); ctx.clip();
+      ctx.fillStyle = hot ? '#ff3a3a' : '#c8202c'; ctx.fillRect(0, by, W, 18);
+      ctx.fillStyle = 'rgba(10,0,4,.8)';
+      for (let x = -40 + (S.time * 40) % 28; x < W + 20; x += 28) { ctx.beginPath(); ctx.moveTo(x, by + 18); ctx.lineTo(x + 14, by); ctx.lineTo(x + 24, by); ctx.lineTo(x + 10, by + 18); ctx.closePath(); ctx.fill(); }
+      ctx.restore();
+      ctx.fillStyle = 'rgba(20,0,6,.92)'; chamfer(W / 2 - 62, by - 6, 124, 30, 8); ctx.fill();
+      ctx.strokeStyle = hot ? '#ffb0a0' : '#ff5a4a'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.font = FK(18); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = hot ? '#fff' : '#ffb8a8';
+      ctx.fillText('▲ 해체 ▲', W / 2, by + 9);
+      // 큰 글자는 손가락 반대쪽에 둬서 기체에 안 가리게
+      const lx = drag.x < W / 2 ? W * 0.72 : W * 0.28;
+      ctx.font = FK(hot ? 52 : 44); ctx.globalAlpha = hot ? 1 : 0.75; outlineText('해체', lx, SCRAP_Y - 120, hot ? '#fff' : '#ffb08a', 6); ctx.globalAlpha = 1;
+      if (hot) { ctx.font = FK(24); outlineText(`부품 +${SCRAP_GEAR[du.lv - 1] * uSize(du)}`, lx, SCRAP_Y - 72, '#ffd6a0', 5); }
     }
     if (drag.y < SCRAP_Y) {
-      drawGlow('#ff5a3a', drag.x, drag.y - 20, 70, 0.45 + 0.15 * Math.sin(S.time * 10));
-      ctx.font = FK(22); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      outlineText(`부품 +${SCRAP_GEAR[du.lv - 1] * uSize(du)}`, drag.x, drag.y - 78, '#ffb08a', 4);
-    }
-    ctx.strokeStyle = drag.y < SCRAP_Y ? 'rgba(255,120,80,.9)' : 'rgba(255,120,80,.35)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 6]); ctx.lineDashOffset = -S.time * 30;
-    ctx.beginPath(); ctx.moveTo(0, SCRAP_Y); ctx.lineTo(W, SCRAP_Y); ctx.stroke(); ctx.setLineDash([]);
-    ctx.font = FK(15); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillStyle = drag.y < SCRAP_Y ? '#ffb08a' : 'rgba(255,170,140,.8)'; ctx.fillText('▲ 해체 ▲', W / 2, SCRAP_Y - 4);
-    drawUnit(du, drag.x, drag.y - 20, 0.9, 1.1);
+      drawGlow('#ff3a2a', drag.x, drag.y - 20, 80, 0.55 + 0.2 * Math.sin(S.time * 12));
+      drawUnit(du, drag.x, drag.y - 20, 0.75, 0.85);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; drawGlow('#ff2020', drag.x, drag.y - 20, 46, 0.6); ctx.restore();
+    } else drawUnit(du, drag.x, drag.y - 20, 0.9, 1.1);
   }
 
   ctx.restore();
