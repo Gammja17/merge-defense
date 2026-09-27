@@ -229,7 +229,9 @@ const UNIT_ORDER = ['f', 't', 's', 'g', 'm', 'e', 'd', 'c', 'a', 'b', 'r', 'h', 
 const LV_MUL = [1, 2.3, 5.3, 12.2, 28, 64, 147, 338];
 const LV_COL = ['#48c8ff', '#48c8ff', '#5ae0ff', '#b86bff', '#ffd24a', '#4a8cff', '#ff3a5a', '#ff7ae0'];
 // 초월(Lv6~8): 합칠 때마다 화력 ×2.3, Lv5 주기 스킬 대기시간 -25%. 초월 III은 무지갯빛
+const RANK_COL = ['#aebdcc', '#6dff8a', '#48b8ff', '#b86bff', '#ffd24a', '#ff4a3a', '#ff4ad2', '#ff7ae0'];   // 회색 초록 파랑 보라 금색 빨강 분홍 무지개
 const RAINBOW = ['#ff4a6a', '#ffa03a', '#ffe24a', '#5aff9a', '#48c8ff', '#b86bff'];
+const rankCol = lv => lv >= 8 ? RAINBOW[Math.floor(performance.now() / 180) % 6] : RANK_COL[lv - 1];
 const lvCol = lv => lv >= 8 ? RAINBOW[Math.floor(performance.now() / 180) % 6] : LV_COL[lv - 1];
 const lvIdx = lv => Math.min(lv, 5) - 1;   // 레벨별 표(5칸)는 초월해도 Lv5 값을 쓴다
 const tier = u => Math.max(0, u.lv - 5);
@@ -1728,7 +1730,7 @@ function update(dt) {
       S.shieldHits.push({ x: e.x, t: 0 });
       play('base_hit', 0.55);
       boom(e.x, LINE_Y, 1.2, '#ff5050');
-      addText(e.x, LINE_Y - 30, `-${e.boss ? 'ALL' : ENEMY[e.k].dmg}`, '#ff6060', 26);
+      addText(e.x, LINE_Y - 30, e.boss ? '방어막 붕괴!' : `방어막 -${ENEMY[e.k].dmg}`, '#ff6060', 24); S.baseHitT = 0.6;
       play('shieldDown', 0.4);
     }
   }
@@ -2405,7 +2407,7 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
   if (flash > 0) { drawTex('p_flare', col, x + Math.cos(ang) * h * 0.45, y + Math.sin(ang) * h * 0.45, 44 * s, 0.5, flash * 12 * alpha); }
   if (type === 'e' || type === 'k') drawGlow(col, x, y, 22, (0.3 + 0.2 * Math.sin(t * 9)) * alpha);
 }
-function drawUnit(u, x, y, alpha = 1, big = 1) {
+function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   const t = performance.now() / 1000;
   const s = (1 + u.pop * 0.8) * big * (1 + (u.lv - 1) * 0.05) * U_SCALE;
   const def = UNIT[u.type], col = u.type === 'f' || u.lv >= 5 ? lvCol(u.lv) : def.col;
@@ -2441,6 +2443,7 @@ function drawUnit(u, x, y, alpha = 1, big = 1) {
   drawUnitArt(u.type, u.lv, x, y, s, alpha, u);
   if (u.hurt > 0) drawGlow('#ff2a3a', x, y, 40 * wide, u.hurt * 2 * alpha, 0.8);
   const bot = y + (tall > 1 ? CH * 0.95 : 26);
+  if (!onPad) {
   // 레벨 = 금색 별 개수. 어두운 받침판 위에 그려 기체 그림이나 체력 바에 묻히지 않게. 초월 III(Lv8)만 무지개
   const sp = u.lv > 5 ? 8 : 10, sx = x - (u.lv - 1) * sp / 2;
   ctx.globalAlpha = alpha;
@@ -2455,6 +2458,7 @@ function drawUnit(u, x, y, alpha = 1, big = 1) {
     ctx.fillStyle = 'rgba(0,0,0,.7)';
     for (let k = 1; k < u.maxHp; k++) ctx.fillRect(bx + bw * k / u.maxHp, by, 1, 3);
     ctx.globalAlpha = 1;
+  }
   }
   if (u.buffSpd > 0 && u.cells) drawGlow('#48ffd8', x + 22, y - 26, 6, 0.8);
   const rank = Math.floor(mkOf(u.type) / 3);
@@ -2668,6 +2672,42 @@ function drawBaseLive() {
     for (const x of [GRID_X - 3, RES_X - 1]) { ctx.fillStyle = on ? '#ffd24a' : 'rgba(255,210,74,.2)'; ctx.fillRect(x - 1, GRID_Y + 18 + k * 38, 2, 7); if (on) drawGlow('#ffd24a', x, GRID_Y + 21 + k * 38, 10, 0.5); }
   }
 }
+// 기체 레벨 틀: 칸 테두리 색과 굵기(칸 그릴 때), 체력 막대와 별(기체를 그린 뒤 맨 위)
+function unitBox(u) {
+  const xs = u.cells.map(c => c % COLS), ys = u.cells.map(c => Math.floor(c / COLS));
+  const x = GRID_X + Math.min(...xs) * CW + 4, y = GRID_Y + Math.min(...ys) * CH + 4;
+  return { x, y, w: (Math.max(...xs) - Math.min(...xs) + 1) * CW - 8, h: (Math.max(...ys) - Math.min(...ys) + 1) * CH - 8 };
+}
+function drawUnitFrames(top) {
+  const t = S.time;
+  for (const u of gridUnits()) {
+    const { x, y, w, h } = unitBox(u), col = rankCol(u.lv);
+    ctx.globalAlpha = drag && drag.unit === u && drag.moved ? 0.3 : 1;
+    if (!top) {
+      if (u.lv >= 3) drawGlow(col, x + w / 2, y + h / 2, Math.max(w, h) * 0.62, (u.lv >= 5 ? 0.28 : 0.14) + 0.06 * Math.sin(t * 3), 1);
+      ctx.strokeStyle = col; ctx.lineWidth = u.lv >= 5 ? 3.2 : u.lv >= 3 ? 2.4 : 1.6; chamfer(x, y, w, h, 9); ctx.stroke();
+    } else {
+      if (u.maxHp) {
+        // 체력: 칸 왼쪽 가장자리의 세로 배터리 게이지. 가득 차 있으면 흐리게, 닳으면 또렷하게
+        const r = Math.max(0, u.hp / u.maxHp), n = u.maxHp, gx = x + 4, gy = y + 10, gh = h - 26, seg = gh / n;
+        const hc = r > 0.5 ? '#5affa0' : r > 0.25 ? '#ffc04a' : '#ff4a5a';
+        ctx.globalAlpha *= r >= 1 ? 0.45 : 1;
+        ctx.fillStyle = 'rgba(0,6,20,.85)'; ctx.fillRect(gx - 1, gy - 1, 7, gh + 2);
+        for (let k = 0; k < n; k++) {
+          const on = k < Math.ceil(u.hp - 1e-6), sy0 = gy + gh - (k + 1) * seg + 1;
+          ctx.fillStyle = on ? hc : 'rgba(255,255,255,.12)'; ctx.fillRect(gx, sy0, 5, Math.max(1, seg - 2));
+        }
+        if (r < 1 && r <= 0.25) drawGlow('#ff4a5a', gx + 2, gy + gh / 2, 16, 0.4 + 0.3 * Math.sin(t * 8));
+        ctx.globalAlpha = drag && drag.unit === u && drag.moved ? 0.3 : 1;
+      }
+      const sp = u.lv > 5 ? 8.5 : 10, sx = x + w / 2 - (u.lv - 1) * sp / 2, sy = y + h;
+      ctx.fillStyle = 'rgba(0,6,20,.92)'; chamfer(sx - 8, sy - 7, (u.lv - 1) * sp + 16, 14, 4); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke();
+      for (let k = 0; k < u.lv; k++) drawStar(sx + k * sp, sy, 5, u.lv >= 8 ? RAINBOW[(k + Math.floor(t * 6)) % 6] : '#ffd24a');
+    }
+    ctx.globalAlpha = 1;
+  }
+}
 function drawPads() {
   const t = S.time;
   for (let i = 0; i < COLS * ROWS; i++) {
@@ -2678,7 +2718,7 @@ function drawPads() {
     pg.addColorStop(0, 'rgba(26,38,66,.94)'); pg.addColorStop(1, 'rgba(7,11,24,.94)');
     ctx.fillStyle = pg; chamfer(x, y, w, h, 9); ctx.fill();
     ctx.strokeStyle = info.col; ctx.globalAlpha = u ? 0.6 : 0.3; ctx.lineWidth = 1.2; ctx.stroke();
-    ctx.fillStyle = info.col; ctx.globalAlpha = u ? 0.9 : 0.45; ctx.fillRect(x + 12, y, w - 24, 2);   // 윗변 줄 색 띠
+    if (!u) { ctx.fillStyle = info.col; ctx.globalAlpha = 0.45; ctx.fillRect(x + 12, y, w - 24, 2); }   // 윗변 줄 색 띠
     ctx.save(); ctx.translate(p.x, p.y + 4); ctx.rotate(u ? t * 0.5 : 0);
     ctx.strokeStyle = lit; ctx.globalAlpha = u ? 0.55 : 0.2; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.stroke();
@@ -2714,6 +2754,7 @@ function drawPads() {
     const sy = gy + ((t * 40) % (gh + 80)) - 40, sg = ctx.createLinearGradient(0, sy - 30, 0, sy + 30);
     sg.addColorStop(0, 'rgba(120,220,255,0)'); sg.addColorStop(0.5, 'rgba(120,220,255,.07)'); sg.addColorStop(1, 'rgba(120,220,255,0)');
     ctx.fillStyle = sg; ctx.fillRect(gx, sy - 30, gw, 60); ctx.restore(); }
+  drawUnitFrames(false);
   const rx = RES_X, ry = GRID_Y + 4, rw = RES_W, rh = CH * ROWS - 8;
   ctx.fillStyle = 'rgba(30,10,40,.55)'; chamfer(rx, ry, rw, rh, 9); ctx.fill();
   ctx.strokeStyle = 'rgba(255,90,200,.35)'; ctx.lineWidth = 1.2; ctx.stroke();
@@ -3156,7 +3197,8 @@ function draw(dt) {
   drawBaseLive();
   drawPads();
   drawAttacks();
-  for (const u of gridUnits()) { const p = unitPos(u); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 1); }
+  for (const u of gridUnits()) { const p = unitPos(u); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 1, 1, true); }
+  drawUnitFrames(true);
   S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.85, uSize(u) === 2 ? 0.45 : 0.8); });
   drawDrones();
   drawBeams();
@@ -3208,14 +3250,27 @@ function drawHud() {
   for (let x = 30; x < W - 20; x += 12) { ctx.fillStyle = 'rgba(90,210,255,.25)'; ctx.fillRect(x, 57, 1, 3); }
 
   ctx.font = FU(9); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(140,220,255,.7)'; ctx.fillText('BASE SHIELD', 14, 14);
-  const low = S.hp <= 3, segCol = low ? '#ff4a5a' : '#48d8ff';
-  for (let k = 0; k < S.maxHp; k++) {
-    const x = 14 + k * 17, full = k < S.hp;
-    ctx.fillStyle = full ? segCol : 'rgba(255,255,255,.07)';
-    ctx.beginPath(); ctx.moveTo(x + 4, 24); ctx.lineTo(x + 15, 24); ctx.lineTo(x + 11, 40); ctx.lineTo(x, 40); ctx.closePath(); ctx.fill();
-    if (full) drawGlow(segCol, x + 7.5, 32, 11, low ? 0.3 + 0.3 * Math.sin(S.time * 8) : 0.2);
-  }
+  S.baseHitT = Math.max(0, (S.baseHitT || 0) - 1 / 60);
+  { const low = S.hp <= 3, segCol = low ? '#ff4a5a' : '#48d8ff', hk = S.baseHitT / 0.6, blink = low ? 0.6 + 0.4 * Math.sin(S.time * 8) : 1;
+    ctx.save(); if (hk > 0) ctx.translate((Math.random() - .5) * 10 * hk, 0);
+    if (hk > 0) drawGlow('#ff2a3a', 100, 30, 120, hk * 0.9, 0.45);
+    // 방패 아이콘
+    const ix = 24, iy = 30;
+    drawGlow(segCol, ix, iy, 22, 0.35 * blink);
+    ctx.fillStyle = segCol; ctx.globalAlpha = blink;
+    ctx.beginPath(); ctx.moveTo(ix - 11, iy - 13); ctx.lineTo(ix + 11, iy - 13); ctx.lineTo(ix + 11, iy); ctx.quadraticCurveTo(ix + 9, iy + 10, ix, iy + 15); ctx.quadraticCurveTo(ix - 9, iy + 10, ix - 11, iy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(4,14,34,.8)'; ctx.fillRect(ix - 1.5, iy - 9, 3, 18); ctx.fillRect(ix - 7, iy - 3, 14, 3);
+    ctx.globalAlpha = 1;
+    ctx.font = FK(14); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = low ? '#ffb0b0' : '#cfefff'; ctx.fillText('방어막', 42, 13);
+    ctx.font = FT(14, 900); ctx.textAlign = 'right'; outlineText(`${S.hp}/${S.maxHp}`, 190, 13, low ? '#ff8a8a' : '#ffffff', 3); ctx.textAlign = 'left';
+    const x0 = 42, x1 = 192, sw = (x1 - x0) / S.maxHp;
+    for (let k = 0; k < S.maxHp; k++) {
+      const x = x0 + k * sw, full = k < S.hp;
+      ctx.fillStyle = full ? segCol : 'rgba(255,255,255,.08)'; ctx.globalAlpha = full ? blink : 1;
+      ctx.beginPath(); ctx.moveTo(x + 4, 24); ctx.lineTo(x + sw - 1, 24); ctx.lineTo(x + sw - 5, 44); ctx.lineTo(x, 44); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore(); }
   // 일시정지 버튼
   ctx.fillStyle = 'rgba(90,210,255,.1)'; chamfer(200, 14, 36, 34, 7); ctx.fill();
   ctx.strokeStyle = 'rgba(120,220,255,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
