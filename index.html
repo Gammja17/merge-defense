@@ -166,9 +166,9 @@ const SFX_FILES = [
   'hit_2', 'shield_hit', 'shield_break', 'coin_1', 'coin_2', 'coin_3', 'base_hit', 'swap', 'deny', 'click', 'open', 'close', 'confirm', 'capsule',
   'scrap', 'scrap_low', 'kaboom1', 'kaboom2', 'kaboom_s1', 'kaboom_s2', 'thud', 'drums', 'crackle1', 'crackle2', 'shield_crack', 'imp_l1', 'imp_l2',
   'imp_l3', 'imp_h1', 'imp_h2', 'imp_h3', 'imp_s1', 'imp_s2', 'imp_p1', 'imp_p2', 'debris1', 'debris2', 'debris3', 'fire_a', 'fire_b', 'beam', 'tap',
-  'hitfx', 'merge_fx', 'up_fx', 'vo_access', 'zapfx', 'vo_shields', 'vo_prox', 'vo_welcome'];   // 발사 fire_, 빔, 명중, 합체, 강화, 전자전, 음성 vo_: Lentikula (CC0). tap: Owlish Media (CC0)   // fire_, beam: Sci-Fi Weapon Shots (Lentikula, CC0), tap: Kenney Impact Sounds   // gun_: Gunshot Sounds (Vincent Sevedge, OpenGameArt)   // imp_, debris: Kenney Impact Sounds (CC0)
+  'hitfx', 'caphit', 'merge_fx', 'up_fx', 'vo_access', 'zapfx', 'vo_shields', 'vo_prox', 'vo_welcome'];   // 발사 fire_, 빔, 명중, 합체, 강화, 전자전, 음성 vo_: Lentikula (CC0). tap: Owlish Media (CC0)   // fire_, beam: Sci-Fi Weapon Shots (Lentikula, CC0), tap: Kenney Impact Sounds   // gun_: Gunshot Sounds (Vincent Sevedge, OpenGameArt)   // imp_, debris: Kenney Impact Sounds (CC0)
 // 같은 소리의 최소 재생 간격(초). 연사가 많아도 귀가 따갑지 않게
-const SFX_GAP = { vo_access: 3, vo_shields: 5, vo_prox: 6, vo_welcome: 5, zapfx: 0.12, hitfx: 0.06, merge_fx: 0.1, up_fx: 0.15, beam: 0.5, tap: 0.06, thwack: 0.06, twoTone: 1, pew: 0.06, pick: 0.08, drop: 0.08, imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.09, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
+const SFX_GAP = { caphit: 0.05, vo_access: 3, vo_shields: 5, vo_prox: 6, vo_welcome: 5, zapfx: 0.12, hitfx: 0.06, merge_fx: 0.1, up_fx: 0.15, beam: 0.5, tap: 0.06, thwack: 0.06, twoTone: 1, pew: 0.06, pick: 0.08, drop: 0.08, imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.09, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
 const VARIANTS = { thwack: ['hitfx'], imp_l: ['imp_l1', 'imp_l2', 'imp_l3'], imp_h: ['imp_h1', 'imp_h2', 'imp_h3'], imp_s: ['imp_s1', 'imp_s2'], imp_p: ['imp_p1', 'imp_p2'], debris: ['debris1', 'debris2', 'debris3'], shot: ['fire_a'], shot_retro: ['fire_a'], shot_big: ['fire_b'], pew: ['pew1', 'pew2', 'pew3', 'pew4'], boom_s: ['kaboom_s1', 'kaboom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2', 'coin_3'],
   kaboom: ['kaboom1', 'kaboom2'], crackle: ['crackle1', 'crackle2'], bosshit: ['thud'] };
 let AC = null, MASTER = null;
@@ -1532,7 +1532,7 @@ function hitCap(c, n = 1) {
   if (!c.carrier) c.y -= 1.2 * n;
   const col = capLook(c.rw).col;
   sparks(c.x + (Math.random() - .5) * 30, c.y + 10 + Math.random() * 16, col, 3 + n, 200);
-  play('hit', 0.14, 1.35 + Math.random() * 0.15);
+  play('caphit', 0.18, 1 + Math.random() * 0.08);
   // 3분의 1씩 깎일 때마다 금 가는 소리와 큰 불꽃
   const after = c.hits / c.maxHits;
   if (c.hits > 0 && Math.floor(before * 3) !== Math.floor(after * 3)) {
