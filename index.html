@@ -507,7 +507,7 @@ function startStage(n, endless = false) {
   };
   const types = PROG.deck.filter(t => isOwned(t) && UNIT[t].shape === 1).sort((a, b) => UNIT[b].stat[0] * UNIT[b].stat[1] - UNIT[a].stat[0] * UNIT[a].stat[1]);
   START_LV[endless ? 1 : st.s].forEach((lv, j) => { const u = makeUnit(types[j % types.length] || 'f', lv); const sp = findSpot(u); if (sp) place(u, sp); });
-  hintOnce('focus', '캡슐을 탭하면 모든 기체가 그쪽을 집중 사격해요. 그동안 적은 막지 못해요!');
+  hintOnce('focus', '가까이 온 적이 없으면 기체들이 알아서 캡슐을 쏴요. 캡슐을 탭하면 적이 있어도 그쪽부터 집중 사격해요.');
   hintOnce('info', '기체를 꾹 누르거나 우클릭하면 스킬과 성능을 볼 수 있어요.');
   hintOnce('cells', '부품을 모으면 정비소에서 칸을 강화하거나 줄을 늘릴 수 있어요. 필요 없는 기체는 위쪽 전장으로 끌어 놓으면 해체돼요.');
   if (endless) hintOnce('endless2', '무한 방어선은 10웨이브가 한 주기예요. 5웨이브마다 강화를 고르고, 6웨이브째마다 적이 새 변이를 얻어요. 9웨이브는 위기, 10웨이브는 보스예요.');
@@ -984,6 +984,12 @@ function pickTarget() {
   for (const e of S.enemies) if (e.carry && e.y > 70 && e.pending < effHp(e) && shootable(e)) return e;
   const fOk = focusValid();
   if (fOk && S.focus.pending < (S.focus.maxHits ? S.focus.hits : effHp(S.focus))) return S.focus;
+  // 방어선 가까이 온 적이 없으면 캡슐부터 알아서 쏜다. 묶인 캡슐과 황금 캡슐은 직접 골라야 한다
+  if (!S.enemies.some(e => shootable(e) && e.y > LINE_Y - 230)) {
+    let bc = null, cy = -1e9;
+    for (const c of S.caps) if (c.y > RANGE_Y && c.pending < c.hits && !c.lock && !c.carrier && !(c.pair && S.caps.includes(c.pair)) && c.y > cy) { cy = c.y; bc = c; }
+    if (bc) return bc;
+  }
   let best = null, by = -1e9;
   for (const e of S.enemies) {
     if (e.y < RANGE_Y || e.pending >= effHp(e) || !shootable(e)) continue;
@@ -3562,6 +3568,11 @@ function drawHud() {
 
   ctx.font = FU(9); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   S.baseHitT = Math.max(0, (S.baseHitT || 0) - 1 / 60);
+  if (drag && drag.moved && (S.mode === 'play' || S.mode === 'break')) {   // 느려진 동안 가장자리 청록빛
+    const vg = ctx.createRadialGradient(W / 2, H / 2, 300, W / 2, H / 2, 640);
+    vg.addColorStop(0, 'rgba(80,220,255,0)'); vg.addColorStop(1, 'rgba(80,220,255,.22)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  }
   { // 화면 가장자리 붉은 빛: 맞은 순간 크게, 방어막이 3 이하면 약하게 맥박
     const hk = S.baseHitT / 0.6, low = S.hp <= 3 && (S.mode === 'play' || S.mode === 'break') ? 0.18 + 0.1 * Math.sin(S.time * 5) : 0, a = Math.max(hk * 0.75, low);
     if (a > 0.01) {
@@ -4841,6 +4852,7 @@ function loop(now) {
   if (!calm && !LOWFX && !SHOT) { slowT = dt > 1 / 45 ? slowT + dt : Math.max(0, slowT - dt); if (slowT > 4) LOWFX = true; }
   let gdt = dt;
   if (S.hitStop > 0) { S.hitStop -= dt; gdt = dt * 0.15; }
+  if (drag && drag.moved && (S.mode === 'play' || S.mode === 'break')) gdt *= 0.3;   // 기체를 들고 있는 동안은 전투가 느려진다
   if (S.stage && !S.paused && !S.frozen && !UI.settings && !UI.reveal && !UI.shop && !(UI.card && S.mode !== 'win')) update(gdt);
   updateMusic(dt);
   draw(dt);
