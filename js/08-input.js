@@ -16,7 +16,7 @@ function setSlider(b, px) {
   if (b.key === 'sfxVol') play('coin', 0.4, 1.2);
 }
 function toast(text) { UI.toast = { text, until: performance.now() / 1000 + 1.8 }; }
-function goMap() { S = { mode: 'map' }; UI.card = null; UI.shop = false; }
+function goMap() { S = { mode: 'map' }; UI.card = null; UI.shop = false; UI.enemyIntro = null; UI.introQ = null; }
 function doAction(b) {
   const now = performance.now() / 1000;
   switch (b.act) {
@@ -34,6 +34,7 @@ function doAction(b) {
       if ((PROG.newUnits || []).includes(b.type)) { PROG.newUnits = PROG.newUnits.filter(k => k !== b.type); save(); }
       return;
     case 'revealDetail': if (S.mode === 'win') S.endT = performance.now() / 1000 - (S.introDur || 0); UI.reveal = null; UI.card = { type: b.type, isNew: true }; PROG.newUnits = (PROG.newUnits || []).filter(k => k !== b.type); save(); play('ui_open', 0.3); return;
+    case 'introOk': UI.enemyIntro = null; return;
     case 'revealOk': if (S.mode === 'win') S.endT = performance.now() / 1000 - (S.introDur || 0); UI.reveal = null; return;
     case 'scrapInfo': if (UI.card && UI.card.u) scrapUnit(UI.card.u); UI.card = null; return;
     case 'closecard': UI.card = null; return;
@@ -128,7 +129,7 @@ cv.addEventListener('pointerdown', ev => {
   loadSfx();
   if (S.mode === 'title') { goMap(); return; }
   const b = hitButton(p);
-  if (UI.reveal || UI.settings || UI.card || UI.shop || S.paused || ['map', 'hangar', 'records', 'win', 'lose', 'perk'].includes(S.mode)) { if (b) { if (b.act !== 'slider') play(b.act === 'closecard' || b.act === 'closesettings' || b.act === 'closeshop' ? 'close' : 'click', 0.35); doAction(b); } return; }
+  if (UI.reveal || UI.enemyIntro || UI.settings || UI.card || UI.shop || S.paused || ['map', 'hangar', 'records', 'win', 'lose', 'perk'].includes(S.mode)) { if (b) { if (b.act !== 'slider') play(b.act === 'closecard' || b.act === 'closesettings' || b.act === 'closeshop' ? 'close' : 'click', 0.35); doAction(b); } return; }
   if (b) { play('click', 0.35); doAction(b); return; }
   const c = cellAt(p.x, p.y), k = resAt(p.x, p.y);
   const u = c >= 0 ? S.slots[c] : k >= 0 ? S.reserve[k] : null;
@@ -258,7 +259,7 @@ let LOWFX = false, slowT = 0;
 function loop(now) {
   requestAnimationFrame(loop);
   // 프레임 상한: 전투 60, 메뉴와 창이 떠 있을 때 30 (120Hz 폰에서 두 배로 그리지 않게)
-  const calm = !S.stage || S.paused || UI.settings || UI.card || UI.shop || UI.reveal || !['play', 'break', 'clearing'].includes(S.mode);
+  const calm = !S.stage || S.paused || UI.settings || UI.card || UI.shop || UI.reveal || UI.enemyIntro || !['play', 'break', 'clearing'].includes(S.mode);
   if (now - last < (calm ? 1000 / 30 : 1000 / 60) - 2) return;
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -267,7 +268,7 @@ function loop(now) {
   let gdt = dt;
   if (S.hitStop > 0) { S.hitStop -= dt; gdt = dt * 0.15; }
   if (drag && drag.moved && (S.mode === 'play' || S.mode === 'break')) gdt *= 0.3;   // 기체를 들고 있는 동안은 전투가 느려진다
-  if (S.stage && !S.paused && !S.frozen && !UI.settings && !UI.reveal && !UI.shop && !(UI.card && S.mode !== 'win')) update(gdt);
+  if (S.stage && !S.paused && !S.frozen && !UI.settings && !UI.reveal && !UI.enemyIntro && !UI.shop && !(UI.card && S.mode !== 'win')) update(gdt);
   updateMusic(dt);
   draw(dt);
   if (NICK.el && !NICK.show) NICK.el.style.display = 'none';

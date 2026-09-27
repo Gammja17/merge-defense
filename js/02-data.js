@@ -176,6 +176,9 @@ const ENEMY = {
   boss6:   { img: 'enemies/boss6', hp: 17000, speed: 8, r: 104, dmg: 99, w: 250, h: 230, boss: true, name: '블랙홀 모함', regen: 8, atk: 'cross', atkCd: 7, atkDmg: 3 },
   boss4:   { img: 'enemies/boss4', hp: 12000, speed: 9,  r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '최종 기함', shield: 0.25, regen: 8, atk: 'cross', atkCd: 8, atkDmg: 3 },
 };
+// 처음 만난 적 카드에 쓰는 이름과 그림 (ENEMY에 이름이 없는 것들)
+const INTRO_NAME = { tank: '중장갑 함선', rocks: '운석 떼', split: '분열 운석', rusher: '돌격기', shield: '보호막함', healer: '수리선', thief: '캡슐 도둑', meteor: '운석 낙하', freeze: '빙결 포격' };
+const INTRO_IMG = { rocks: 'enemies/rock1', meteor: 'enemies/rock2' };
 const ENEMY_HINT = {
   tank:    '중장갑 함선은 아주 튼튼해요. 기체를 합쳐서 한 방을 키워야 뚫려요.',
   rocks:   '운석 떼는 약하지만 수가 많아요. 폭발 공격이 잘 들어요.',
@@ -350,6 +353,7 @@ let S = { mode: 'title' };
 let BUTTONS = [];
 let UI = { card: null, settings: false, resetArm: 0, toast: null, coreShown: null, upFx: null, parts: [], lastT: 0 };
 function startStage(n, endless = false) {
+  UI.enemyIntro = null; UI.introQ = null;
   const st = endless ? { n: 0, s: 0, i: 0, sector: SECTORS[0], boss: false, waves: Infinity, endless: true } : stageInfo(n);
   S = {
     mode: 'play', stage: st, paused: false,

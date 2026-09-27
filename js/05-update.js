@@ -264,8 +264,15 @@ function updateDrones(u, dt) {
   });
 }
 
+// 새 적이 처음 나오면 잠깐 뒤(화면에 보일 즈음) 게임을 멈추고 소개 카드를 띄운다
+function introOnce(k) {
+  if (PROG.seen['e_' + k] || S.tut || SHOT || S.stage.endless) { if (!PROG.seen['e_' + k] && S.stage.endless && ENEMY_HINT[k]) hintOnce('e_' + k, ENEMY_HINT[k]); return; }
+  PROG.seen['e_' + k] = true; save();
+  UI.introQ = { k, at: S.time + (ENEMY[k] ? 1.1 : 0.2) };
+}
 function update(dt) {
   DMG_BY = null;
+  if (UI.introQ && S.time >= UI.introQ.at) { UI.enemyIntro = { k: UI.introQ.k, t0: performance.now() / 1000 }; UI.introQ = null; play('open', 0.4); }
   S.time += dt;
   tickLift(dt);
   if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 2);

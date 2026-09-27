@@ -140,7 +140,7 @@ function spawnEnemy(k, x, y) {
 }
 function runEvent(ev) {
   const rx = () => 60 + Math.random() * (W - 120);
-  if (ENEMY_HINT[ev.k]) hintOnce('e_' + ev.k, ENEMY_HINT[ev.k]);
+  if (ENEMY_HINT[ev.k]) introOnce(ev.k);
   switch (ev.k) {
     case 'rocks': {
       const cx = 90 + Math.random() * (W - 180);

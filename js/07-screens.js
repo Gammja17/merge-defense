@@ -717,6 +717,7 @@ function drawCard() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FK(32); outlineText(def.name + (mkOf(t2) ? `  Mk.${mkOf(t2)}` : ''), W / 2, y + 232, mkOf(t2) ? '#ffe9a8' : '#fff', 5);
   ctx.font = FK(16); ctx.fillStyle = def.col; ctx.fillText(def.role + (def.shape === 1 ? ', 1칸' : ''), W / 2, y + 262);
+  drawShapeIcon(t2, x + w - 52, y + 250, 11, def.col);
   ctx.font = FK(16); ctx.fillStyle = 'rgba(220,235,255,.9)';
   wrapLines(def.desc, w - 70).forEach((l, i) => ctx.fillText(l, W / 2, y + 290 + i * 22));
   // 성능: 지금 보이는 레벨 기준
@@ -1152,7 +1153,27 @@ function drawOverlays() {
   const now = performance.now() / 1000;
   if (UI.pendingReveal && now >= UI.pendingReveal.at && !UI.card && !UI.settings) { UI.reveal = { type: UI.pendingReveal.type, t0: now, parts: [] }; UI.pendingReveal = null; }
   if (UI.reveal) drawReveal();
+  if (UI.enemyIntro) drawEnemyIntro();
   drawOverlay();
+}
+function drawEnemyIntro() {
+  BUTTONS = [];
+  const k = UI.enemyIntro.k, d = ENEMY[k], e = performance.now() / 1000 - UI.enemyIntro.t0, a = Math.min(1, e * 4);
+  ctx.fillStyle = `rgba(2,3,12,${0.78 * a})`; ctx.fillRect(0, 0, W, H);
+  const x = 44, w = W - 88, h = 470, y = 230 + (1 - a) * 30;
+  ctx.globalAlpha = a;
+  panel(x, y, w, h, '#ff5a6a');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = FU(13); glitchText('// NEW THREAT DETECTED', W / 2, y + 30, '#ff8a8a', 3, e < 0.3 ? 4 : Math.random() < 0.05 ? 3 : 0);
+  const img = d ? d.img : INTRO_IMG[k], cy = y + 150;
+  drawGlow('#ff4a5a', W / 2, cy, 120, 0.25 + 0.1 * Math.sin(e * 4));
+  if (img) { const im = IMG[img], s = im && im.width ? Math.min(170 / im.width, 150 / im.height) : 1; spr(img, W / 2, cy, im ? im.width * s : 120, im ? im.height * s : 120, k === 'rocks' || k === 'meteor' ? e * 0.6 : 0, 1); }
+  else { ctx.strokeStyle = '#8fe6ff'; ctx.lineWidth = 4; for (let i = 0; i < 6; i++) { const an = i * Math.PI / 3 + e * 0.5; ctx.beginPath(); ctx.moveTo(W / 2, cy); ctx.lineTo(W / 2 + Math.cos(an) * 60, cy + Math.sin(an) * 60); ctx.stroke(); } }
+  ctx.font = FK(34); outlineText((d && d.name) || INTRO_NAME[k] || k, W / 2, y + 262, '#fff', 6);
+  ctx.font = FK(17); ctx.fillStyle = 'rgba(225,235,255,.95)';
+  wrapLines(ENEMY_HINT[k] || '', w - 60).forEach((l, i) => ctx.fillText(l, W / 2, y + 306 + i * 26));
+  ctx.globalAlpha = 1;
+  if (e > 0.5) button(W / 2 - 100, y + h - 74, 200, 52, '알겠어요', 'introOk', 'primary');
 }
 function unlockUnit(t) {
   PROG.newUnits = (PROG.newUnits || []).filter(k => k !== t).concat([t]);
@@ -1212,6 +1233,7 @@ function drawReveal() {
   ctx.font = FT(26, 900); glitchText('NEW UNIT UNLOCKED', cx, 170, '#ffd24a', 6, q < 0.4 ? (0.4 - q) * 30 : Math.random() < 0.04 ? 5 : 0.5);
   ctx.font = FK(44); outlineText(def.name, cx, 590, '#ffffff', 7);
   ctx.font = FK(19); ctx.fillStyle = def.col; ctx.fillText(def.role, cx, 632);
+  drawShapeIcon(r.type, cx + 170, 470, 16, def.col, '차지하는 칸');
   ctx.font = FK(17); ctx.fillStyle = 'rgba(220,235,255,.9)';
   wrapLines(def.desc, W - 100).forEach((l, i) => ctx.fillText(l, cx, 670 + i * 24));
   ctx.font = FK(15); ctx.fillStyle = 'rgba(160,220,255,.8)'; ctx.fillText(PROG.deck.includes(r.type) ? '편성에 들어갔어요. 이제 캡슐로 나와요' : '격납고에서 편성하면 캡슐로 나와요', cx, 736);

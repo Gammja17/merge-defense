@@ -777,6 +777,14 @@ function drawBaseLive() {
 }
 // 기체 레벨 틀: 칸 테두리 색과 굵기(칸 그릴 때), 체력 막대와 별(기체를 그린 뒤 맨 위)
 // 레벨 표시: 작은 판에 숫자 하나
+// 기체가 차지하는 칸 모양을 작은 판 그림으로 (가운데 cx, cy)
+function drawShapeIcon(type, cx, cy, cell, col, label) {
+  const pts = SHAPES[UNIT[type].shape], hh = Math.max(...pts.map(p => p[0])) + 1, ww = Math.max(...pts.map(p => p[1])) + 1, g = 2;
+  const x0 = cx - (ww * (cell + g) - g) / 2, y0 = cy - (hh * (cell + g) - g) / 2;
+  for (let r = 0; r < Math.max(hh, 2); r++) for (let c = 0; c < Math.max(ww, 2); c++) { ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(x0 + c * (cell + g), y0 + r * (cell + g), cell, cell); }
+  for (const [r, c] of pts) { ctx.fillStyle = col; ctx.globalAlpha = 0.85; ctx.fillRect(x0 + c * (cell + g), y0 + r * (cell + g), cell, cell); ctx.globalAlpha = 1; }
+  if (label) { ctx.font = FK(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(210,230,255,.8)'; ctx.fillText(label, cx, y0 - 14); }
+}
 function lvBadge(lv, cx, cy, col, sc = 1) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc);
   ctx.fillStyle = 'rgba(0,6,20,.94)'; chamfer(-12, -9, 24, 18, 5); ctx.fill();
