@@ -177,6 +177,7 @@ function runEvent(ev) {
         const b = spawnEnemy(ev.k, ev.x || W / 2, -120);
         if (ev.x) b.cx = ev.x;
         if (!S.boss || S.boss.dead) S.boss = b;
+        if (!S.bossCine && !S.tut && !SHOT) { S.bossCine = { k: ev.k, t: 0 }; play('vo_hostile', 0.8); play('drums', 0.5, 0.8); }
         if (ev.k === 'boss3') hintOnce('b3', 'UFO 모선의 보호막은 레이저가 잘 안 먹혀요. 폭발이나 번개로 깨야 해요.');
       } else if (ev.k === 'grunt' && S.wave >= 2 && Math.random() < 0.25) {
         const x = 110 + Math.random() * (W - 220);

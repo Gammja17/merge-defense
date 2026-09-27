@@ -574,8 +574,9 @@ function killEnemy(e) {
     addText(e.x, e.y - 60, '고급 보급 캡슐!', '#ffd24a', 22); shake(0.6);
   }
   if (e.boss) {
-    S.shake = 1.2; S.whiteFlash = 1; S.glitch = 0.8;
+    S.shake = 1.2; S.whiteFlash = 1; S.glitch = 0.8; S.slowmo = 1.3; S.bossDown = { t: 0 };
     const g = S;
+    setTimeout(() => { if (S === g) { boom(e.x, e.y, 3.2, '#fff0c0'); shockwave(e.x, e.y, 620); blastFx(e.x, e.y, 3); play('boom_big', 0.8, 0.8); play('kaboom', 0.8, 0.7); S.whiteFlash = 0.7; shake(1); } }, 1150);
     for (let i = 0; i < 12; i++) setTimeout(() => {
       if (S === g) boom(e.x + (Math.random() - .5) * 200, e.y + (Math.random() - .5) * 160, 1.6, i % 2 ? '#ffb347' : '#ff6a3a');
     }, i * 90);

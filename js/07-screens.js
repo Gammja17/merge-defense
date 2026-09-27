@@ -290,6 +290,8 @@ function drawHud() {
   }
   drawBanner();
   drawWarning();
+  drawBossCine();
+  drawBossDown();
   drawSkillPop();
   drawTut();
 
@@ -347,6 +349,46 @@ function drawBanner() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FT(44, 900); glitchText(b.text, W / 2, y - 10, b.color, 7, amt);
   ctx.font = FK(19); outlineText(b.sub, W / 2, y + 30, '#e6ecff', 4);
+  ctx.restore();
+}
+// 보스 실루엣: 스프라이트 모양만 남긴 캔버스 (색별로 한 번 만든다)
+const SIL = {};
+function silhouette(img, col) {
+  const key = img + col, im = IMG[img];
+  if (SIL[key] || !im || !im.width) return SIL[key];
+  const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+  const g = c.getContext('2d'); g.drawImage(im, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height);
+  return SIL[key] = c;
+}
+function drawBossCine() {
+  const c = S.bossCine;
+  if (!c) return;
+  const t = c.t, d = ENEMY[c.k], inA = Math.min(1, t * 5), outA = t > 1.9 ? Math.max(0, 1 - (t - 1.9) / 0.5) : 1, a = inA * outA;
+  ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.fillStyle = `rgba(0,0,4,${0.62 * a})`; ctx.fillRect(0, 0, W, H);
+  const y = 330, slide = Math.pow(1 - Math.min(1, t / 0.5), 3);
+  // 가로 띠
+  ctx.globalAlpha = a; ctx.fillStyle = 'rgba(60,0,10,.75)'; ctx.fillRect(0, y - 150, W, 300);
+  ctx.fillStyle = '#ff2a3a'; ctx.fillRect(0, y - 150, W, 3); ctx.fillRect(0, y + 147, W, 3);
+  // 실루엣이 오른쪽에서 밀려 들어온다
+  const im = IMG[d.img], asp = im && im.width ? im.height / im.width : 0.9, sw = Math.min(280, 190 / asp), sh = sw * asp, sx = W / 2 + slide * 360;
+  const red = silhouette(d.img, '#ff2a3a'), blk = silhouette(d.img, '#06070e');
+  drawGlow('#ff2a3a', sx, y - 20, 150, 0.22 * a);
+  if (red) { ctx.globalAlpha = a * (0.55 + 0.25 * Math.sin(t * 20)); ctx.drawImage(red, sx - sw * 0.52, y - 20 - sh * 0.52, sw * 1.04, sh * 1.04); }
+  if (blk) { ctx.globalAlpha = a; ctx.drawImage(blk, sx - sw / 2, y - 20 - sh / 2, sw, sh); }
+  ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = FU(16); glitchText('// HOSTILE CLASS: BOSS', W / 2 - slide * 200, y - 128, '#ff8a8a', 3, t < 0.4 ? 4 : 0);
+  ctx.font = FK(46); glitchText(d.name, W / 2 - slide * 300, y + 112, '#fff', 7, t < 0.35 ? 6 : Math.random() < 0.04 ? 3 : 0);
+  ctx.restore();
+}
+function drawBossDown() {
+  const b = S.bossDown;
+  if (!b) return;
+  const t = b.t, a = Math.min(1, t * 4) * (t > 1.7 ? Math.max(0, 1 - (t - 1.7) / 0.5) : 1), sc = 1 + 0.4 * Math.pow(1 - Math.min(1, t / 0.3), 2);
+  ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.translate(W / 2, 300); ctx.scale(sc, sc);
+  ctx.font = FT(38, 900); glitchText('TARGET DOWN', 0, 0, '#ffd966', 7, t < 0.3 ? 5 : 0);
+  ctx.font = FK(24); outlineText('보스 격추', 0, 44, '#fff', 5);
   ctx.restore();
 }
 function drawWarning() {

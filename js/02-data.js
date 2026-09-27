@@ -23,6 +23,13 @@ function wantedMusic() {
 function updateMusic(dt) {
   if (!AC) return;
   const want = SET().bgmVol > 0 ? wantedMusic() : null;
+  let dz = 0;
+  if (S.stage && (S.mode === 'play' || S.mode === 'break') && !S.paused) {
+    for (const e of S.enemies) if (!e.dead) dz = Math.max(dz, Math.min(1, (e.y - (LINE_Y - 320)) / 260));
+    if (S.hp <= 3) dz = Math.max(dz, 0.7);
+  }
+  MUS.danger = (MUS.danger || 0) + (dz - (MUS.danger || 0)) * Math.min(1, dt * (dz > (MUS.danger || 0) ? 3 : 0.8));
+  if (MUS.danger > 0.4 && SET().bgmVol > 0) { MUS.beatT = (MUS.beatT || 0) - dt; if (MUS.beatT <= 0) { MUS.beatT = 0.95 - 0.35 * MUS.danger; play('boom_low', 0.12 + 0.18 * MUS.danger, 0.7); } }
   MUS.duckT = Math.max(0, (MUS.duckT || 0) - dt);
   const duck = S.paused || UI.settings || UI.card || UI.shop || S.mode === 'win' || S.mode === 'lose' ? 0.4 : 1;
   if (want) musicTrack(want);
@@ -33,6 +40,8 @@ function updateMusic(dt) {
     if (target === 0 && t.vol < 0.01 && !t.a.paused) t.a.pause();
     const v = t.vol * (MUS.duckT > 0 ? 0.6 : 1);   // 큰 한 방이면 음악을 아주 잠깐 줄인다
     if (t.g) t.g.gain.value = v; else t.a.volume = Math.max(0, Math.min(1, v));
+    const rate = k === want ? 1 + 0.07 * (MUS.danger || 0) : 1;
+    if (Math.abs(t.a.playbackRate - rate) > 0.01) { t.a.preservesPitch = true; t.a.playbackRate = rate; }
   }
 }
 function spr(name, x, y, w, h, rot = 0, alpha = 1) {

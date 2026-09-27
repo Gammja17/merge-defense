@@ -268,6 +268,11 @@ function loop(now) {
   let gdt = dt;
   if (S.hitStop > 0) { S.hitStop -= dt; gdt = dt * 0.15; }
   if (drag && drag.moved && (S.mode === 'play' || S.mode === 'break')) gdt *= 0.3;   // 기체를 들고 있는 동안은 전투가 느려진다
+  if (S.stage && !S.paused && !UI.settings && !UI.enemyIntro) {
+    if (S.bossCine) { S.bossCine.t += dt; if (S.bossCine.t < 1.9) gdt *= 0.15; if (S.bossCine.t > 2.4) S.bossCine = null; }
+    if (S.slowmo > 0) { S.slowmo -= dt; gdt *= 0.25 + 0.75 * Math.max(0, 1 - S.slowmo / 1.3) ** 2; }
+    if (S.bossDown) { S.bossDown.t += dt; if (S.bossDown.t > 2.2) S.bossDown = null; }
+  }
   if (S.stage && !S.paused && !S.frozen && !UI.settings && !UI.reveal && !UI.enemyIntro && !UI.shop && !(UI.card && S.mode !== 'win')) update(gdt);
   updateMusic(dt);
   draw(dt);
