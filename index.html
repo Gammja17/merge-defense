@@ -357,7 +357,7 @@ function stageInfo(n) {
   return { n, s, i, sector: SECTORS[s], boss: i === 4, waves: 5 };
 }
 let WAVE_GROWTH = 0.4, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
-let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8];
+let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8].map(v => v * 1.22);   // 부품이 넉넉해진 만큼 적도 조금 튼튼하게
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
 const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2]];
 
@@ -1376,8 +1376,8 @@ function killEnemy(e) {
     }
     S.fx.push({ kind: 'debris', img: e.img, x: e.x, y: e.y, w: e.w, h: e.h, rot: e.rot, pcs, t: 0, life: 0.75 });
   }
-  if (e.boss) addGear(8, e.x, e.y); else if (e.k === 'elite') addGear(3, e.x, e.y);
-  else if (!(e.hacked > 0) && e.k !== 'rock' && e.k !== 'splitS' && Math.random() < (ENEMY[e.k].atk ? 0.3 : 0.06)) addGear(1, e.x, e.y);
+  if (e.boss) addGear(8, e.x, e.y); else if (e.k === 'elite') addGear(4, e.x, e.y);
+  else if (!(e.hacked > 0) && e.k !== 'rock' && e.k !== 'splitS' && Math.random() < (ENEMY[e.k].atk ? 0.5 : 0.15)) addGear(1, e.x, e.y);
   if (e.k === 'split') for (const vx of [-90, 0, 90]) { const c = spawnEnemy('splitS', e.x + vx * 0.2, e.y); c.vx = vx; }
   if (e.k === 'elite') {
     const rw = rollReward(S.stage.n, 3); if (!rw.heal && UNIT[rw.type].shape === 1) rw.lv = Math.max(rw.lv, 2);
@@ -2051,7 +2051,7 @@ function update(dt) {
     S.mode = 'break'; S.breakT = 3;
     S.attacks = [];
     S.hp = Math.min(S.maxHp, S.hp + S.pk.regen);
-    const gg = S.crisis ? 2 : 1;
+    const gg = S.crisis ? 3 : 2;
     addGear(gg, RES_X + RES_W / 2, GRID_Y - 30);
     S.banner = { text: 'CLEAR', sub: `웨이브 ${S.wave} 방어 성공, 부품 +${gg}`, color: '#8dff9a', t: 0, life: 2 };
     S.crisis = false;
