@@ -4480,11 +4480,22 @@ function dropUnit(u, x, y) {
   if (t && t !== u && t.type === u.type && t.lv === u.lv && t.lv < MAX_LV) return doMerge(t, u);
   const cells = cellsFor(u, c);
   if (canPlace(u, cells)) { if (u.cells && u.cells.join() === cells.join()) return; place(u, cells); clunk(); return; }
-  if (t && t !== u && uSize(t) === 1 && uSize(u) === 1) {
-    if (u.res != null) { const rk = u.res, tc = t.cells; unplace(t); place(u, tc); toReserve(t, rk); }
-    else { const uc = u.cells, tc = t.cells; unplace(t); unplace(u); place(u, tc); place(t, uc); }
-    clunk(); setTimeout(() => clunk(1.15), 90);
-    return;
+  // 자리 바꾸기: 놓을 자리를 막은 기체가 하나뿐이고, 그 기체가 내가 있던 자리에 들어가면 서로 바꾼다
+  const blockers = [...new Set(cells.map(i => S.slots[i]).filter(o => o && o !== u))];
+  if (blockers.length === 1) {
+    const b = blockers[0], uc = u.cells ? u.cells.slice() : null, rk = u.res, bc = b.cells.slice();
+    unplace(b); unplace(u);
+    let spot = null;
+    if (canPlace(u, cells)) {
+      place(u, cells);
+      if (uc) for (const a of uc) { const cs = cellsFor(b, a); if (canPlace(b, cs)) { spot = cs; break; } }
+    }
+    if (spot || (u.cells && rk != null)) {
+      if (spot) place(b, spot); else toReserve(b, rk);
+      clunk(); setTimeout(() => clunk(1.15), 90);
+      return;
+    }
+    unplace(u); place(b, bc); if (uc) place(u, uc); else toReserve(u, rk);
   }
   denied();
   const q = cellPos(c);
