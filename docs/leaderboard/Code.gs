@@ -3,8 +3,20 @@
 const SHEET = 'scores';
 const TOP_N = 50;
 
+// 시트에 붙인 스크립트면 그 시트를, script.google.com에서 따로 만든 스크립트면 순위용 시트를 처음 한 번 만들어 쓴다
+function book_() {
+  const active = SpreadsheetApp.getActiveSpreadsheet();
+  if (active) return active;
+  const props = PropertiesService.getScriptProperties();
+  let id = props.getProperty('SHEET_ID');
+  if (id) { try { return SpreadsheetApp.openById(id); } catch (e) {} }
+  const ss = SpreadsheetApp.create('OVERRIDE 순위');
+  props.setProperty('SHEET_ID', ss.getId());
+  return ss;
+}
+
 function sheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = book_();
   let sh = ss.getSheetByName(SHEET);
   if (!sh) { sh = ss.insertSheet(SHEET); sh.appendRow(['time', 'name', 'score', 'wave', 'deck', 'board']); }
   return sh;
