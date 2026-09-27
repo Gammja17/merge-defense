@@ -2819,6 +2819,14 @@ function drawShield() {
     const p = h.t / 0.8;
     drawGlow('#ff3a3a', h.x, LINE_Y - 18, 40 + 100 * p, (1 - p) * 0.95, 0.4);
   }
+  // 맞으면 방어막 띠 전체가 빨갛게 번쩍
+  const hk = (S.baseHitT || 0) / 0.6;
+  if (hk > 0) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = `rgba(255,40,50,${0.55 * hk})`; ctx.fillRect(0, LINE_Y - 44, W, 34);
+    ctx.fillStyle = `rgba(255,120,120,${0.9 * hk})`; ctx.fillRect(0, LINE_Y - 14, W, 3);
+    ctx.restore();
+  }
 }
 
 // 갑판의 움직이는 부분: 방어막 발생기(빛줄기가 방어막 선까지), 격납 구역 운항등
@@ -3446,6 +3454,14 @@ function drawHud() {
 
   ctx.font = FU(9); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   S.baseHitT = Math.max(0, (S.baseHitT || 0) - 1 / 60);
+  { // 화면 가장자리 붉은 빛: 맞은 순간 크게, 방어막이 3 이하면 약하게 맥박
+    const hk = S.baseHitT / 0.6, low = S.hp <= 3 && (S.mode === 'play' || S.mode === 'break') ? 0.18 + 0.1 * Math.sin(S.time * 5) : 0, a = Math.max(hk * 0.75, low);
+    if (a > 0.01) {
+      const vg = ctx.createRadialGradient(W / 2, H / 2, 260, W / 2, H / 2, 640);
+      vg.addColorStop(0, 'rgba(255,20,40,0)'); vg.addColorStop(1, `rgba(255,20,40,${a})`);
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    }
+  }
   { const low = S.hp <= 3, segCol = low ? '#ff4a5a' : '#48d8ff', hk = S.baseHitT / 0.6, blink = low ? 0.6 + 0.4 * Math.sin(S.time * 8) : 1;
     ctx.save(); if (hk > 0) ctx.translate((Math.random() - .5) * 10 * hk, 0);
     if (hk > 0) drawGlow('#ff2a3a', 100, 30, 120, hk * 0.9, 0.45);
