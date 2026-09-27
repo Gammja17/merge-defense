@@ -2455,12 +2455,12 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   const s = (1 + u.pop * 0.8) * big * (1 + (u.lv - 1) * 0.05) * U_SCALE;
   const def = UNIT[u.type], col = u.type === 'f' || u.lv >= 5 ? lvCol(u.lv) : def.col;
   const wide = def.shape === 'h2' ? 1.9 : 1, tall = def.shape === 'v2' ? 1.9 : 1;
-  drawGlow(col, x, y + 6, (40 + u.lv * 6) * Math.max(wide, tall), (0.16 + 0.06 * Math.sin(t * 2 + x)) * alpha * (0.6 + u.lv * 0.22), 0.55 * tall / wide);
+  drawGlow(def.col, x, y + 6, 40 * Math.max(wide, tall), (0.08 + 0.03 * Math.sin(t * 2 + x)) * alpha, 0.55 * tall / wide);   // 은은한 바탕 빛만 (레벨은 그림과 칸 테두리로 구분)
   // 발밑 그림자, 비행 기체는 살짝 둥실거린다
   ctx.fillStyle = `rgba(0,0,0,${0.35 * alpha})`; ctx.beginPath(); ctx.ellipse(x, y + 18 * tall, 26 * s * wide, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
   if (def.air && u.cells) y += Math.sin(t * 2.2 + x * 0.07) * 1.8;
-  // Lv4 보라, Lv5 금색 회전 링 (기절 표시와 헷갈리지 않게 발밑에 눕힌다)
-  if (u.lv >= 4) {
+  // 레벨 그림이 없을 때만 발밑 회전 링으로 레벨을 알린다
+  if (u.lv >= 4 && !(IMG['units/' + u.type + Math.min(u.lv, 8)] || {}).width) {
     const rc = u.lv >= 5 ? lvCol(u.lv) : '#c07bff';
     drawTex('p_ring', rc, x, y + 14 * tall, 84 * s * wide, t * 1.5, (0.55 + 0.2 * Math.sin(t * 3)) * alpha, true, 0.36);
     if (u.lv >= 6) drawTex('p_ring', u.lv >= 8 ? RAINBOW[(Math.floor(t * 6) + 3) % 6] : rc, x, y + 14 * tall, 112 * s * wide, -t * 2.2, 0.4 * alpha, true, 0.36);
