@@ -166,10 +166,10 @@ const SFX_FILES = ['laser1', 'zap', 'twoTone', 'shieldDown', 'shieldUp', 'lose',
   'pick', 'drop', 'latch', 'swap', 'deny', 'click', 'open', 'close', 'confirm', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule', 'levelup', 'unlock', 'scrap', 'scrap_low',
   'pew1', 'pew2', 'pew3', 'pew4', 'kaboom1', 'kaboom2', 'kaboom_s1', 'kaboom_s2', 'thud', 'drums', 'crackle1', 'crackle2', 'shield_crack',
   'imp_l1', 'imp_l2', 'imp_l3', 'imp_h1', 'imp_h2', 'imp_h3', 'imp_s1', 'imp_s2', 'imp_p1', 'imp_p2', 'debris1', 'debris2', 'debris3',
-  'gun_l1', 'gun_l2', 'gun_l3', 'gun_l4', 'gun_h1', 'gun_h2', 'gun_h3', 'gun_sg'];   // gun_: Gunshot Sounds (Vincent Sevedge, OpenGameArt)   // imp_, debris: Kenney Impact Sounds (CC0)
+  'gun_l1', 'gun_l2', 'gun_l3', 'gun_l4', 'gun_h1', 'gun_h2', 'gun_h3', 'gun_sg', 'thwack1', 'thwack2', 'thwack3'];   // gun_: Gunshot Sounds (Vincent Sevedge, OpenGameArt)   // imp_, debris: Kenney Impact Sounds (CC0)
 // 같은 소리의 최소 재생 간격(초). 연사가 많아도 귀가 따갑지 않게
-const SFX_GAP = { pew: 0.06, imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.045, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
-const VARIANTS = { imp_l: ['imp_l1', 'imp_l2', 'imp_l3'], imp_h: ['imp_h1', 'imp_h2', 'imp_h3'], imp_s: ['imp_s1', 'imp_s2'], imp_p: ['imp_p1', 'imp_p2'], debris: ['debris1', 'debris2', 'debris3'], shot: ['gun_l1', 'gun_l2', 'gun_l3', 'gun_l4'], shot_retro: ['gun_l1', 'gun_l2', 'gun_l3', 'gun_l4'], shot_big: ['gun_h1', 'gun_h2', 'gun_h3'], pew: ['pew1', 'pew2', 'pew3', 'pew4'], boom_s: ['kaboom_s1', 'kaboom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2', 'coin_3'],
+const SFX_GAP = { thwack: 0.06, twoTone: 1, pew: 0.06, pick: 0.08, drop: 0.08, imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.09, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
+const VARIANTS = { thwack: ['thwack1', 'thwack2', 'thwack3'], imp_l: ['imp_l1', 'imp_l2', 'imp_l3'], imp_h: ['imp_h1', 'imp_h2', 'imp_h3'], imp_s: ['imp_s1', 'imp_s2'], imp_p: ['imp_p1', 'imp_p2'], debris: ['debris1', 'debris2', 'debris3'], shot: ['gun_l1', 'gun_l2', 'gun_l3', 'gun_l4'], shot_retro: ['gun_l1', 'gun_l2', 'gun_l3', 'gun_l4'], shot_big: ['gun_h1', 'gun_h2', 'gun_h3'], pew: ['pew1', 'pew2', 'pew3', 'pew4'], boom_s: ['kaboom_s1', 'kaboom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2', 'coin_3'],
   kaboom: ['kaboom1', 'kaboom2'], crackle: ['crackle1', 'crackle2'], bosshit: ['thud'] };
 let AC = null, MASTER = null;
 const BUF = {}, lastPlay = {};
@@ -180,8 +180,8 @@ function loadSfx() {
   AC = new Ctx(); MASTER = AC.createGain(); MASTER.gain.value = 0.9;
   // 효과음 음색: 저음을 올리고 쨍한 고음을 깎아 묵직하게, 가볍게 눌러 뭉치지 않게 (음악은 따로 나간다)
   const lo = AC.createBiquadFilter(); lo.type = 'lowshelf'; lo.frequency.value = 150; lo.gain.value = 5;
-  const hi = AC.createBiquadFilter(); hi.type = 'highshelf'; hi.frequency.value = 3500; hi.gain.value = -7;
-  const comp = AC.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.2;
+  const hi = AC.createBiquadFilter(); hi.type = 'highshelf'; hi.frequency.value = 4500; hi.gain.value = -2;
+  const comp = AC.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 2.5; comp.attack.value = 0.02; comp.release.value = 0.18;
   MASTER.connect(lo); lo.connect(hi); hi.connect(comp); comp.connect(AC.destination);
   for (const n of SFX_FILES) fetch('assets/sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b)).then(buf => { BUF[n] = buf; }).catch(() => {});
 }
@@ -199,7 +199,7 @@ function play(n, vol = 0.4, rate = 1, jitter = 0.06) {
   src.buffer = buf;
   // 무기와 타격음은 음을 낮춰 무게감을, 발사음은 높은음에서 낮은음으로 미끄러져 "쥐잉". 버튼 같은 소리는 그대로
   let r = rate * (1 + (Math.random() - .5) * 2 * jitter);
-  if (!UI_SFX.has(n)) r *= 0.87;
+  if (!UI_SFX.has(n)) r *= 0.94;
   src.playbackRate.value = r;
   if (SWEEP_SFX.has(n)) { src.playbackRate.setValueAtTime(r * 1.2, now); src.playbackRate.exponentialRampToValueAtTime(r * 0.8, now + 0.14); }
   g.gain.value = vol * SET().sfxVol * 1.25;
@@ -1071,9 +1071,9 @@ function focusValid() {
 let DMG_BY = null;   // 지금 피해를 주는 기체 종류 (전투 분석용)
 const shootable = e => !e.dead && !(e.hacked > 0) && !(e.ph > 0);
 function pickTarget() {
-  for (const e of S.enemies) if (e.carry && e.y > 70 && e.pending < effHp(e) && shootable(e)) return e;
   const fOk = focusValid();
-  if (fOk && S.focus.pending < (S.focus.maxHits ? S.focus.hits : effHp(S.focus))) return S.focus;
+  if (fOk && S.focus.pending < (S.focus.maxHits ? S.focus.hits : effHp(S.focus))) return S.focus;   // 탭한 목표가 언제나 먼저
+  for (const e of S.enemies) if (e.carry && e.y > 70 && e.pending < effHp(e) && shootable(e)) return e;
   // 방어선 가까이 온 적이 없으면 캡슐부터 알아서 쏜다. 묶인 캡슐과 황금 캡슐은 직접 골라야 한다
   if (!S.enemies.some(e => shootable(e) && e.y > LINE_Y - 230)) {
     let bc = null, cy = -1e9;
@@ -1181,7 +1181,7 @@ function fireUnit(u) {
       else if (L === 2) { ok = shoot('f', p.x - 8, y, base / 2, L); shoot('f', p.x + 8, y, base / 2, L); }
       else if (L === 3) { ok = shoot('f', p.x, y, base / 3, L); shoot('f', p.x - 9, y, base / 3, L, -0.35); shoot('f', p.x + 9, y, base / 3, L, 0.35); }
       else { ok = pierce(p.x - 8, y, base / 2, L); pierce(p.x + 8, y, base / 2, L); }
-      if (ok) { play('shot', 0.16, 1 + L * 0.03); play('pew', 0.04, 1 + L * 0.04); }   // 총성 "두" 위에 레이저음을 작게
+      if (ok) play('shot', 0.17, 1 + L * 0.03);
       break;
     }
     case 't': {
@@ -1215,14 +1215,15 @@ function fireUnit(u) {
     }
     case 'c': ok = shoot('c', p.x, p.y - 18, base, L); break;
     case 'a': {
-      const n = [3, 5, 5, 6, 7][L - 1], lock = L >= 4 ? chargingAttacker() : null;
+      const n = [3, 5, 5, 6, 7][L - 1], lock = L >= 4 && !focusValid() ? chargingAttacker() : null;
       for (let k = 0; k < n; k++) { const s = shoot('a', p.x, p.y - 16, base, Math.min(L, 3), (k - (n - 1) / 2) * 0.16, lock); if (s) ok = s; }
       break;
     }
     case 'h': {
       const R = L >= 5 ? 420 : L >= 3 ? 300 : 270, half = L >= 2 ? 0.55 : 0.4;
       let tgt = null, td = 1e9;
-      for (const e of S.enemies) if (shootable(e) && e.y < p.y) { const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < R && d < td) { td = d; tgt = e; } }
+      if (focusValid() && !S.focus.maxHits && Math.hypot(S.focus.x - p.x, S.focus.y - p.y) < R) tgt = S.focus;
+      else for (const e of S.enemies) if (shootable(e) && e.y < p.y) { const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < R && d < td) { td = d; tgt = e; } }
       if (!tgt) break;
       const ang = Math.atan2(tgt.y - p.y, tgt.x - p.x), dps = base * (L >= 5 ? 2 : 1);
       for (const e of S.enemies) {
@@ -1433,11 +1434,10 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
     e.tilt = (Math.random() - .5) * (e.boss ? 0.08 : 0.35);
     if (heavy > 0.12 || (e.boss && dmg > 60)) { sheetFx(1, e.x + (Math.random() - .5) * e.r, e.y + (Math.random() - .5) * e.r * 0.6, 60 + Math.min(60, heavy * 200), 0.35); play('hit', 0.18, 0.8); if (heavy > 0.3) shake(0.1); }
     if (!e.boss && !(e.hacked > 0) && dmg > e.maxHp * 0.08) e.y -= Math.min(3, dmg / e.maxHp * 10);
-    play('hit', 0.08 + Math.min(0.12, heavy * 0.5), 1.15 - Math.min(0.3, heavy));
-    // 금속 충돌음: 폭발은 묵직하게, 센 한 방은 날카롭게, 나머지는 가볍게
-    if (src === 'blast') play('imp_h', 0.16 + Math.min(0.24, heavy * 0.8), e.boss ? 0.8 : 1);
-    else if (heavy > 0.15 || dmg >= 150) play('imp_s', 0.16 + Math.min(0.2, heavy * 0.6), 1.05);
-    else play('imp_l', 0.07 + Math.min(0.12, heavy * 0.6), 1.1, 0.12);
+    // 맞는 순간 짧고 단단한 "퍽". 세게 맞힐수록 크고 낮게. 폭발과 센 한 방은 한 겹 더
+    play('thwack', 0.16 + Math.min(0.2, heavy * 0.8), 1.15 - Math.min(0.35, heavy * 1.2), 0.08);
+    if (src === 'blast') play('imp_h', 0.12 + Math.min(0.2, heavy * 0.7), e.boss ? 0.8 : 1);
+    else if (heavy > 0.15 || dmg >= 150) play('imp_s', 0.14 + Math.min(0.18, heavy * 0.6), 1.05);
     if (heavy > 0.12 || (e.boss && dmg > 120)) { play('imp_p', 0.3 + Math.min(0.3, heavy), 0.85); MUS.duckT = 0.18; }
     if (e.boss) play('bosshit', 0.22, 1.35);
     if (SET().nums && dmg >= 20 && S.texts.length < 45) addText(e.x + (Math.random() - .5) * 20, e.y - e.r * 0.6, String(Math.round(dmg)), dmg >= 200 ? '#ffd24a' : '#e6f4ff', dmg >= 200 ? 24 : 16, 0.55, true);
@@ -1476,6 +1476,7 @@ function killEnemy(e) {
   if (S.combo >= 3) S.comboPop = 0.25;
   if (S.combo >= 20 && S.mode !== 'clearing') ach('combo_20');   // 클리어 소탕 연쇄는 세지 않는다
   const pitch = 1 + Math.min(S.combo, 20) * 0.015;
+  play('thwack', 0.3 + Math.min(0.2, size * 0.1), 0.85 / Math.max(1, size * 0.8), 0.05);   // 격추는 더 큰 "퍽!"
   if (size >= 1) play('debris', 0.18 + Math.min(0.3, (size - 1) * 0.25), pitch);
   if (size >= 1.3) { play('imp_p', 0.35 + Math.min(0.3, (size - 1.3) * 0.4), 0.7); MUS.duckT = 0.25; }
   if (size >= 2) { shockwave(e.x, e.y, e.boss ? 460 : 260); play('kaboom', 0.8, 0.8); play('thud', 0.7); play('boom_big', 0.45); S.hitStop = 0.09; punch(1); }
@@ -1911,7 +1912,7 @@ function updateDrones(u, dt) {
   }
   u.drones.forEach((d, i) => {
     if (d.gone > 0) { d.gone -= dt; d.x = p.x; d.y = p.y; return; }
-    const tgt = capT || pickTarget();
+    const tgt = focusValid() ? S.focus : capT || pickTarget();
     d.a += dt * 3;
     const ox = Math.cos(d.a + i * 1.3) * 46, oy = Math.sin(d.a + i * 1.3) * 22 + 70;
     const tx = tgt ? tgt.x + ox : p.x + Math.cos(d.a + i) * 30, ty = tgt ? tgt.y + oy : p.y - 40 + Math.sin(d.a + i) * 10;
@@ -2816,6 +2817,7 @@ function drawCap(c) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(S.time * 1.6);
     brackets(-52, -52, 104, 104, 16, '#ff4d5a', 3);
     ctx.restore();
+    if (c.y <= FIRE_Y) { ctx.font = FK(14); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('사거리 밖, 들어오면 쏴요', x, y + 66, '#ffb0b0', 3); }
   }
   const ratio = Math.max(0, c.hits / c.maxHits);
   ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 6;
@@ -2927,6 +2929,7 @@ function drawEnemy(e) {
   if (focused || e.pending > 0) {
     const bs = e.r * (focused ? 1.5 : 1.25) + Math.sin(S.time * 10) * 2;
     brackets(e.x - bs, e.y - bs, bs * 2, bs * 2, bs * 0.4, focused ? '#ff4d5a' : 'rgba(120,230,255,.55)', focused ? 3 : 1.5);
+    if (focused && e.y <= FIRE_Y) { ctx.font = FK(14); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('사거리 밖, 들어오면 쏴요', e.x, e.y + bs + 14, '#ffb0b0', 3); }
   }
   if (!e.boss && (e.hp < e.maxHp || e.shield < e.maxShield)) {
     // 적 체력: 아군 게이지와 같은 결의 네온 칸 게이지 (붉은 자홍). 깎인 만큼 하얀 잔상이 잠깐 남는다
@@ -3625,6 +3628,19 @@ function draw(dt) {
   }
   drawUnitFrames(true);
   S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.9, uSize(u) > 2 ? 0.26 : uSize(u) === 2 ? 0.34 : 0.58); });
+  if (!(drag && drag.moved) && (S.mode === 'play' || S.mode === 'break')) {   // 합칠 수 있는 짝: 칸 모서리에 초록 꺾쇠가 천천히 깜빡
+    const groups = {};
+    for (const u of allUnits()) if (u.lv < MAX_LV) (groups[u.type + u.lv] = groups[u.type + u.lv] || []).push(u);
+    const a = 0.6 + 0.35 * Math.sin(S.time * 2.6);
+    ctx.strokeStyle = `rgba(160,255,170,${a})`; ctx.lineWidth = 3.5;
+    for (const g of Object.values(groups)) if (g.length >= 2) for (const u of g) {
+      let bx, by, bw, bh;
+      if (u.res != null) { const q = resPos(u.res); bx = q.x - RES_W / 2; by = q.y - RES_W / 2; bw = bh = RES_W; }
+      else { const b = unitBox(u); bx = b.x; by = b.y; bw = b.w; bh = b.h; }
+      const k = Math.min(14, bw / 4); bx -= 2; by -= 2; bw += 4; bh += 4;
+      for (const [cx, cy, sx, sy] of [[bx, by, 1, 1], [bx + bw, by, -1, 1], [bx, by + bh, 1, -1], [bx + bw, by + bh, -1, -1]]) { ctx.beginPath(); ctx.moveTo(cx + sx * k, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy * k); ctx.stroke(); }
+    }
+  }
   drawDrones();
   drawBeams();
   drawShots();
@@ -3707,6 +3723,16 @@ function drawHud() {
     const vg = ctx.createRadialGradient(W / 2, H / 2, 300, W / 2, H / 2, 640);
     vg.addColorStop(0, 'rgba(80,220,255,0)'); vg.addColorStop(1, 'rgba(80,220,255,.22)');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  }
+  if (S.mode === 'play' || S.mode === 'break') {   // 방어선 가까이 온 적: 판 위에 빨간 화살표, 처음 들어오면 경고음
+    const near = S.enemies.filter(e => shootable(e) && e.y > LINE_Y - 150).sort((p, q) => q.y - p.y).slice(0, 6);
+    for (const e of near) {
+      const k = Math.min(1, (e.y - (LINE_Y - 150)) / 130), y = LINE_Y - 1, pulse = 0.6 + 0.4 * Math.sin(S.time * 12);
+      ctx.globalAlpha = 0.5 + 0.5 * k * pulse; ctx.fillStyle = '#ff3a4a';
+      ctx.beginPath(); ctx.moveTo(e.x, y + 12); ctx.lineTo(e.x - 11, y - 4); ctx.lineTo(e.x - 4, y - 4); ctx.lineTo(e.x - 4, y - 14); ctx.lineTo(e.x + 4, y - 14); ctx.lineTo(e.x + 4, y - 4); ctx.lineTo(e.x + 11, y - 4); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+      if (!e.nearWarned) { e.nearWarned = true; play('twoTone', 0.22, 1.5); }
+    }
   }
   { // 화면 가장자리 붉은 빛: 맞은 순간 크게, 방어막이 3 이하면 약하게 맥박
     const hk = S.baseHitT / 0.6, low = S.hp <= 3 && (S.mode === 'play' || S.mode === 'break') ? 0.18 + 0.1 * Math.sin(S.time * 5) : 0, a = Math.max(hk * 0.75, low);
@@ -4977,7 +5003,7 @@ cv.addEventListener('pointermove', ev => {
   if (!drag || ev.pointerId !== drag.id) return;
   const p = toLocal(ev);
   drag.x = p.x; drag.y = p.y;
-  if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) { drag.moved = true; play('pick', 0.55, 1, 0.04); }
+  if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) { drag.moved = true; play('pick', 0.22, 0.72, 0.03); }
 });
 function doMerge(target, from) {
   mergeInto(target, from);
@@ -5047,7 +5073,7 @@ function scrapUnit(u) {
   play('scrap', 0.55); play('scrap_low', 0.35);
   addGear(val, p.x, p.y);
 }
-function clunk(rate = 1) { play('drop', 0.55, rate, 0.03); play('latch', 0.4, rate, 0.03); play('hit', 0.18, 0.6 * rate, 0.04); }
+function clunk(rate = 1) { play('thud', 0.3, 1.25 * rate, 0.03); play('latch', 0.16, 0.7 * rate, 0.03); }   // 낮고 짧은 '턱'
 function denied() { play('deny', 0.5); }
 function endDrag(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
