@@ -48,9 +48,7 @@ resize();
 
 // ── 에셋 ──────────────────────────────────────────────────
 const IMG_NAMES = ['f1','f2','f3','tbase','t1','t2','t3','laser','hit','missile','bomblet','mine',
-  'e_grunt','e_tank','e_minion','e_rock1','e_rock2','e_boss','e_rusher','e_split','e_splitS','e_shield',
-  'e_heal','e_thief','b_rock','b_ufo','b_flag','cap_f','cap_t','cap_up','cap_heal',
-  'puff','aura1','aura2','star','wall','life',
+  'cap_f','cap_t','cap_up','cap_heal','aura2',
   'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b',
   ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl','ex1','ex2','ex3','ex4'].map(n => 'fx/' + n),
   ...[...'ftsgmedcabrhnxvkwlqy'].flatMap(t => [1, 2, 3, 4, 5, 6, 7, 8].map(k => 'units/' + t + k)),
@@ -60,7 +58,7 @@ function loadImages() {
   return Promise.all(IMG_NAMES.map(n => new Promise(res => {
     const im = new Image();
     im.onload = res; im.onerror = res;
-    im.src = 'assets/' + n + '.png';
+    im.src = 'assets/' + n + (/^(units|enemies)\//.test(n) || /^fx\/ex\d$/.test(n) ? '.webp' : '.png');   // 큰 그림은 WebP
     IMG[n] = im;
   })));
 }
@@ -85,18 +83,8 @@ function fitEnemySizes() {
   }
 }
 function buildTints() {
-  // 초월 광택: 최종 단계 그림에 빨강(Lv6), 분홍(Lv7), 청록(Lv8 무지개 순환용)
-  setTimeout(() => { for (const t of 'ftsgmedcabrhnxvk') { const n = 'units/' + t + '5'; makeTint(n, '#ff4a3a', n + '_l6', 0.6); makeTint(n, '#ff4ad2', n + '_l7', 0.6); makeTint(n, '#48e0ff', n + '_l8', 0.6); } }, 0);
-  const lvImgs = ['f1', 'f2', 'f3', 'tbase', 't1', 't2', 't3', ...Object.values(UNIT).map(d => d.img)];
-  setTimeout(() => { for (const n of lvImgs) { makeTint(n, '#c07bff', n + '_l4', 0.32); makeTint(n, '#ffc83a', n + '_l5', 0.4);
-    makeTint(n, '#3a7cff', n + '_l6', 0.45); makeTint(n, '#ff2a4a', n + '_l7', 0.45); makeTint(n, '#f4f0ff', n + '_l8', 0.4);
-    RAINBOW.forEach((c, i) => makeTint(n, c, n + '_r' + i, 0.6)); } }, 0);
   const enemyImgs = [...new Set(Object.values(ENEMY).map(d => d.img).concat(['enemies/rock2']))];
   setTimeout(() => { for (const n of enemyImgs) makeTint(n, '#000000', n + '_sh', 1); }, 0);
-  makeTint('e_grunt', '#ff3cc8', 't_sniper', 0.55);
-  makeTint('e_tank', '#ff2a3a', 't_gunship', 0.5);
-  makeTint('e_rusher', '#ffa020', 't_bomber', 0.45);
-  makeTint('e_tank', '#ffc02a', 't_elite', 0.45);
   makeTint('u_b', '#4ab8ff', 'u_b2', 0.3, true);
   makeTint('u_c', '#6af0ff', 'u_c2', 0.45);
   makeTint('u_v', '#b86bff', 'u_v2', 0.45);
@@ -198,7 +186,7 @@ function spr(name, x, y, w, h, rot = 0, alpha = 1) {
   ctx.globalAlpha *= alpha;
   ctx.translate(x, y);
   if (rot) ctx.rotate(rot);
-  ctx.drawImage(im, -w / 2, -h / 2, w, h);
+  ctx.drawImage(name.startsWith('enemies/') ? fitImg(im, w, h) : im, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
 
@@ -2387,7 +2375,7 @@ function drawBg(dt, planetIdx = 0) {
 const BLOOM = document.createElement('canvas'), bctx = BLOOM.getContext('2d');
 const BLOOM2 = document.createElement('canvas'), b2ctx = BLOOM2.getContext('2d');   // 더 넓고 부드러운 두 번째 번짐
 function applyBloom() {
-  if (!SET().fx || !('filter' in ctx)) return;
+  if (!SET().fx || LOWFX || !('filter' in ctx)) return;
   const bw = Math.max(1, cv.width >> 2), bh = Math.max(1, cv.height >> 2);
   const fresh = BLOOM.width !== bw || BLOOM.height !== bh;
   if (fresh) { BLOOM.width = bw; BLOOM.height = bh; }
@@ -2403,17 +2391,19 @@ function applyBloom() {
   b2ctx.filter = 'blur(4px)';
   b2ctx.drawImage(BLOOM, 0, 0, w2, h2);
   b2ctx.filter = 'none';
+  // 넓은 번짐을 작은 번짐 위에 미리 더해 두고, 화면에는 한 번만 덮는다
+  bctx.globalCompositeOperation = 'lighter'; bctx.globalAlpha = 0.75;
+  bctx.drawImage(BLOOM2, 0, 0, bw, bh);
+  bctx.globalAlpha = 1;
   }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.32;
   ctx.drawImage(BLOOM, 0, 0, cv.width, cv.height);
-  ctx.globalAlpha = 0.24;
-  ctx.drawImage(BLOOM2, 0, 0, cv.width, cv.height);
   ctx.restore();
 }
 let GRADE = null;
 function applyGrade() {
-  if (!SET().fx) return;
+  if (!SET().fx || LOWFX) return;
   ctx.save(); ctx.globalCompositeOperation = 'soft-light';
   if (!GRADE) { GRADE = ctx.createLinearGradient(0, 0, 0, H); GRADE.addColorStop(0, 'rgba(40,90,200,.5)'); GRADE.addColorStop(0.55, 'rgba(90,70,170,.3)'); GRADE.addColorStop(1, 'rgba(255,150,70,.35)'); }
   ctx.fillStyle = GRADE; ctx.fillRect(0, 0, W, H);
@@ -2440,18 +2430,24 @@ function drawShockwaves() {
     ctx.restore();
   }
 }
+let OVL = null;
 function drawOverlay() {
   if (!SET().fx) return;
-  if (!SCAN_PAT) SCAN_PAT = ctx.createPattern(SCAN, 'repeat');
+  // 스캔라인과 가장자리 어둠은 한 장으로 구워 두고 한 번만 덮는다 (화면 크기가 바뀌면 다시)
+  if (!OVL || OVL.width !== cv.width || OVL.height !== cv.height) {
+    OVL = document.createElement('canvas'); OVL.width = cv.width; OVL.height = cv.height;
+    const g = OVL.getContext('2d'), k = cv.width / W; g.scale(k, k);
+    g.globalAlpha = 0.18; g.fillStyle = g.createPattern(SCAN, 'repeat'); g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+    const v = g.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.72);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,8,.45)');
+    g.fillStyle = v; g.fillRect(0, 0, W, H);
+  }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(OVL, 0, 0); ctx.restore();
   ctx.save();
-  ctx.globalAlpha = 0.18; ctx.fillStyle = SCAN_PAT; ctx.fillRect(0, 0, W, H);
   const t = performance.now() / 1000, sy = (t * 140) % (H + 200) - 100;
   const g = ctx.createLinearGradient(0, sy - 60, 0, sy + 60);
   g.addColorStop(0, 'rgba(120,220,255,0)'); g.addColorStop(0.5, 'rgba(120,220,255,.05)'); g.addColorStop(1, 'rgba(120,220,255,0)');
   ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(0, sy - 60, W, 120);
-  const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.72);
-  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,8,.45)');
-  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   ctx.restore();
   if (S.glitch > 0) {
     for (let k = 0; k < 5; k++) {
@@ -2479,6 +2475,20 @@ function drawFlame(x, y, len, wid, color, alpha = 1) {
   drawGlow(color, x, y + len * 0.3, wid * 2.6, 0.45 * alpha);
 }
 
+// 큰 그림을 화면에 그릴 크기로 한 번만 줄여 둔다. 매 프레임 300px을 60px로 줄여 그리지 않게 (8px 단위, 그림마다 최대 10개)
+function fitImg(img, dw, dh) {
+  const px = cv.width / W, tw = Math.ceil(dw * px / 8) * 8, th = Math.ceil(dh * px / 8) * 8;
+  if (!img.width || tw * 1.5 > img.width) return img;
+  const m = img._fit || (img._fit = new Map()), key = tw + 'x' + th;
+  let c = m.get(key);
+  if (!c) {
+    c = document.createElement('canvas'); c.width = tw; c.height = th;
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, tw, th);
+    if (m.size >= 10) m.delete(m.keys().next().value);
+    m.set(key, c);
+  }
+  return c;
+}
 // 기체 그림 (칸 위, 대기함, 격납고 카드 공통)
 function drawUnitArt(type, lv, x, y, s, alpha, u) {
   const def = UNIT[type], m = Math.min(lv, 3), t = performance.now() / 1000;
@@ -2508,7 +2518,7 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
     if (lv >= 6 && u && tier < lv) drawGlow(rankCol(lv), x, y + 4, 44 * k * (lv >= 8 ? 1.15 : 1), 0.35 + 0.12 * Math.sin(t * 4), 0.8);
     if (def.air) drawFlame(x, y + dh * 0.44 + ky, (8 + lv * 3) * (0.8 + Math.random() * 0.35) * k, 3 + tier, col, alpha * 0.8);
     ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y - 2 + ky); if (rot) ctx.rotate(rot);
-    ctx.drawImage(NI, -dw / 2, -dh / 2, dw, dh);
+    ctx.drawImage(fitImg(NI, dw, dh), -dw / 2, -dh / 2, dw, dh);
     if (lv >= 6 && tier < lv) {
       const TI = IMG['units/' + type + '5_' + (lv >= 8 ? ['l6', 'l7', 'l8'][Math.floor(t * 4) % 3] : 'l' + lv)];
       if (TI && TI.width) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha * (0.28 + 0.12 * Math.sin(t * 3 + x * 0.1)); ctx.drawImage(TI, -dw / 2, -dh / 2, dw, dh); }
@@ -4723,6 +4733,7 @@ document.addEventListener('visibilitychange', () => {
     if (S.stage && (S.mode === 'play' || S.mode === 'break')) S.paused = true;
   } else if (AC && AC.state === 'suspended') AC.resume();
 });
+let LOWFX = false, slowT = 0;
 function loop(now) {
   requestAnimationFrame(loop);
   // 프레임 상한: 전투 60, 메뉴와 창이 떠 있을 때 30 (120Hz 폰에서 두 배로 그리지 않게)
@@ -4730,6 +4741,8 @@ function loop(now) {
   if (now - last < (calm ? 1000 / 30 : 1000 / 60) - 2) return;
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  // 약한 폰: 전투 중 4초 넘게 초당 45프레임을 못 내면 빛 번짐과 색 보정을 이번 세션 동안 끈다
+  if (!calm && !LOWFX && !SHOT) { slowT = dt > 1 / 45 ? slowT + dt : Math.max(0, slowT - dt); if (slowT > 4) LOWFX = true; }
   let gdt = dt;
   if (S.hitStop > 0) { S.hitStop -= dt; gdt = dt * 0.15; }
   if (S.stage && !S.paused && !S.frozen && !UI.settings && !UI.reveal && !UI.shop && !(UI.card && S.mode !== 'win')) update(gdt);
