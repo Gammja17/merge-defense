@@ -2853,7 +2853,7 @@ function lvBadge(lv, cx, cy, col, sc = 1) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc);
   ctx.fillStyle = 'rgba(0,6,20,.94)'; chamfer(-12, -9, 24, 18, 5); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.font = FT(12, 900); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col;
+  ctx.font = FU(14, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col;   // Orbitron의 7은 ㄱ처럼 보여서 Chakra Petch
   ctx.fillText(String(lv), 0, 1);
   ctx.restore();
 }
@@ -3972,59 +3972,70 @@ function drawCard() {
   const c = UI.card, t2 = c.type, def = UNIT[t2], own = isOwned(t2), inDeck = PROG.deck.includes(t2), t = performance.now() / 1000;
   BUTTONS = [];
   ctx.fillStyle = 'rgba(2,3,12,.8)'; ctx.fillRect(0, 0, W, H);
-  const x = 30, y = 40, w = W - 60, h = 860;
+  const x = 30, y = 10, w = W - 60, h = 930;
   const now = performance.now() / 1000, cdt = Math.min(0.05, now - (UI.lastT || now)); UI.lastT = now;
   drawGlow(def.col, W / 2, 200, 200, 0.2);
   panel(x, y, w, h, def.col);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (c.isNew) { ctx.font = FU(14); glitchText('// NEW UNIT UNLOCKED', W / 2, y + 30, '#ffd24a', 3, Math.random() < 0.1 ? 4 : 0.5); }
   else { ctx.font = FU(12); ctx.fillStyle = def.col; ctx.fillText(`// UNIT DATA / ${t2.toUpperCase()}`, W / 2, y + 30); }
-  // 기체 그림: 레벨 1→5를 돌아가며 보여준다
-  const showLv = c.inGame ? c.u.lv : 1 + Math.floor(t / 1.2) % 5;
+  // 기체 그림: 레벨 1→8을 돌아가며 보여준다 (전투 중엔 그 기체의 레벨)
+  const showLv = c.inGame ? c.u.lv : 1 + Math.floor(t / 1.2) % MAX_LV, sc = rankCol(showLv);
   const k2 = Math.min(150 / def.iw, 130 / def.ih);
-  drawGlow(LV_COL[showLv - 1], W / 2, y + 140, 90, 0.3);
-  if (showLv >= 4) spr(showLv >= 5 ? 'aura2' : 'aura1', W / 2, y + 136, 170, 160, t, 0.5);
-  drawUnitArt(t2, showLv, W / 2, y + 140, k2 * (1 + (showLv - 1) * 0.04), 1, null);
-  ctx.font = FT(11); ctx.fillStyle = LV_COL[showLv - 1]; ctx.fillText(`LV.${showLv}`, W / 2 + 110, y + 70);
+  drawGlow(sc, W / 2, y + 140, 90, 0.25);
+  drawUnitArt(t2, showLv, W / 2, y + 140, k2, 1, null);
+  lvBadge(showLv, W / 2 + 110, y + 70, sc);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FK(32); outlineText(def.name + (mkOf(t2) ? `  Mk.${mkOf(t2)}` : ''), W / 2, y + 232, mkOf(t2) ? '#ffe9a8' : '#fff', 5);
   ctx.font = FK(16); ctx.fillStyle = def.col; ctx.fillText(def.role + (def.shape === 1 ? ', 1칸' : ''), W / 2, y + 262);
   ctx.font = FK(16); ctx.fillStyle = 'rgba(220,235,255,.9)';
-  wrapLines(def.desc, w - 70).forEach((l, i) => ctx.fillText(l, W / 2, y + 292 + i * 22));
-  // 레벨별 성장 그래프
-  const st5 = [1, 2, 3, 4, 5].map(l => levelStat(t2, l)), mx = Math.max(...st5.map(q => q.v)) || 1;
-  const gx0 = x + 44, gw = (w - 88) / 5, gy0 = y + 420;
+  wrapLines(def.desc, w - 70).forEach((l, i) => ctx.fillText(l, W / 2, y + 290 + i * 22));
+  // 성능: 지금 보이는 레벨 기준
+  const atk = def.dmg ? Math.round(def.dmg * LV_MUL[showLv - 1] * mkMul(t2)) : 0;
+  [['공격력', atk ? fmt(atk) : '없음'], ['공격 속도', def.dmg && def.cd ? `${(1 / def.cd).toFixed(1)}회/초` : '없음'], ['체력', String(unitMaxHp(t2, showLv))]].forEach(([k, v], i) => {
+    const bw = (w - 64) / 3, bx = x + 24 + i * (bw + 8), by = y + 336;
+    ctx.fillStyle = 'rgba(8,18,44,.9)'; chamfer(bx, by, bw, 46, 8); ctx.fill();
+    ctx.strokeStyle = sc; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2; ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.textAlign = 'center'; ctx.font = FK(13); ctx.fillStyle = 'rgba(190,215,245,.85)'; ctx.fillText(k, bx + bw / 2, by + 14);
+    ctx.font = FT(16, 900); outlineText(v, bx + bw / 2, by + 32, '#fff', 3);
+  });
+  // 레벨별 성장 그래프 (Lv1~8)
+  const st8 = Array.from({ length: MAX_LV }, (_, i) => levelStat(t2, i + 1)), mx = Math.max(...st8.map(q => q.v)) || 1;
+  const gx0 = x + 30, gw = (w - 60) / MAX_LV, gy0 = y + 466;
   ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)';
-  ctx.fillText('// 합칠수록 이만큼 세져요', x + 36, y + 336);
-  st5.forEach((q, i) => {
-    const bh = 10 + 56 * Math.sqrt(q.v / mx), bx = gx0 + i * gw + gw * 0.2, bw = gw * 0.6, on = i + 1 === showLv;
-    ctx.fillStyle = on ? LV_COL[i] : 'rgba(120,200,255,.35)';
+  ctx.fillText('// 합칠수록 이만큼 세져요', x + 36, y + 400);
+  st8.forEach((q, i) => {
+    const bh = 8 + 40 * Math.sqrt(q.v / mx), bx = gx0 + i * gw + gw * 0.2, bw = gw * 0.6, on = i + 1 === showLv, col = rankCol(i + 1);
+    ctx.fillStyle = on ? col : 'rgba(120,200,255,.3)';
     ctx.fillRect(bx, gy0 - bh, bw, bh);
-    if (on) drawGlow(LV_COL[i], bx + bw / 2, gy0 - bh, 18, 0.5);
-    ctx.textAlign = 'center'; ctx.font = FT(11, 900); ctx.fillStyle = '#fff'; ctx.fillText(fmt(q.v), bx + bw / 2, gy0 - bh - 9);
-    ctx.font = FU(10); ctx.fillStyle = LV_COL[i]; ctx.fillText(`LV${i + 1}`, bx + bw / 2, gy0 + 10);
+    if (on) drawGlow(col, bx + bw / 2, gy0 - bh, 18, 0.5);
+    ctx.textAlign = 'center'; ctx.font = FT(9, 900); ctx.fillStyle = on ? '#fff' : 'rgba(255,255,255,.7)'; ctx.fillText(fmt(q.v), bx + bw / 2, gy0 - bh - 8);
+    ctx.font = FU(9); ctx.fillStyle = col; ctx.fillText(`LV${i + 1}`, bx + bw / 2, gy0 + 9);
   });
   // 합체 비교: 같은 기체 두 대를 그대로 둘 때와 합쳤을 때
-  const cmpL = Math.min(showLv, 4), two = st5[cmpL - 1].v * 2, one = st5[cmpL].v, cells = SHAPES[def.shape].length, nextT = TRANSCEND[showLv - 5];
+  const cmpL = Math.min(showLv, 4), two = st8[cmpL - 1].v * 2, one = st8[cmpL].v, cells = SHAPES[def.shape].length, nextT = TRANSCEND[showLv - 5];
   ctx.font = FK(14); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(220,235,255,.9)';
   const cmpTxt = showLv < 5 ? `Lv${cmpL} 두 대 ${fmt(two)} (${cells * 2}칸)  →  Lv${cmpL + 1} 한 대 ${fmt(one)} (${cells}칸) + 새 스킬`
     : nextT ? `Lv${showLv} 두 대를 합치면 ${nextT}: 화력 ×2.3, 스킬 더 자주` : '최고 단계 초월 III';
-  ctx.fillText(cmpTxt, W / 2, y + 446);
-  // 스킬 목록
-  ctx.textAlign = 'left';
-  SKILLS[t2].forEach(([nm, ds], i) => {
-    const sy = y + 478 + i * 48, on = i + 1 === Math.min(showLv, 5);
-    ctx.fillStyle = on ? 'rgba(90,210,255,.12)' : 'rgba(255,255,255,.03)'; chamfer(x + 24, sy - 22, w - 48, 44, 8); ctx.fill();
-    const ls = levelStat(t2, i + 1); ctx.textAlign = 'right'; ctx.font = FT(10); ctx.fillStyle = 'rgba(200,230,255,.8)'; ctx.fillText(`전투력 ${fmt(ls.v)}, HP ${unitMaxHp(t2, i + 1)}`, x + w - 36, sy - 6); ctx.textAlign = 'left';
-    ctx.font = FT(12, 900); ctx.fillStyle = LV_COL[i]; ctx.fillText(`LV${i + 1}`, x + 36, sy - 6);
-    ctx.font = FK(17); ctx.fillStyle = '#fff'; ctx.fillText(nm, x + 82, sy - 6);
-    ctx.font = FK(13); ctx.fillStyle = 'rgba(200,220,245,.85)';
-    const ln = wrapLines(ds, w - 120);
-    ctx.fillText(ln[0], x + 82, sy + 13);
-    if (ln.length > 1) { ctx.font = FK(12); ctx.fillText(ln.slice(1).join(' '), x + 82, sy + 27); ctx.font = FK(13); }
+  ctx.fillText(cmpTxt, W / 2, y + 494);
+  // 스킬 목록 (Lv1~5) + 초월 한 줄 (Lv6~8)
+  const rowsK = SKILLS[t2].map(([nm, ds], i) => [`LV${i + 1}`, nm, ds, i + 1 === Math.min(showLv, 5) && showLv <= 5, RANK_COL[i]]);
+  rowsK.push(['LV6~8', '초월 I~III', transDesc(t2), showLv >= 6, RANK_COL[6]]);
+  rowsK.forEach(([lvT, nm, ds, on, col], i) => {
+    const sy = y + 530 + i * 42;
+    ctx.fillStyle = on ? 'rgba(90,210,255,.12)' : 'rgba(255,255,255,.03)'; chamfer(x + 24, sy - 20, w - 48, 40, 8); ctx.fill();
+    if (on) { ctx.strokeStyle = col; ctx.globalAlpha = 0.6; ctx.lineWidth = 1.2; ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = FK(12); const ln = wrapLines(ds, w - 130), two = ln.length > 1;
+    ctx.font = FT(i === 5 ? 10 : 12, 900); ctx.fillStyle = col; ctx.fillText(lvT, x + 34, sy - (two ? 9 : 6));
+    ctx.font = FK(15); ctx.fillStyle = '#fff'; ctx.fillText(nm, x + 88, sy - (two ? 11 : 7));
+    ctx.font = FK(12); ctx.fillStyle = 'rgba(200,220,245,.85)';
+    if (two) { ctx.fillText(ln[0], x + 88, sy + 4); ctx.fillText(ln.slice(1).join(' '), x + 88, sy + 15); }
+    else ctx.fillText(ln[0], x + 88, sy + 11);
   });
   // 버튼
   const by = y + h - 58;
-  if (!c.inGame && own) drawResearch(t2, x + 24, y + 704, w - 48, 88, y);
+  if (!c.inGame && own) drawResearch(t2, x + 24, y + 776, w - 48, 88, y);
   if (c.inGame) {
     ctx.font = FK(17); ctx.textAlign = 'center'; ctx.fillStyle = '#bfefff';
     ctx.fillText(`지금 Lv${c.u.lv}, HP ${Math.max(0, Math.ceil(c.u.hp))}/${c.u.maxHp}, 전투 일시정지 중`, W / 2, by - 28);
@@ -4040,7 +4051,7 @@ function drawCard() {
     ctx.fillText(`스테이지 ${def.unlock.stage}을 깨면 해금돼요`, x + 125, by + 25);
   }
   button(x + w - 220, by, 190, 46, '닫기', 'closecard', 'ghost');
-  if (UI.toast && UI.toast.until > t) { ctx.font = FK(16); ctx.textAlign = 'center'; outlineText(UI.toast.text, W / 2, y + 694, '#ffb0b0', 4); }
+  if (UI.toast && UI.toast.until > t) { ctx.font = FK(16); ctx.textAlign = 'center'; outlineText(UI.toast.text, W / 2, y + 766, '#ffb0b0', 4); }
   // 카드 오른쪽 위 코어 계기
   coreLabel(x + w - 22, y + 30, UI.coreShown, 14, 'right');
   drawUpgradeFx(t2, W / 2, y + 140, x + w - 60, y + 30, cdt);
