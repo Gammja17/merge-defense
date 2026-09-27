@@ -7,6 +7,8 @@
   @font-face { font-family: Orbitron; src: url(assets/fonts/Orbitron.ttf) format('truetype'); font-weight: 400 900; }
   @font-face { font-family: "Chakra Petch"; src: url(assets/fonts/ChakraPetch-Bold.ttf) format('truetype'); font-weight: 500 700; }
   @font-face { font-family: "Do Hyeon"; src: url(assets/fonts/DoHyeon-Regular.ttf) format('truetype'); }
+  /* 작은 한글용. 게임에 쓰는 글자만 남긴 파일이라 새 글자를 쓰면 다시 만들어야 해요 (없는 글자는 도현체로) */
+  @font-face { font-family: "Plex KR"; src: url(assets/fonts/PlexKR-Bold-sub.woff2) format('woff2'); font-weight: 700; }
   :root { --bg: #070612; color-scheme: dark; }
   html { box-sizing: border-box; height: 100%; }
   body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -18,15 +20,16 @@
 'use strict';
 // ── 기본 설정 ─────────────────────────────────────────────
 const W = 540, H = 960;
-let LINE_Y = 640;                 // 방어선
+let LINE_Y = 584;                 // 방어선
 const FIRE_Y = 190;                 // 이 아래로 들어와야 사격 가능 (사거리)
-const COLS = 6, ROWS = 4, CW = 76, CH = 72, GRID_X = 12;
-let GRID_Y = 662;
-const RES_X = 476, RES_W = 58, RES_N = 3;    // 대기함
+const COLS = 6, ROWS = 4, CW = 86, CH = 86, GRID_X = 12;
+let GRID_Y = 606;
+const RES_X = 12, RES_W = 46, RES_N = 3;    // 대기함: 판 위 줄 왼쪽의 작은 칸 셋
 const MAX_LV = 8, U_SCALE = 0.85, DECK_N = 5;
 const FT = (s, w = 700) => `${w} ${s}px Orbitron, "Do Hyeon", sans-serif`;
 const FU = (s, w = 700) => `${w} ${s}px "Chakra Petch", "Do Hyeon", sans-serif`;
-const FK = (s) => `${s}px "Do Hyeon", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif`;
+// 작은 글씨는 잘 읽히는 IBM Plex Sans KR, 큰 글씨는 도현체
+const FK = (s) => s <= 17 ? `700 ${Math.max(12, Math.round(s * 0.94))}px "Plex KR", "Do Hyeon", "Malgun Gothic", sans-serif` : `${s}px "Do Hyeon", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif`;
 
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -357,7 +360,7 @@ function stageInfo(n) {
   return { n, s, i, sector: SECTORS[s], boss: i === 4, waves: 5 };
 }
 let WAVE_GROWTH = 0.4, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
-let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8].map(v => v * 1.22);   // 부품이 넉넉해진 만큼 적도 조금 튼튼하게
+let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8].map(v => v * 1.12);   // 부품이 넉넉해진 만큼 적도 조금 튼튼하게
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
 const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2]];
 
@@ -642,7 +645,7 @@ function drawTut() {
       arrow(p.x, p.y - 40);
     }
   }
-  if (T.step === 5) arrow(RES_X + RES_W / 2, GRID_Y + 2);
+  if (T.step === 5) arrow(SHOP_BX + 53, LINE_Y - 50);
   button(W - 124, 124, 108, 36, '건너뛰기', 'tutskip', 'ghost');
 }
 function hint(msg) {
@@ -657,7 +660,7 @@ function hintOnce(key, msg) {
 
 // ── 칸과 배치 ─────────────────────────────────────────────
 const cellPos = i => ({ x: GRID_X + (i % COLS) * CW + CW / 2, y: GRID_Y + Math.floor(i / COLS) * CH + CH / 2 });
-const resPos = k => ({ x: RES_X + RES_W / 2, y: GRID_Y + (k + 1) * CH + CH / 2 });
+const resPos = k => ({ x: RES_X + RES_W / 2 + k * (RES_W + 4), y: LINE_Y - 30 });
 function unitPos(u) {
   if (u.res != null) return resPos(u.res);
   const xs = u.cells.map(c => cellPos(c).x), ys = u.cells.map(c => cellPos(c).y);
@@ -670,7 +673,7 @@ function cellAt(x, y) {
 }
 let SCRAP_Y = LINE_Y - 20;   // 이 선보다 위(전장)에 놓으면 해체
 // 판 올리기: k는 판 위치를 정하는 줄 수(소수). 2줄일 땐 3줄 자리에 두고 셋째 줄을 비워 둔다
-function setLift(k) { S.lift = k; const off = (ROWS - k) * CH; GRID_Y = 662 + off; LINE_Y = 640 + off; SCRAP_Y = LINE_Y - 20; }
+function setLift(k) { S.lift = k; const off = (ROWS - k) * CH; GRID_Y = 606 + off; LINE_Y = 584 + off; SCRAP_Y = LINE_Y - 20; }
 function tickLift(dt) {
   const want = S.rowsOpen || START_ROWS, pos = Math.max(3, want);
   if (S.lift == null || S.shown == null || S.shown > want) { setLift(pos); S.shown = want; S.popRow = -1; return; }
@@ -686,11 +689,10 @@ function tickLift(dt) {
   for (let c = (want - 1) * COLS; c < want * COLS; c++) { const q2 = cellPos(c); S.fx.push({ kind: 'ring', x: q2.x, y: q2.y, t: -Math.abs(c % COLS - 2.5) * 0.04, life: 0.5, color: '#ffb347' }); }
   addText(W / 2, GRID_Y + (want - 0.5) * CH, '줄 추가!', '#ffd6a0', 26, 1.2);
 }
-const scrapAt = (x, y) => x >= RES_X && x <= RES_X + RES_W && y >= GRID_Y && y < GRID_Y + CH;
 function resAt(x, y) {
-  if (x < RES_X || x > RES_X + RES_W) return -1;
-  const k = Math.floor((y - GRID_Y) / CH) - 1;
-  return k >= 0 && k < openRows() - 1 ? k : -1;
+  if (Math.abs(y - (LINE_Y - 30)) > RES_W / 2 + 4) return -1;
+  const k = Math.floor((x - RES_X) / (RES_W + 4));
+  return k >= 0 && k < RES_N && x - RES_X - k * (RES_W + 4) <= RES_W + 2 ? k : -1;
 }
 function cellsFor(u, c) {
   // 누른 칸이 모양 가운데쯤 오게 두고, 판 밖으로 나가면 안쪽으로 민다
@@ -729,6 +731,7 @@ const CELL_FX = {
 const FX_KEYS = ['atk', 'spd', 'def', 'rng'];
 const CELL_UP = [5, 8];              // 2단계, 3단계로 올리는 값
 const START_ROWS = 2, ROW_ADD = [5, 9];   // 3줄, 4줄로 늘리는 값
+const SHOP_BX = 286;   // 판 위 줄의 정비소 버튼 왼쪽 끝
 const summonCost = () => 3 + (S.summons || 0);
 const cellNewCost = () => 3 + S.cellFx.filter(Boolean).length;   // 새로 찍을수록 조금씩 비싸진다
 const openRows = () => S.rowsOpen || START_ROWS;
@@ -742,9 +745,9 @@ const fxLabel = f => { const d = CELL_FX[f.k], v = d.v[f.lv - 1]; return d.key +
 // 부품: 해체, 엘리트와 보스 격추, 웨이브 돌파로 얻는다. 해체 칸으로 날아가 쌓인다
 function addGear(n, x, y) {
   S.gear += n;
-  S.fx.push({ kind: 'parts', x, y, tx: RES_X + RES_W / 2, ty: GRID_Y + CH / 2 - 12, n, t: 0, life: 0.6 });
+  S.fx.push({ kind: 'parts', x, y, tx: SHOP_BX + 53, ty: LINE_Y - 30, n, t: 0, life: 0.6 });
   addText(x, y - 30, `부품 +${n}`, '#ffb347', 18);
-  hintOnce('gear', '부품을 얻었어요! 소환 버튼으로 새 기체를 부르거나, 정비소에서 칸을 강화하고 줄을 늘릴 수 있어요.');
+  hintOnce('gear', '부품을 얻었어요! 소환 버튼으로 새 기체를 부르거나, 정비소 버튼을 눌러 칸을 강화하고 줄을 늘릴 수 있어요.');
 }
 function neighborsOf(u) {
   const set = new Set();
@@ -1449,7 +1452,7 @@ function giveUnit(type, lv, fromX, fromY, col) {
   let where;
   if (spot) { place(u, spot); where = unitPos(u); }
   else {
-    const k = S.reserve.findIndex((r, i) => !r && i < openRows() - 1);
+    const k = S.reserve.findIndex(r => !r);
     if (k < 0) return 'lost';
     toReserve(u, k); where = resPos(k);
     if (shapeDims(type).h > openRows()) hintOnce('tall', '세로 3칸 기체는 줄을 늘려야 올릴 수 있어요. 필요 없으면 위 전장으로 끌어 해체하면 부품이 나와요.');
@@ -2077,7 +2080,7 @@ function update(dt) {
     S.attacks = [];
     S.hp = Math.min(S.maxHp, S.hp + S.pk.regen);
     const gg = S.crisis ? 3 : 2;
-    addGear(gg, RES_X + RES_W / 2, GRID_Y - 30);
+    addGear(gg, W / 2, LINE_Y - 80);
     S.banner = { text: 'CLEAR', sub: `웨이브 ${S.wave} 방어 성공, 부품 +${gg}`, color: '#8dff9a', t: 0, life: 2 };
     S.crisis = false;
     if (st.endless && S.wave >= 10) ach('endless_10');
@@ -2390,7 +2393,6 @@ const DECK = offscreen(W, H - DECK_TOP, g => {
     g.strokeStyle = col; g.globalAlpha = 0.4; g.lineWidth = 1.5; g.stroke(); g.globalAlpha = 1;
   };
   bay(GRID_X - 6, gy - 6, COLS * CW + 12, ROWS * CH + 20, '#48c8ff');
-  bay(RES_X - 4, gy - 6, RES_W + 8, ROWS * CH + 20, '#ff5ac8');
 });
 const SCAN = offscreen(4, 3, g => { g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, 4, 1); });
 const HEX = offscreen(30, 52, g => {
@@ -2581,7 +2583,7 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
     // 배율은 종류마다 Lv5 본체가 칸에 맞는 크기로 고정. 모든 단계 그림이 같은 배율로 저장돼 있어서
     // 낮은 단계는 작게, Lv6~8은 본체 크기 그대로 홀로그램 날개만 칸 밖으로 퍼진다
     const dm = shapeDims(type), RI = IMG['units/' + type + '5'] && IMG['units/' + type + '5'].width ? IMG['units/' + type + '5'] : NI;
-    const [bw, bh] = def.shape === 'h2' ? [132, 64] : def.shape === 'v2' ? [66, 128] : def.shape === 1 ? [62, 66] : [dm.w * CW - 10, dm.h * CH - 8];
+    const [bw, bh] = def.shape === 'h2' ? [150, 76] : def.shape === 'v2' ? [74, 152] : def.shape === 1 ? [70, 78] : [dm.w * CW - 10, dm.h * CH - 8];
     const k = u ? s / U_SCALE / (1 + (lv - 1) * 0.05) : s * Math.max(def.iw, def.ih) / Math.max(bw, bh);
     const sc = Math.min(bw * k / RI.width, bh * k / RI.height, 1.3 * bw * k / NI.width, 1.3 * bh * k / NI.height), dw = NI.width * sc, dh = NI.height * sc, ky = kick * 30;   // 날개가 칸의 1.3배를 넘을 때만 줄인다
     const turns = def.rot || type === 't', rot = turns ? ang + Math.PI / 2 : 0;
@@ -2939,7 +2941,7 @@ function drawBaseLive() {
   }
   for (let k = 0; k < 6; k++) {
     const on = (Math.floor(t * 5) + 6 - k) % 6 === 0;
-    for (const x of [GRID_X - 3, RES_X - 1]) { ctx.fillStyle = on ? '#ffd24a' : 'rgba(255,210,74,.2)'; ctx.fillRect(x - 1, GRID_Y + 18 + k * 46, 2, 7); if (on) drawGlow('#ffd24a', x, GRID_Y + 21 + k * 38, 10, 0.5); }
+    for (const x of [GRID_X - 3, GRID_X + COLS * CW + 3]) { ctx.fillStyle = on ? '#ffd24a' : 'rgba(255,210,74,.2)'; ctx.fillRect(x - 1, GRID_Y + 18 + k * 46, 2, 7); if (on) drawGlow('#ffd24a', x, GRID_Y + 21 + k * 38, 10, 0.5); }
   }
 }
 // 기체 레벨 틀: 칸 테두리 색과 굵기(칸 그릴 때), 체력 막대와 별(기체를 그린 뒤 맨 위)
@@ -3048,35 +3050,14 @@ function drawPads() {
     sg.addColorStop(0, 'rgba(120,220,255,0)'); sg.addColorStop(0.5, 'rgba(120,220,255,.07)'); sg.addColorStop(1, 'rgba(120,220,255,0)');
     ctx.fillStyle = sg; ctx.fillRect(gx, sy - 30, gw, 60); ctx.restore(); }
   drawUnitFrames(false);
-  const rx = RES_X, ry = GRID_Y + 4, rw = RES_W, rh = CH * ROWS - 8;
-  ctx.fillStyle = 'rgba(30,10,40,.55)'; chamfer(rx, ry, rw, rh, 9); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,90,200,.35)'; ctx.lineWidth = 1.2; ctx.stroke();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  // 해체 칸 (맨 위)
-  const hot = drag && drag.moved && scrapAt(drag.x, drag.y), cy0 = GRID_Y + CH / 2, tt = S.time;
-  ctx.fillStyle = hot ? 'rgba(255,100,50,.4)' : 'rgba(60,24,16,.75)'; chamfer(rx + 3, ry + 3, rw - 6, CH - 14, 8); ctx.fill();
-  ctx.strokeStyle = hot ? '#ffb347' : 'rgba(255,150,80,.45)'; ctx.lineWidth = hot ? 2 : 1.2;
-  if (drag && drag.moved && !hot) { ctx.setLineDash([4, 4]); ctx.lineDashOffset = -tt * 20; }
-  ctx.stroke(); ctx.setLineDash([]);
-  if (hot) drawTex('p_spark', '#ffb347', rx + rw / 2, cy0 - 6, 60, tt * 4, 0.8);
-  ctx.save(); ctx.translate(rx + rw / 2, cy0 - 12); ctx.rotate(tt * (hot ? 3 : 0.6));
-  ctx.strokeStyle = '#ffb347'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.stroke();
-  for (let k = 0; k < 6; k++) { ctx.rotate(Math.PI / 3); ctx.fillStyle = '#ffb347'; ctx.fillRect(-2, -13, 4, 5); }
-  ctx.restore();
-  ctx.font = FK(14); ctx.fillStyle = '#ffd6b0'; ctx.fillText(drag && drag.moved ? '해체' : '정비소', rx + rw / 2, cy0 + 12);
-  ctx.font = FU(9); ctx.fillStyle = S.gear ? '#ffd6a0' : 'rgba(255,180,120,.75)'; ctx.fillText(`부품 ${S.gear}`, rx + rw / 2, cy0 + 27);
-  S.gearPulse = Math.max(0, (S.gearPulse || 0) - 1 / 60);
-  const canUp = S.gear >= Math.min(cellNewCost(), openRows() < ROWS ? ROW_ADD[openRows() - START_ROWS] : 99);
-  if ((canUp && !drag) || S.gearPulse > 0) drawGlow('#ffb347', rx + rw / 2, cy0 - 4, 40 + S.gearPulse * 40, 0.25 + 0.2 * Math.sin(tt * 5) + S.gearPulse);
-  ctx.font = FU(8); ctx.fillStyle = 'rgba(255,140,220,.8)';
-  ctx.fillText(`RESERVE ${S.reserve.filter(Boolean).length}/${openRows() - 1}`, rx + rw / 2, GRID_Y + CH + 1);
-  for (let k = 0; k < openRows() - 1; k++) {
-    const q = resPos(k);
-    ctx.strokeStyle = 'rgba(255,120,220,.3)'; ctx.setLineDash([3, 4]);
-    chamfer(q.x - 25, q.y - 31, 50, 62, 7); ctx.stroke(); ctx.setLineDash([]);
+  for (let k = 0; k < RES_N; k++) {   // 대기함 칸: 판 위 줄 왼쪽
+    const q = resPos(k), hs = RES_W / 2, hot = drag && drag.moved && resAt(drag.x, drag.y) === k;
+    ctx.fillStyle = hot ? 'rgba(120,40,110,.9)' : 'rgba(30,10,40,.85)'; chamfer(q.x - hs, q.y - hs, RES_W, RES_W, 7); ctx.fill();
+    ctx.strokeStyle = hot ? '#ff8ae0' : 'rgba(255,120,220,.45)'; ctx.lineWidth = hot ? 2 : 1.2;
+    if (!S.reserve[k]) { ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]); } else ctx.stroke();
   }
+  if (!S.reserve.some(Boolean)) { ctx.font = FU(8); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,140,220,.7)'; ctx.fillText('RESERVE', RES_X + (RES_N * (RES_W + 4) - 4) / 2, LINE_Y - 58); }
 }
-
 function drawFieldStuff() {
   for (const z of S.zones) {
     const p = z.t / z.life, a = Math.min(1, (1 - p) * 3) * Math.min(1, z.t * 6);
@@ -3508,7 +3489,7 @@ function draw(dt) {
     ctx.font = FU(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText(u.ice.toFixed(1), b.x + b.w / 2, b.y + 12, '#e8fbff', 3);
   }
   drawUnitFrames(true);
-  S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.85, uSize(u) > 2 ? 0.34 : uSize(u) === 2 ? 0.45 : 0.8); });
+  S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.9, uSize(u) > 2 ? 0.26 : uSize(u) === 2 ? 0.34 : 0.58); });
   drawDrones();
   drawBeams();
   drawShots();
@@ -3525,7 +3506,7 @@ function draw(dt) {
       const pulse = 0.5 + 0.5 * Math.sin(S.time * 10);
       for (const tu of allUnits()) {
         let bx, by, bw, bh;
-        if (tu.res != null) { const q = resPos(tu.res); bx = q.x - 26; by = q.y - 32; bw = 52; bh = 64; }
+        if (tu.res != null) { const q = resPos(tu.res); bx = q.x - RES_W / 2; by = q.y - RES_W / 2; bw = RES_W; bh = RES_W; }
         else { const xs = tu.cells.map(cc => cellPos(cc).x), ys = tu.cells.map(cc => cellPos(cc).y); bx = Math.min(...xs) - CW / 2 + 2; by = Math.min(...ys) - CH / 2 + 2; bw = Math.max(...xs) - Math.min(...xs) + CW - 4; bh = Math.max(...ys) - Math.min(...ys) + CH - 4; }
         if (tu === du) continue;
         if (!canM(tu)) { ctx.fillStyle = 'rgba(2,4,12,.55)'; chamfer(bx, by, bw, bh, 9); ctx.fill(); continue; }
@@ -3665,25 +3646,26 @@ function drawHud() {
   }
 
   S.corePulse = Math.max(0, S.corePulse - 1 / 60);
-  { const py = LINE_Y - 26, pw = fleetPower();   // 함선 배치 칸 바로 위: 기체를 만지는 자리에서 변화가 보이게
+  { const py = LINE_Y - 30, pw = fleetPower(), px = 164;   // 함선 배치 칸 바로 위: 기체를 만지는 자리에서 변화가 보이게
     if (S.powerShown == null) S.powerShown = pw;
     if (S.powerLast != null && Math.abs(pw - S.powerLast) >= 1 && S.mode !== 'win' && S.mode !== 'lose') (S.powerDeltas = S.powerDeltas || []).push({ v: pw - S.powerLast, t: S.time });
     S.powerLast = pw;
     S.powerShown += (pw - S.powerShown) * 0.12;
-    ctx.fillStyle = 'rgba(4,12,34,.85)'; chamfer(12, py - 14, 124, 28, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(4,12,34,.85)'; chamfer(px, py - 16, 116, 32, 7); ctx.fill();
     ctx.strokeStyle = 'rgba(255,180,70,.55)'; ctx.lineWidth = 1; ctx.stroke();
-    drawPowerIcon(26, py, 8);
-    ctx.font = FU(9); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,200,120,.8)'; ctx.fillText('전투력', 38, py - 1);
-    ctx.font = FT(13, 900); outlineText(fmt(S.powerShown), 70, py + 1, '#ffe2a8', 3);
+    drawPowerIcon(px + 13, py, 8);
+    ctx.font = FU(9); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,200,120,.8)'; ctx.fillText('전투력', px + 24, py - 8);
+    ctx.font = FT(13, 900); outlineText(fmt(S.powerShown), px + 24, py + 6, '#ffe2a8', 3);
     if (S.mode === 'play' || S.mode === 'break') {   // 오른쪽: 소환 버튼
-      { // 소환 왼쪽: 지금 가진 부품
-        const gx = W - 142 - 8 - 86, gp = S.gearPulse || 0;
-        if (gp > 0) drawGlow('#ffb347', gx + 43, py, 50, gp * 0.8, 0.5);
-        ctx.fillStyle = 'rgba(40,24,10,.9)'; chamfer(gx, py - 16, 86, 32, 7); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,180,70,.7)'; ctx.lineWidth = 1.2; ctx.stroke();
-        drawGearIcon(gx + 16, py, 7);
-        ctx.font = FK(13); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffd6a0'; ctx.fillText('부품', gx + 29, py + 1);
-        ctx.font = FT(15, 900); ctx.textAlign = 'right'; outlineText(String(S.gear), gx + 78, py + 1, '#fff', 3);
+      { // 소환 왼쪽: 정비소 버튼 겸 지금 가진 부품
+        const gx = SHOP_BX, gp = S.gearPulse || 0, canUp = S.gear >= Math.min(cellNewCost(), openRows() < ROWS ? ROW_ADD[openRows() - START_ROWS] : 99);
+        if (gp > 0 || (canUp && !drag)) drawGlow('#ffb347', gx + 53, py, 56, gp * 0.8 + (canUp ? 0.15 + 0.1 * Math.sin(S.time * 5) : 0), 0.5);
+        ctx.fillStyle = 'rgba(40,24,10,.92)'; chamfer(gx, py - 16, 106, 32, 7); ctx.fill();
+        ctx.strokeStyle = canUp ? '#ffb347' : 'rgba(255,180,70,.6)'; ctx.lineWidth = canUp ? 1.8 : 1.2; ctx.stroke();
+        drawGearIcon(gx + 15, py, 7);
+        ctx.font = FK(13); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffd6a0'; ctx.fillText('정비소', gx + 27, py + 1);
+        ctx.font = FT(15, 900); ctx.textAlign = 'right'; outlineText(String(S.gear), gx + 99, py + 1, '#fff', 3);
+        BUTTONS.push({ x: gx, y: py - 16, w: 106, h: 32, act: 'openshop' });
       }
       const cost = summonCost(), ok = S.gear >= cost, bx = W - 142, by = py - 16, bw = 130, bh = 32;
       if (ok) drawGlow('#ffb347', bx + bw / 2, py, 60, 0.18 + 0.1 * Math.sin(S.time * 5), 0.5);
@@ -3695,7 +3677,7 @@ function drawHud() {
       BUTTONS.push({ x: bx, y: by, w: bw, h: bh, act: 'summon' });
     }
     S.powerDeltas = (S.powerDeltas || []).filter(d => S.time - d.t < 1.2);
-    for (const d of S.powerDeltas) { const q = (S.time - d.t) / 1.2; ctx.globalAlpha = 1 - q; ctx.font = FT(13, 900); outlineText(`${d.v > 0 ? '+' : ''}${fmt(d.v)}`, 146, py - 2 - q * 20, d.v > 0 ? '#5affc8' : '#ff6a7a', 3); ctx.globalAlpha = 1; }
+    for (const d of S.powerDeltas) { const q = (S.time - d.t) / 1.2; ctx.globalAlpha = 1 - q; ctx.font = FT(13, 900); outlineText(`${d.v > 0 ? '+' : ''}${fmt(d.v)}`, px + 58, py - 24 - q * 20, d.v > 0 ? '#5affc8' : '#ff6a7a', 3); ctx.globalAlpha = 1; }
   }
   // 콤보
   if ((S.combo || 0) >= 3 && S.time - S.comboT < 1.3) {
@@ -4439,7 +4421,7 @@ function drawShop() {
     ctx.strokeStyle = 'rgba(255,180,70,.6)'; ctx.lineWidth = 2; ctx.stroke();
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = FK(20); outlineText(`줄 추가 (${rows + 1}줄로)`, x + 36, ry + 26, '#ffd6a0', 4);
     ctx.font = FK(14); ctx.fillStyle = 'rgba(255,220,180,.85)';
-    ctx.fillText(rows === 2 ? '칸 6개와 대기함 1칸이 늘고, 세로 3칸 기체를 올릴 수 있어요' : '칸 6개와 대기함 1칸이 늘어요', x + 36, ry + 54);
+    ctx.fillText(rows === 2 ? '칸 6개가 늘고, 세로 3칸 기체를 올릴 수 있어요' : '칸 6개가 늘어요', x + 36, ry + 54);
     button(x + w - 170, ry + 10, 140, 56, `부품 ${cost}`, 'addrow', S.gear >= cost ? 'gold' : 'ghost');
   }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FK(15); ctx.fillStyle = 'rgba(255,214,160,.85)';
@@ -4661,6 +4643,7 @@ function doAction(b) {
       play('unlock', 0.35, 1.3); sparks(p.x, p.y, '#ffb347', 12, 220);
       return;
     }
+    case 'openshop': if (S.mode === 'play' || S.mode === 'break') { UI.shop = true; play('open', 0.45); } return;
     case 'cellsel': UI.selCell = b.c; return;
     case 'cellfx': case 'cellup': {
       const f = S.cellFx[b.c], cost = f ? CELL_UP[f.lv - 1] : cellNewCost();
@@ -4735,7 +4718,6 @@ cv.addEventListener('pointerdown', ev => {
   const b = hitButton(p);
   if (UI.reveal || UI.settings || UI.card || UI.shop || S.paused || ['map', 'hangar', 'records', 'win', 'lose', 'perk'].includes(S.mode)) { if (b) { if (b.act !== 'slider') play(b.act === 'closecard' || b.act === 'closesettings' || b.act === 'closeshop' ? 'close' : 'click', 0.35); doAction(b); } return; }
   if (b) { play('click', 0.35); doAction(b); return; }
-  if (scrapAt(p.x, p.y) && (S.mode === 'play' || S.mode === 'break')) { UI.shop = true; play('open', 0.45); return; }
   const c = cellAt(p.x, p.y), k = resAt(p.x, p.y);
   const u = c >= 0 ? S.slots[c] : k >= 0 ? S.reserve[k] : null;
   if (u) {
@@ -4790,8 +4772,8 @@ function doMerge(target, from) {
   }
 }
 function dropUnit(u, x, y) {
-  if (scrapAt(x, y) || y < SCRAP_Y) { scrapUnit(u); return; }
   const k = resAt(x, y);
+  if (k < 0 && y < SCRAP_Y) { scrapUnit(u); return; }
   if (k >= 0) {
     const r = S.reserve[k];
     if (r === u) return;
@@ -4879,7 +4861,7 @@ function loop(now) {
 }
 function fontsReady() {
   if (!document.fonts || !document.fonts.load) return Promise.resolve();
-  const want = ['900 20px Orbitron', '700 20px "Chakra Petch"', '20px "Do Hyeon"'].map(f => document.fonts.load(f, 'A가').catch(() => {}));
+  const want = ['900 20px Orbitron', '700 20px "Chakra Petch"', '20px "Do Hyeon"', '700 14px "Plex KR"'].map(f => document.fonts.load(f, 'A가').catch(() => {}));
   return Promise.race([Promise.all(want), new Promise(r => setTimeout(r, 2500))]);
 }
 // ── 홍보 촬영 모드: 주소 끝에 #shot-battle 같은 표시를 붙이면 장면을 스스로 만든다 ──
