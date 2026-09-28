@@ -50,6 +50,7 @@ function draw(dt) {
     ctx.font = FU(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText(u.ice.toFixed(1), b.x + b.w / 2, b.y + 12, '#e8fbff', 3);
   }
   drawUnitFrames(true);
+  drawZoneMarks();
   S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.9, uSize(u) > 2 ? 0.26 : uSize(u) === 2 ? 0.34 : 0.58); });
   if (!(drag && drag.moved) && (S.mode === 'play' || S.mode === 'break')) {   // 합칠 수 있는 짝: 칸 모서리에 초록 꺾쇠가 천천히 깜빡
     const groups = {};

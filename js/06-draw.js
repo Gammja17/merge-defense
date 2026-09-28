@@ -506,10 +506,6 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
     }
     ctx.restore();
   }
-  if (u.type === 'a' && u.lv >= 5 && u.cells) {
-    ctx.save(); ctx.globalAlpha = alpha * 0.18; ctx.fillStyle = '#d0e8ff';
-    ctx.beginPath(); ctx.ellipse(x, y, CW * 1.5, CH * 1.3, 0, Math.PI, 0); ctx.fill(); ctx.restore();
-  }
   drawUnitArt(u.type, u.lv, x, y, s, alpha, u);
   if (u.hurt > 0) drawGlow('#ff2a3a', x, y, 40 * wide, u.hurt * 2 * alpha, 0.8);
   const bot = y + (tall > 1 ? CH * 0.95 : 26);
@@ -847,7 +843,7 @@ function drawUnitFrames(top) {
   }
 }
 // 주변 칸에 효과를 주는 기체: 효과가 닿는 칸을 그 기체 색으로 표시. 들고 있으면 놓을 자리 기준으로 진하게
-const AURA = { x: { k: 'ring', lv: 1 }, m: { k: 'ring', lv: 2 }, g: { k: 'cross', lv: 1 }, w: { k: 'cross', lv: 3 } };
+const AURA = { x: { k: 'ring', lv: 1 }, m: { k: 'ring', lv: 1 }, g: { k: 'cross', lv: 1 }, w: { k: 'cross', lv: 3 }, a: { k: 'ring', lv: 5 } };
 function auraArea(type, lv, cells) {
   const a = AURA[type];
   if (!a || lv < a.lv || !cells) return null;
@@ -881,6 +877,49 @@ function drawAuras() {
   const du = drag && drag.moved ? drag.unit : null;
   for (const u of gridUnits()) if (u !== du) { u.cells0 = u.cells[0]; paint(u, u.cells, false); }
   if (du && AURA[du.type]) { const c = cellAt(drag.x, drag.y); if (c >= 0) { du.cells0 = c; paint(du, cellsFor(du, c), true); } }
+}
+// 구역 효과 표시: 수리 구역 안 기체 위로 초록 + 가 가끔 떠오르고, 방패 구역(방패 드론, 방벽 요새 엄호, 방공 돔)은 파란 방패, 레이더 강화는 위쪽 화살표
+const ZONE_BLUE = '#6ad0ff';
+function shieldMark(x, y, r, a) {
+  ctx.save(); ctx.globalAlpha *= a; ctx.beginPath();
+  ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.85, y - r * 0.6); ctx.lineTo(x + r * 0.78, y + r * 0.15);
+  ctx.quadraticCurveTo(x + r * 0.55, y + r * 0.75, x, y + r); ctx.quadraticCurveTo(x - r * 0.55, y + r * 0.75, x - r * 0.78, y + r * 0.15);
+  ctx.lineTo(x - r * 0.85, y - r * 0.6); ctx.closePath();
+  ctx.fillStyle = 'rgba(4,16,40,.92)'; ctx.fill(); ctx.strokeStyle = ZONE_BLUE; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = ZONE_BLUE; ctx.fillRect(x - 1.2, y - r * 0.55, 2.4, r * 1.2);
+  ctx.restore();
+}
+function arrowMark(x, y, r, col, a) {
+  ctx.save(); ctx.globalAlpha *= a; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.8, y); ctx.lineTo(x + r * 0.3, y); ctx.lineTo(x + r * 0.3, y + r); ctx.lineTo(x - r * 0.3, y + r); ctx.lineTo(x - r * 0.3, y); ctx.lineTo(x - r * 0.8, y); ctx.closePath();
+  ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = col; ctx.fill();
+  ctx.restore();
+}
+function plusMark(x, y, r, a) {
+  ctx.save(); ctx.globalAlpha *= a;
+  ctx.fillStyle = 'rgba(0,0,0,.8)'; ctx.fillRect(x - r - 1.5, y - r * 0.36 - 1.5, r * 2 + 3, r * 0.72 + 3); ctx.fillRect(x - r * 0.36 - 1.5, y - r - 1.5, r * 0.72 + 3, r * 2 + 3);
+  ctx.fillStyle = '#6dff8a'; ctx.fillRect(x - r, y - r * 0.36, r * 2, r * 0.72); ctx.fillRect(x - r * 0.36, y - r, r * 0.72, r * 2);
+  ctx.restore();
+}
+function drawZoneMarks() {
+  const t = S.time, heal = new Set(), guard = new Set(), boost = new Set(), us = gridUnits();
+  for (const u of us) {
+    if (drag && drag.moved && drag.unit === u) continue;
+    if (u.type === 'm') for (const o of neighborsOf(u)) heal.add(o);
+    if (u.type === 'g' || (u.type === 'w' && u.lv >= 3)) for (const o of crossOf(u)) guard.add(o);
+    if (u.type === 'a' && u.lv >= 5) { guard.add(u); for (const o of neighborsOf(u)) guard.add(o); }
+    if (u.type === 'x') for (const o of neighborsOf(u)) if (o.type !== 'x') boost.add(o);
+  }
+  for (const u of us) {
+    if (!heal.has(u) && !guard.has(u) && !boost.has(u)) continue;
+    const b = unitBox(u), rx = b.x + b.w - 13, seed = u.cells[0] * 0.37;
+    if (guard.has(u)) shieldMark(rx, b.y + 14, 9, 0.8 + 0.2 * Math.sin(t * 3 + seed));
+    if (boost.has(u)) { const k = (t * 0.9 + seed) % 1; arrowMark(rx, b.y + (guard.has(u) ? 40 : 18) - k * 8, 7, UNIT.x.col, Math.min(1, (1 - k) * 2.5)); }
+    if (heal.has(u)) {   // 가끔 떠오르는 초록 +
+      const k = (t * 0.55 + seed) % 1.6;
+      if (k < 1) plusMark(b.x + b.w / 2 + 10, b.y + b.h * 0.55 - k * 34, 7, Math.min(1, k * 5) * (1 - k));
+    }
+  }
 }
 function drawPads() {
   const t = S.time;

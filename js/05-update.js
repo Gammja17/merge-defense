@@ -205,11 +205,9 @@ function updateAuras(dt) {
     if (u.type === 'm') {
       if (u.t1 >= 3 * Math.pow(0.75, tier(u))) {
         u.t1 = 0;
-        const targets = new Set();
-        let worst = null, wr = 1;
-        for (const o of us) if (o.hp < o.maxHp && o.hp / o.maxHp < wr) { wr = o.hp / o.maxHp; worst = o; }
-        if (worst) targets.add(worst);
-        if (u.lv >= 2) for (const o of neighborsOf(u)) if (o.hp < o.maxHp) targets.add(o);
+        // 칠해진 구역(주변 8칸) 안에서만 고친다. Lv1은 가장 다친 기체 하나, Lv2부터 다친 기체 모두
+        const hurt = [...neighborsOf(u)].filter(o => o.hp < o.maxHp).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+        const targets = u.lv >= 2 ? hurt : hurt.slice(0, 1);
         const p = unitPos(u);
         for (const o of targets) { o.hp = Math.min(o.maxHp, o.hp + 1); const q = unitPos(o); S.fx.push({ kind: 'bolt', pts: [p, q], t: 0, life: 0.3, col: '#6dff8a' }); addText(q.x, q.y - 26, '+1', '#6dff8a', 14, 0.6, true); }
       }

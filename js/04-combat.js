@@ -111,7 +111,7 @@ function damageUnit(u, dmg) {
   sparks(p.x, p.y, '#ff6a5a', 10, 220);
   if (u.hp <= 0) {
     // 수리 드론 Lv4: 긴급 무적
-    const medic = gridUnits().find(m => m.type === 'm' && m.lv >= 4 && m.t3 <= 0 && m !== u);
+    const medic = gridUnits().find(m => m.type === 'm' && m.lv >= 4 && m.t3 <= 0 && m !== u && neighborsOf(m).has(u));   // 수리 구역 안에서만
     if (medic) {
       medic.t3 = 20; u.hp = 1;
       const q = unitPos(medic);
