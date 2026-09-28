@@ -790,7 +790,7 @@ function unitTint(x, y, w, h, col, c = 9, k = 1) {
 // 레벨 계급장: 꺾쇠 1~3개(Lv1~3), 별 1~2개(Lv4~5), 날개 달린 별(초월 Lv6~8, 날개 깃이 1~3개). 테두리는 기체 고유색
 const RANK_GOLD = '#ffd24a';
 function lvBadge(lv, cx, cy, col, sc = 1) {
-  const hw = lv >= 6 ? 23 : lv === 5 ? 17 : 12, hh = lv <= 3 ? 10 + (lv - 1) * 2 : lv >= 6 ? 11 : 10;
+  const hw = lv >= 6 ? 17 : 12, hh = lv <= 3 ? 10 + (lv - 1) * 2 : lv === 5 ? 15 : lv >= 6 ? 12 : 10;
   ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc);
   ctx.fillStyle = 'rgba(0,6,20,.94)'; chamfer(-hw, -hh, hw * 2, hh * 2, 5); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
@@ -800,12 +800,12 @@ function lvBadge(lv, cx, cy, col, sc = 1) {
 // 판 위 기체: 칸 오른쪽 위 모서리에 딱 붙은 계급장 탭 (ㄱ자 기체처럼 모서리가 빈 모양은 맨 윗줄 오른쪽 칸 기준)
 function rankCorner(u, col) {
   const top = Math.min(...u.cells.map(c => Math.floor(c / COLS))), c0 = Math.max(...u.cells.filter(c => Math.floor(c / COLS) === top).map(c => c % COLS));
-  const rx = GRID_X + (c0 + 1) * CW - 4, ty = GRID_Y + top * CH + 4, lv = u.lv, s = 0.95;
-  const tw = lv >= 6 ? 50 : lv >= 5 ? 38 : 28, th = lv <= 3 ? 15 + lv * 5.5 : 25;
+  const rx = GRID_X + (c0 + 1) * CW - 4, ty = GRID_Y + top * CH + 4, lv = u.lv, s = 0.8;
+  const tw = lv >= 6 ? 30 : 23, th = lv <= 3 ? 11 + lv * 4.6 : lv === 5 ? 30 : lv >= 6 ? 23 : 20;
   ctx.fillStyle = 'rgba(0,6,20,.92)'; ctx.beginPath();
-  ctx.moveTo(rx - tw, ty); ctx.lineTo(rx - 9, ty); ctx.lineTo(rx, ty + 9); ctx.lineTo(rx, ty + th); ctx.lineTo(rx - tw + 7, ty + th); ctx.lineTo(rx - tw, ty + th - 7); ctx.closePath(); ctx.fill();
+  ctx.moveTo(rx - tw + 5, ty); ctx.lineTo(rx - 6, ty); ctx.lineTo(rx, ty + 6); ctx.lineTo(rx, ty + th); ctx.lineTo(rx - tw + 5, ty + th); ctx.lineTo(rx - tw, ty + th - 5); ctx.lineTo(rx - tw, ty + 5); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.save(); ctx.translate(rx - tw / 2 - 1.5, ty + th / 2 + 1); ctx.scale(s, s); rankIcons(lv); ctx.restore();
+  ctx.save(); ctx.translate(rx - tw / 2, ty + th / 2); ctx.scale(s, s); rankIcons(lv); ctx.restore();
 }
 function rankIcons(lv) {
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -813,12 +813,12 @@ function rankIcons(lv) {
     ctx.strokeStyle = RANK_GOLD; ctx.lineWidth = 2.6;
     for (let k = 0; k < lv; k++) { const y = (k - (lv - 1) / 2) * 5.5 + 2.5; ctx.beginPath(); ctx.moveTo(-6.5, y); ctx.lineTo(0, y - 5); ctx.lineTo(6.5, y); ctx.stroke(); }
   } else if (lv <= 5) {
-    for (let k = 0; k < lv - 3; k++) drawStar((k - (lv - 4) / 2) * 13, 0.5, 7, RANK_GOLD);
+    for (let k = 0; k < lv - 3; k++) drawStar(0, (k - (lv - 4) / 2) * 12.5 + 0.5, 7, RANK_GOLD);   // 별 둘은 위아래로 쌓아 폭을 좁게
   } else {
     const star = lv >= 8 ? RAINBOW[Math.floor(performance.now() / 180) % 6] : RANK_GOLD;
     ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 2.2;
-    for (const s of [-1, 1]) for (let k = 0; k < lv - 5; k++) { ctx.beginPath(); ctx.moveTo(s * 9, -1 + k * 3.5); ctx.lineTo(s * (20 - k * 2.5), -7 + k * 6); ctx.stroke(); }
-    drawStar(0, 0.5, 8, star);
+    for (const s of [-1, 1]) for (let k = 0; k < lv - 5; k++) { ctx.beginPath(); ctx.moveTo(s * 7.5, -1 + k * 4); ctx.lineTo(s * 14, -6 + k * 5); ctx.stroke(); }   // 짧은 날개 (깃 1~3개)
+    drawStar(0, 0.5, 7.5, star);
   }
 }
 function unitBox(u) {
