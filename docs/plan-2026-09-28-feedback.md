@@ -113,3 +113,14 @@
 ## 끝나면
 - 단계마다: 오류 검사 → 시뮬 → 헤드리스 스크린샷 확인 → 커밋 푸시.
 - 다 끝나면 주인에게 한국어로 짧게 보고: 바뀐 것, 시뮬 숫자, 스크린샷.
+
+## 진행 상황 (2026-09-28, 브랜치 `claude/mergedefense-feedback-plan-vdxxsh`)
+1~6 모두 끝남. 아직 `main`에 합치지 않아서 GitHub Pages와 아티팩트는 그대로예요.
+- 1: 고유색 20종(`UNIT[t].col`, 기본은 `col0`), 스프라이트 강조색 이동, 칸 오른쪽 위 모서리 계급장 탭(`rankCorner`, `rankIcons`), 레벨이 오를수록 화려한 테두리와 바닥(`frameFx`, `floorFx`). 주인 요청으로 추가: 격납고 카드에서 기체별 바닥색 고르기(`PROG.colors`), 대기함 이름표, 연구 등급은 육각형
+- 2: 소환 레벨 `SUMMON_LV = [3, 6, 10]`, 정예 소환 강화
+- 3: 수리는 주변 8칸 안에서만, 구역 표시(`drawZoneMarks`)
+- 4: 포격 순양함(`artillery`, 기존 '포격함'과 이름이 겹쳐서), 교란함(`jammer`), 침공 모함(`mother`). 그림은 기존 적 그림에 색을 입힌 임시 그림(`buildTints`), VARCO로 새로 뽑을 수 있음
+- 5: `STAGE_KINDS`, `STAGE_PLAN`, `wavePw`, 몰아치기(`surge`). 주인 요청으로 추가: 출격 준비 창(`drawPrep`)
+- 6: 주기별 섞여 나오는 적, 4주기 미니보스 자리에 예전 보스(`ev.mini`), `endlessAtkMul`, `ENDLESS_GROWTH` 1.21
+- 시뮬(2~30, reps 8): smart 169~172/232판. 무한 39~44웨이브. 스테이지 25(얼음 고리 보스)가 특히 어려움
+- 작은 한글 폰트(`PlexKR-Bold-sub.woff2`)는 원본에서 게임 글자로 다시 줄였음. 새 글자를 쓰면 다시 만들어야 해요
