@@ -159,15 +159,16 @@ const SET = () => PROG.settings;
 const ach = id => { if (!SHOT && window.SKEAM) SKEAM.unlock(id); };
 
 const SFX_FILES = [
-  'twoTone', 'shieldUp', 'lose', 'shot_a', 'shot_b', 'shot_c', 'shot_big', 'shot_retro', 'boom_s1', 'boom_s2', 'boom_low', 'boom_big', 'hit_1',
-  'hit_2', 'shield_hit', 'shield_break', 'coin_1', 'coin_2', 'coin_3', 'base_hit', 'swap', 'deny', 'click', 'open', 'close', 'confirm', 'capsule',
-  'scrap', 'scrap_low', 'kaboom1', 'kaboom2', 'kaboom_s1', 'kaboom_s2', 'thud', 'drums', 'crackle1', 'crackle2', 'shield_crack', 'imp_l1', 'imp_l2',
+  'twoTone', 'shieldUp', 'shot_a', 'shot_b', 'shot_c', 'shot_big', 'shot_retro', 'boom_s1', 'boom_s2', 'boom_low', 'boom_big', 'hit_1',
+  'hit_2', 'shield_hit', 'shield_break', 'coin_1', 'coin_2', 'coin_3', 'base_hit', 'swap', 'deny', 'open', 'close', 'confirm', 'capsule',
+  'scrap', 'scrap_low', 'kaboom_s1', 'kaboom_s2', 'thud', 'drums', 'crackle1', 'crackle2', 'shield_crack', 'imp_l1', 'imp_l2',
   'imp_l3', 'imp_h1', 'imp_h2', 'imp_h3', 'imp_s1', 'imp_s2', 'imp_p1', 'imp_p2', 'debris1', 'debris2', 'debris3', 'fire_a', 'fire_b', 'beam', 'tap',
-  'hitfx', 'caphit', 'capbreak', 'arrive', 'merge_fx', 'up_fx', 'vo_access', 'zapfx', 'vo_shields', 'vo_prox', 'vo_welcome', 'vo_hostile'];   // 발사 fire_, 빔, 명중, 합체, 강화, 전자전, 음성 vo_: Lentikula (CC0). tap: Owlish Media (CC0)   // fire_, beam: Sci-Fi Weapon Shots (Lentikula, CC0), tap: Kenney Impact Sounds   // gun_: Gunshot Sounds (Vincent Sevedge, OpenGameArt)   // imp_, debris: Kenney Impact Sounds (CC0)
+  'hitfx', 'caphit', 'capbreak', 'arrive', 'merge_fx', 'up_fx', 'vo_access', 'zapfx', 'vo_shields', 'vo_prox', 'vo_welcome', 'vo_hostile',
+  'boom_fx', 'clear_fx', 'vo_fail', 'click_fx', 'vo_anomaly', 'pulse_fx'];   // 폭발, 클리어 반짝: Lentikula (CC0), 버튼, 위기 박동: Owlish Media (CC0)   // 발사 fire_, 빔, 명중, 합체, 강화, 전자전, 음성 vo_: Lentikula (CC0). tap: Owlish Media (CC0)   // fire_, beam: Sci-Fi Weapon Shots (Lentikula, CC0), tap: Kenney Impact Sounds   // gun_: Gunshot Sounds (Vincent Sevedge, OpenGameArt)   // imp_, debris: Kenney Impact Sounds (CC0)
 // 같은 소리의 최소 재생 간격(초). 연사가 많아도 귀가 따갑지 않게
-const SFX_GAP = { capbreak: 0.08, arrive: 0.08, caphit: 0.05, vo_access: 3, vo_shields: 5, vo_prox: 6, vo_welcome: 5, vo_hostile: 4, zapfx: 0.12, hitfx: 0.06, merge_fx: 0.1, up_fx: 0.15, beam: 0.5, tap: 0.06, thwack: 0.06, twoTone: 1, pew: 0.06, pick: 0.08, drop: 0.08, imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.09, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
+const SFX_GAP = { capbreak: 0.08, arrive: 0.08, caphit: 0.05, vo_access: 3, vo_shields: 5, vo_prox: 6, vo_welcome: 5, vo_hostile: 4, vo_fail: 3, vo_anomaly: 4, pulse_fx: 0.2, zapfx: 0.12, hitfx: 0.06, merge_fx: 0.1, up_fx: 0.15, beam: 0.5, tap: 0.06, thwack: 0.06, twoTone: 1, pew: 0.06, pick: 0.08, drop: 0.08, imp_l: 0.05, imp_h: 0.07, imp_s: 0.09, imp_p: 0.12, debris: 0.08, shot: 0.06, shot_big: 0.1, shot_retro: 0.08, hit: 0.09, boom_s: 0.035, boom_low: 0.08, coin: 0.04, shield_hit: 0.08, zap: 0.08, kaboom: 0.07, thud: 0.14, bosshit: 0.3, crackle: 0.1, drums: 1, shield_crack: 0.1 };
 const VARIANTS = { thwack: ['hitfx'], imp_l: ['imp_l1', 'imp_l2', 'imp_l3'], imp_h: ['imp_h1', 'imp_h2', 'imp_h3'], imp_s: ['imp_s1', 'imp_s2'], imp_p: ['imp_p1', 'imp_p2'], debris: ['debris1', 'debris2', 'debris3'], shot: ['fire_a'], shot_retro: ['fire_a'], shot_big: ['fire_b'], pew: ['pew1', 'pew2', 'pew3', 'pew4'], boom_s: ['kaboom_s1', 'kaboom_s2'], hit: ['hit_1', 'hit_2'], coin: ['coin_1', 'coin_2', 'coin_3'],
-  kaboom: ['kaboom1', 'kaboom2'], crackle: ['crackle1', 'crackle2'], bosshit: ['thud'] };
+  kaboom: ['boom_fx'], crackle: ['crackle1', 'crackle2'], bosshit: ['thud'] };
 let AC = null, MASTER = null;
 const BUF = {}, lastPlay = {};
 function loadSfx() {
@@ -182,10 +183,10 @@ function loadSfx() {
   MASTER.connect(lo); lo.connect(hi); hi.connect(comp); comp.connect(AC.destination);
   for (const n of SFX_FILES) fetch('assets/sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b)).then(buf => { BUF[n] = buf; }).catch(() => {});
 }
-const UI_SFX = new Set(['arrive', 'tap', 'merge_fx', 'up_fx', 'click', 'open', 'close', 'confirm', 'deny', 'pick', 'drop', 'latch', 'swap', 'ui_open', 'coin', 'levelup', 'unlock', 'upgrade', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule']);
+const UI_SFX = new Set(['click_fx', 'clear_fx', 'arrive', 'tap', 'merge_fx', 'up_fx', 'click', 'open', 'close', 'confirm', 'deny', 'pick', 'drop', 'latch', 'swap', 'ui_open', 'coin', 'levelup', 'unlock', 'upgrade', 'merge2', 'merge3', 'merge4', 'merge5', 'capsule']);
 const SWEEP_SFX = new Set(['pew', 'laser1']);   // 총소리는 미끄러지지 않게
 // 사운드 고르기에서 뺀 전자음: 없애거나 고른 계열의 묵직한 소리로 바꾼다
-const SFX_REMAP = { zap: ['zapfx', 1], levelup: ['up_fx', 1], upgrade: ['up_fx', 1], unlock: ['vo_access', 1], shieldDown: null, ui_open: null, laser1: ['zapfx', 1.1],
+const SFX_REMAP = { click: ['click_fx', 1], zap: ['zapfx', 1], levelup: ['up_fx', 1], upgrade: ['up_fx', 1], unlock: ['vo_access', 1], shieldDown: null, ui_open: null, laser1: ['zapfx', 1.1],
   merge2: ['merge_fx', 1.05], merge3: ['merge_fx', 1], merge4: ['merge_fx', 0.95], merge5: ['merge_fx', 0.9], latch: ['tap', 1], drop: ['tap', 0.9], pick: ['tap', 1.1] };
 function play(n, vol = 0.4, rate = 1, jitter = 0.06) {
   if (!SET().sfxVol || !AC) return;

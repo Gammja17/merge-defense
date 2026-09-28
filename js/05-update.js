@@ -68,7 +68,7 @@ function updateEnemy(e, dt) {
   if (e.boss && e.y > 80) {
     e.weakCd = (e.weakCd == null ? 7 : e.weakCd) - dt;
     if (e.weak > 0) e.weak -= dt;
-    if (e.weakCd <= 0) { e.weakCd = 10; e.weak = 3.5; play('twoTone', 0.35, 0.8); addText(e.x, e.y + e.h * 0.2, '약점 노출!', '#ffd24a', 26, 1.2); hintOnce('weak', '보스가 약점을 드러냈어요. 그동안은 피해가 2배예요. 보스를 탭해서 집중 사격하세요.'); }
+    if (e.weakCd <= 0) { e.weakCd = 10; e.weak = 3.5; play('vo_anomaly', 0.6); addText(e.x, e.y + e.h * 0.2, '약점 노출!', '#ffd24a', 26, 1.2); hintOnce('weak', '보스가 약점을 드러냈어요. 그동안은 피해가 2배예요. 보스를 탭해서 집중 사격하세요.'); }
   }
   if (e.boss && d.atk && e.y > 60) {
     e.atkT -= dt;
@@ -606,10 +606,10 @@ function endStage(win) {
       PROG.records = (PROG.records || []).concat([rec]).sort((a, b) => b.score - a.score || b.wave - a.wave).slice(0, 10);
       S.rank = PROG.records.indexOf(rec) + 1;
     }
-    save(); play('lose', 0.5); S.glitch = 0.6;
+    save(); play('vo_fail', 0.7); S.glitch = 0.6;
     return;
   }
-  if (!win) { play('lose', 0.5); S.glitch = 0.6; return; }
+  if (!win) { play('vo_fail', 0.7); S.glitch = 0.6; return; }
   S.stars = S.hp >= 8 ? 3 : S.hp >= 4 ? 2 : 1;
   const n = S.stage.n, first = !PROG.stars[n];
   S.baseEarned = (first ? 90 : 30) + S.stars * 25 + S.stage.s * 25;
@@ -623,6 +623,6 @@ function endStage(win) {
   save();
   // 이 스테이지로 풀리는 기체가 있으면 소개 카드
   if (first) { const t = UNIT_ORDER.find(k => UNIT[k].unlock.stage === n); if (t) { unlockUnit(t); UI.pendingReveal = { type: t, at: performance.now() / 1000 + S.introDur }; } }
-  play('shieldUp', 0.45);
+  play('clear_fx', 0.6);
 }
 

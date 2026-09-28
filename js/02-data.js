@@ -29,7 +29,7 @@ function updateMusic(dt) {
     if (S.hp <= 3) dz = Math.max(dz, 0.7);
   }
   MUS.danger = (MUS.danger || 0) + (dz - (MUS.danger || 0)) * Math.min(1, dt * (dz > (MUS.danger || 0) ? 3 : 0.8));
-  if (MUS.danger > 0.4 && SET().bgmVol > 0) { MUS.beatT = (MUS.beatT || 0) - dt; if (MUS.beatT <= 0) { MUS.beatT = 0.95 - 0.35 * MUS.danger; play('boom_low', 0.12 + 0.18 * MUS.danger, 0.7); } }
+  if (MUS.danger > 0.4 && SET().bgmVol > 0) { MUS.beatT = (MUS.beatT || 0) - dt; if (MUS.beatT <= 0) { MUS.beatT = 0.95 - 0.35 * MUS.danger; play('pulse_fx', 0.2 + 0.25 * MUS.danger); } }
   MUS.duckT = Math.max(0, (MUS.duckT || 0) - dt);
   const duck = S.paused || UI.settings || UI.card || UI.shop || S.mode === 'win' || S.mode === 'lose' ? 0.4 : 1;
   if (want) musicTrack(want);
