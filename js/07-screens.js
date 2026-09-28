@@ -251,13 +251,14 @@ function drawHud() {
         ctx.font = FT(15, 900); ctx.textAlign = 'right'; outlineText(String(S.gear), gx + 99, py + 1, '#fff', 3);
         BUTTONS.push({ x: gx, y: py - 16, w: 106, h: 32, act: 'openshop' });
       }
-      const cost = summonCost(), ok = S.gear >= cost, bx = W - 142, by = py - 16, bw = 130, bh = 32;
-      if (ok) drawGlow('#ffb347', bx + bw / 2, py, 60, 0.18 + 0.1 * Math.sin(S.time * 5), 0.5);
+      const cost = summonCost(), ok = S.gear >= cost, bx = W - 142, by = py - 16, bw = 130, bh = 32, slv = summonLv(), up = Math.max(0, 1 - (S.time - (S.summonUpT ?? -9)) / 1.2);
+      if (ok || up) drawGlow('#ffb347', bx + bw / 2, py, 60, 0.18 + 0.1 * Math.sin(S.time * 5) + up * 0.6, 0.5);
       ctx.fillStyle = ok ? 'rgba(60,34,8,.92)' : 'rgba(4,12,34,.85)'; chamfer(bx, by, bw, bh, 7); ctx.fill();
       ctx.strokeStyle = ok ? '#ffb347' : 'rgba(255,180,70,.35)'; ctx.lineWidth = ok ? 1.8 : 1; ctx.stroke();
-      ctx.font = FK(16); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; outlineText('소환', bx + 12, py + 1, ok ? '#fff' : 'rgba(255,255,255,.55)', 3);
-      drawGearIcon(bx + 72, py, 6);
-      ctx.font = FT(13, 900); outlineText(String(cost), bx + 86, py + 1, ok ? '#ffd6a0' : 'rgba(255,214,160,.5)', 3);
+      ctx.font = FK(16); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; outlineText('소환', bx + 10, py + 1, ok ? '#fff' : 'rgba(255,255,255,.55)', 3);
+      ctx.font = FU(14, 700); outlineText(`Lv${slv}`, bx + 46, py + 1, slv > 1 ? '#ffd24a' : ok ? '#e6f0ff' : 'rgba(230,240,255,.5)', 3);   // 다음에 나올 레벨
+      drawGearIcon(bx + 88, py, 6);
+      ctx.font = FU(15, 700); outlineText(String(cost), bx + 100, py + 1, ok ? '#ffd6a0' : 'rgba(255,214,160,.5)', 3);
       BUTTONS.push({ x: bx, y: by, w: bw, h: bh, act: 'summon' });
     }
     S.powerDeltas = (S.powerDeltas || []).filter(d => S.time - d.t < 1.2);

@@ -47,10 +47,12 @@ function doAction(b) {
       if (S.mode !== 'play' && S.mode !== 'break') return;
       const cost = summonCost(), p = { x: W - 77, y: LINE_Y - 26 };
       if (S.gear < cost) { addText(p.x, p.y - 26, `부품 ${cost - S.gear}개 부족`, '#ffb0b0', 16, 0.9); denied(); return; }
-      const deck = battleDeck(), type = deck[Math.floor(Math.random() * deck.length)] || 'f';
-      if (giveUnit(type, 1, p.x, p.y, UNIT[type].col) === 'lost') { addText(p.x, p.y - 26, '빈자리가 없어요', '#ffb0b0', 16, 0.9); denied(); return; }
+      const deck = battleDeck(), type = deck[Math.floor(Math.random() * deck.length)] || 'f', lv = summonLv();
+      if (giveUnit(type, lv, p.x, p.y, UNIT[type].col) === 'lost') { addText(p.x, p.y - 26, '빈자리가 없어요', '#ffb0b0', 16, 0.9); denied(); return; }
       S.gear -= cost; S.summons = (S.summons || 0) + 1;
       play('unlock', 0.35, 1.3); sparks(p.x, p.y, '#ffb347', 12, 220);
+      if (lv > 1) addText(p.x, p.y - 30, `Lv${lv}`, UNIT[type].col, 20, 0.9);
+      if (summonLv() > lv) { S.summonUpT = S.time; addText(p.x, p.y - 56, `다음 소환 Lv${summonLv()}`, '#ffd24a', 18, 1.4); }
       return;
     }
     case 'openshop': if (S.mode === 'play' || S.mode === 'break') { UI.shop = true; play('open', 0.45); } return;

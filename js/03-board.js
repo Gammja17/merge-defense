@@ -74,6 +74,9 @@ const CELL_UP = [5, 8];              // 2단계, 3단계로 올리는 값
 const START_ROWS = 2, ROW_ADD = [5, 9];   // 3줄, 4줄로 늘리는 값
 const SHOP_BX = 286;   // 판 위 줄의 정비소 버튼 왼쪽 끝
 const summonCost = () => Math.max(1, 3 + (S.summons || 0) - S.pk.summonOff);
+// 소환할수록 비싸지지만 더 좋은 기체가 나온다: 0~2번째 Lv1, 3~5번째 Lv2, 6~9번째 Lv3, 10번째부터 Lv4. 정예 소환 강화마다 +1 (Lv5까지)
+const SUMMON_LV = [3, 6, 10];
+const summonLv = () => Math.min(5, 1 + SUMMON_LV.filter(n => (S.summons || 0) >= n).length + (S.pk.summonLv || 0));
 const cellNewCost = () => 3 + S.cellFx.filter(Boolean).length;   // 새로 찍을수록 조금씩 비싸진다
 const openRows = () => S.rowsOpen || START_ROWS;
 const cellVal = (i, k) => { const f = S.cellFx && S.cellFx[i]; return f && f.k === k ? CELL_FX[k].v[f.lv - 1] * (k === 'atk' ? 1 + S.pk.front : 1) : 0; };
