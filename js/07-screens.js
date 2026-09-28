@@ -1316,11 +1316,59 @@ function drawOverlays() {
   if (S.paused && !UI.settings) drawPause();
   if (UI.settings) drawSettings();
   else if (UI.card) drawCard();
+  else if (UI.prep && S.mode === 'map') drawPrep();
   const now = performance.now() / 1000;
   if (UI.pendingReveal && now >= UI.pendingReveal.at && !UI.card && !UI.settings) { UI.reveal = { type: UI.pendingReveal.type, t0: now, parts: [] }; UI.pendingReveal = null; }
   if (UI.reveal) drawReveal();
   if (UI.enemyIntro) drawEnemyIntro();
   drawOverlay();
+}
+// 출격 준비: 스테이지에 들어가기 전(지도에서 누를 때, 다음 스테이지)에 바로 편성을 바꾼다
+function drawPrep() {
+  BUTTONS = [];
+  const P = UI.prep, x = 22, y = 64, w = W - 44, h = 800;
+  ctx.fillStyle = 'rgba(2,3,12,.82)'; ctx.fillRect(0, 0, W, H);
+  const st = P.endless ? null : stageInfo(P.n), col = st ? st.sector.color : '#ffd24a';
+  panel(x, y, w, h, col);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = FT(26, 900); glitchText(st ? `STAGE ${P.n}` : 'ENDLESS', W / 2, y + 38, '#fff', 5, 0);
+  ctx.font = FK(16); ctx.fillStyle = col; ctx.fillText(st ? `${st.sector.name}${st.boss ? ', 보스' : ''}` : '무한 방어선', W / 2, y + 70);
+  if (st) { ctx.font = FK(13); ctx.fillStyle = 'rgba(200,220,245,.8)'; ctx.fillText(st.sector.info, W / 2, y + 94); }
+  ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)';
+  ctx.fillText(`// 출격 편성 ${PROG.deck.length}/${DECK_N}`, x + 22, y + 124);
+  const sw = 84, g = 8, sx0 = W / 2 - (DECK_N * (sw + g) - g) / 2;
+  for (let k = 0; k < DECK_N; k++) {
+    const t2 = PROG.deck[k], sx = sx0 + k * (sw + g), sy = y + 138;
+    ctx.fillStyle = t2 ? 'rgba(10,26,56,.9)' : 'rgba(10,20,44,.4)'; chamfer(sx, sy, sw, 76, 9); ctx.fill();
+    if (t2) unitTint(sx, sy, sw, 76, UNIT[t2].col, 9);
+    ctx.strokeStyle = t2 ? UNIT[t2].col : 'rgba(120,220,255,.25)'; ctx.lineWidth = 1.5; if (!t2) ctx.setLineDash([4, 5]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.textAlign = 'center';
+    if (t2) {
+      const def = UNIT[t2]; drawUnitArt(t2, 1, sx + sw / 2, sy + 32, Math.min(52 / def.iw, 44 / def.ih), 1, null);
+      ctx.font = FK(12); ctx.fillStyle = '#fff'; ctx.fillText(def.name, sx + sw / 2, sy + 64);
+      BUTTONS.push({ x: sx, y: sy, w: sw, h: 76, act: 'prepToggle', type: t2 });
+    } else { ctx.font = FK(13); ctx.fillStyle = 'rgba(160,210,255,.5)'; ctx.fillText('빈 칸', sx + sw / 2, sy + 38); }
+  }
+  ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)';
+  ctx.fillText('// 격납고: 누르면 넣고 빼요', x + 22, y + 238);
+  const tw = 86, tg = 6, tx0 = W / 2 - (5 * (tw + tg) - tg) / 2;
+  UNIT_ORDER.forEach((t2, i) => {
+    const def = UNIT[t2], own = isOwned(t2), inDeck = PROG.deck.includes(t2), tx = tx0 + (i % 5) * (tw + tg), ty = y + 252 + Math.floor(i / 5) * (tw + tg);
+    ctx.fillStyle = own ? 'rgba(10,24,54,.9)' : 'rgba(8,10,24,.8)'; chamfer(tx, ty, tw, tw, 9); ctx.fill();
+    unitTint(tx, ty, tw, tw, def.col, 9, own ? (inDeck ? 1.2 : 0.55) : 0.2);
+    ctx.strokeStyle = inDeck ? '#fff' : own ? def.col + '88' : 'rgba(255,255,255,.1)'; ctx.lineWidth = inDeck ? 2.5 : 1.2; ctx.stroke();
+    ctx.globalAlpha = own ? 1 : 0.3;
+    drawUnitArt(t2, 1, tx + tw / 2, ty + 36, Math.min(58 / def.iw, 46 / def.ih), 1, null);
+    ctx.textAlign = 'center'; ctx.font = FK(12); ctx.fillStyle = '#fff'; ctx.fillText(def.name, tx + tw / 2, ty + 72);
+    ctx.globalAlpha = 1;
+    if (inDeck) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(tx + tw - 12, ty + 12, 7, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#0a1a30'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(tx + tw - 16, ty + 12); ctx.lineTo(tx + tw - 13, ty + 15); ctx.lineTo(tx + tw - 8, ty + 9); ctx.stroke(); }
+    if (own) BUTTONS.push({ x: tx, y: ty, w: tw, h: tw, act: 'prepToggle', type: t2 });
+  });
+  ctx.textAlign = 'center'; ctx.font = FK(13); ctx.fillStyle = 'rgba(190,215,245,.75)';
+  ctx.fillText('캡슐은 편성한 기체로만 나와요', W / 2, y + 640);
+  if (UI.toast && UI.toast.until > performance.now() / 1000) { ctx.font = FK(16); outlineText(UI.toast.text, W / 2, y + 666, '#ffb0b0', 4); }
+  button(x + 26, y + h - 96, 170, 56, '뒤로', 'prepBack', 'ghost');
+  button(x + w - 26 - 250, y + h - 96, 250, 56, '출격', 'prepGo', PROG.deck.length ? 'primary' : 'danger');
 }
 function drawEnemyIntro() {
   BUTTONS = [];

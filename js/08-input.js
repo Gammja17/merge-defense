@@ -22,9 +22,19 @@ function doAction(b) {
   switch (b.act) {
     case 'stage':
       if (!PROG.deck.length) { S.toast = { text: '격납고에서 기체를 하나 이상 편성해 주세요', until: now + 1.8 }; return; }
-      if (unlocked(b.n)) startStage(b.n); else S.toast = { text: '앞 스테이지를 먼저 깨야 열려요', until: now + 1.6 };
+      if (unlocked(b.n)) { UI.prep = { n: b.n }; play('open', 0.4); } else S.toast = { text: '앞 스테이지를 먼저 깨야 열려요', until: now + 1.6 };
       return;
-    case 'next': startStage(S.stage.n + 1); return;
+    case 'next': { const n = S.stage.n + 1; goMap(); UI.prep = { n }; return; }
+    case 'prepBack': UI.prep = null; return;
+    case 'prepGo': {
+      if (!PROG.deck.length) { toast('기체를 하나 이상 편성해 주세요'); denied(); return; }
+      const P = UI.prep; UI.prep = null; if (P.endless) startStage(0, true); else startStage(P.n); return;
+    }
+    case 'prepToggle':
+      if (PROG.deck.includes(b.type)) { if (PROG.deck.length <= 1) { toast('기체를 하나 이상 편성해야 해요'); denied(); return; } PROG.deck = PROG.deck.filter(t => t !== b.type); }
+      else if (PROG.deck.length >= DECK_N) { toast('편성이 꽉 찼어요. 위에서 하나를 먼저 빼 주세요'); denied(); return; }
+      else PROG.deck.push(b.type);
+      save(); play('tap', 0.4); return;
     case 'retry': UI.shop = false; if (S.stage.endless) startStage(0, true, !!S.daily); else startStage(S.stage.n); return;
     case 'map':
       if (S.mode === 'hangar' && !PROG.deck.length) { toast('기체를 하나 이상 편성해야 해요'); return; }
@@ -108,7 +118,7 @@ function doAction(b) {
     case 'endless':
       if (!endlessOpen()) return;
       if (!PROG.deck.length) { toast('격납고에서 기체를 하나 이상 편성해 주세요'); return; }
-      UI.card = null; startStage(0, true); return;
+      UI.card = null; S = { mode: 'map' }; UI.prep = { endless: true }; return;
     case 'daily':
       if (!endlessOpen()) return;
       UI.card = null; startStage(0, true, true); return;
