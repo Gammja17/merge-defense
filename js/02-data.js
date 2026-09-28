@@ -230,10 +230,31 @@ const SECTORS = [
     info: '새 적: 중력함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['grav'], boss: 'boss6' },
 ];
 const STAGE_COUNT = SECTORS.length * 5;
+// 스테이지 종류: 구역마다 섞는다. 기본(5웨이브), 장기전(7웨이브, 천천히 강해지고 캡슐이 많다), 러시(3웨이브, 적이 몰려온다),
+// 포위(포격 순양함과 교란함 위주), 보스 러시(중간 보스가 여러 번, 마지막에 보스)
+const STAGE_KINDS = {
+  base:  { name: '', sub: '' },
+  long:  { name: '장기전', sub: '7웨이브, 천천히 강해지고 캡슐이 많아요', waves: 7, col: '#5affc8' },
+  rush:  { name: '러시', sub: '3웨이브, 짧지만 적이 몰려와요', waves: 3, col: '#ff8a4a' },
+  siege: { name: '포위', sub: '포격 순양함과 교란함이 에워싸요', col: '#e0ff5a' },
+  brush: { name: '보스 러시', sub: '중간 보스가 여러 번, 마지막에 보스', col: '#ff5a6a' },
+};
+const STAGE_PLAN = [
+  ['base', 'base', 'rush', 'long', 'base'],
+  ['base', 'rush', 'long', 'siege', 'base'],
+  ['long', 'rush', 'siege', 'base', 'brush'],
+  ['rush', 'siege', 'long', 'base', 'brush'],
+  ['siege', 'long', 'rush', 'base', 'base'],
+  ['rush', 'long', 'siege', 'base', 'brush'],
+];
 function stageInfo(n) {
-  const s = Math.floor((n - 1) / 5), i = (n - 1) % 5;
-  return { n, s, i, sector: SECTORS[s], boss: i === 4, waves: 5 };
+  const s = Math.floor((n - 1) / 5), i = (n - 1) % 5, kind = STAGE_PLAN[s][i];
+  return { n, s, i, sector: SECTORS[s], boss: i === 4, kind, waves: STAGE_KINDS[kind].waves || 5 };
 }
+const kindName = st => st.boss && st.kind === 'base' ? '보스' : STAGE_KINDS[st.kind || 'base'].name;
+// 이 웨이브를 기본 5웨이브 흐름의 어디쯤으로 볼지 (적 체력과 구성). 장기전은 7웨이브에 걸쳐 천천히, 러시는 중반부터 시작
+const wavePw = (st, w) => st.kind === 'long' ? 1 + (w - 1) * 4 / 6 : st.kind === 'rush' ? [1, 2, 3.4][w - 1] || 3.4 : w;
+const twistWave = st => st.kind === 'long' ? 5 : st.kind === 'rush' || st.kind === 'brush' ? 0 : 4;
 let WAVE_GROWTH = 0.4, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
 let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8].map(v => v * 1.12);   // 부품이 넉넉해진 만큼 적도 조금 튼튼하게
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
@@ -268,43 +289,60 @@ const TWIST_TEXT = {
 };
 const twistOf = st => st.twist || TWISTS[(st.n - 1) % TWISTS.length];
 function buildWave(st, w) {
-  const ev = [];
-  const bossWave = st.boss && w === st.waves;
-  const twist = w === 4 ? twistOf(st) : null;
-  const dur = bossWave ? 50 : w === 5 ? 28 : 22;
-  const gap = bossWave ? 3.2 : Math.max(0.75, 1.75 - 0.12 * (w - 1) - 0.05 * st.i - (w === 5 ? 0.2 : 0));
+  const ev = [], kind = st.kind || 'base';
+  const last = w === st.waves, lw = Math.round(wavePw(st, w)), bossWave = st.boss && last;
+  const twist = w === twistWave(st) ? twistOf(st) : null;
+  const dur = bossWave ? 50 : last ? 28 : 22;
+  let gap = bossWave ? 3.2 : Math.max(0.75, 1.75 - 0.12 * (lw - 1) - 0.05 * st.i - (last ? 0.2 : 0));
+  if (kind === 'rush' && !bossWave) gap *= 0.84;   // 러시: 잔챙이가 우다다
   for (let t = 1; t < dur; t += gap) ev.push({ t, k: 'grunt' });
   let pool = st.sector.pool;
   if (st.n === 1) pool = w <= 3 ? ['tank'] : ['tank', 'rocks'];
-  let count = st.n === 1 ? Math.max(0, w - 2) : (bossWave ? 1 + Math.min(st.s, 2) : Math.ceil(w * 0.7) + Math.floor(st.i / 2) + Math.min(st.s, 2));
-  if (w === 1) count = Math.min(count, 1);
+  let count = st.n === 1 ? Math.max(0, w - 2) : (bossWave ? 1 + Math.min(st.s, 2) : Math.ceil(lw * 0.7) + Math.floor(st.i / 2) + Math.min(st.s, 2));
+  if (w === 1) count = Math.min(count, kind === 'rush' ? 2 : 1);
+  if (kind === 'rush') count = Math.round(count * 1.15);
+  if (kind === 'siege' || kind === 'brush') count = Math.round(count * 0.65);
   for (let k = 0; k < count; k++) {
     let type = pickWeighted(pool, st.sector.fresh);
     if (k === 0 && st.i === 0 && st.sector.fresh.length && w >= 2) type = st.sector.fresh[w % st.sector.fresh.length];
     ev.push({ t: 3 + (k + 0.5) * (dur - 6) / count, k: type });
   }
   if (st.n >= 2 && !bossWave && w >= 2) {
-    const atkN = Math.min(3, (w >= 3 ? 1 : 0) + (w >= 5 ? 1 : 0) + (st.i >= 3 ? 1 : 0) + (st.s >= 2 ? 1 : 0) + (st.n === 2 && w === 2 ? 1 : 0));
+    let atkN = Math.min(3, (lw >= 3 ? 1 : 0) + (lw >= 5 ? 1 : 0) + (st.i >= 3 ? 1 : 0) + (st.s >= 2 ? 1 : 0) + (st.n === 2 && w === 2 ? 1 : 0));
+    const pool2 = kind === 'siege' ? ['jammer', 'jammer'].concat(st.sector.atk) : st.sector.atk;
+    if (kind === 'siege') atkN += 1;
     for (let k = 0; k < atkN; k++) {
-      const pool2 = st.sector.atk;
       const type = k === 0 && st.i === 0 ? pool2[pool2.length - 1] : pool2[Math.floor(R() * pool2.length)];
       ev.push({ t: 4 + (k + 0.3) * (dur - 8) / Math.max(1, atkN), k: type });
     }
   }
   if (twist === 'elite') ev.push({ t: 4, k: 'elite' });
-  if (st.s >= 3 && !bossWave && w === 3 && (st.i === 0 || R() < 0.4)) ev.push({ t: 7, k: 'artillery' });   // 적 본성부터: 중간 보스 포격 순양함
+  if (kind === 'base' && st.s >= 3 && !bossWave && w === 3 && (st.i === 0 || R() < 0.4)) ev.push({ t: 7, k: 'artillery' });   // 적 본성부터: 중간 보스 포격 순양함
+  if (kind === 'siege' && (w === 3 || last)) ev.push({ t: 5, k: 'artillery' });
+  if (kind === 'brush' && !bossWave && w >= 2) {   // 보스 러시: 웨이브마다 중간 보스
+    if (w !== 3) ev.push({ t: 4, k: 'elite' });
+    if (w >= 3) ev.push({ t: w === 3 ? 4 : 12, k: 'artillery' });
+  }
   if (twist === 'ambush') for (let k = 0; k < 4; k++) ev.push({ t: 4 + k * 4.5, k: 'ambush' });
   if (twist === 'meteors') for (let k = 0; k < 3; k++) { ev.push({ t: 5 + k * 5.5, k: 'meteor' }); ev.push({ t: 3 + k * 6, k: 'rocks' }); }
   if (bossWave) ev.push({ t: 1.5, k: st.sector.boss });
+  // 몰아치기: 웨이브 중간에 잠깐 조용하다가 몇 초 동안 적이 확 몰려오고, 다시 잠잠해진다 (오르내림)
+  if (st.n >= 2 && w >= 2 && !bossWave) {
+    const t0 = 8 + R() * (dur - 16), n = 3 + Math.min(3, lw) + (kind === 'rush' ? 2 : 0);
+    for (let k = ev.length - 1; k >= 0; k--) if (ev[k].k === 'grunt' && ev[k].t > t0 - 2.5 && ev[k].t < t0 + 6) ev.splice(k, 1);
+    ev.push({ t: t0, k: 'surge' });
+    for (let k = 0; k < n; k++) ev.push({ t: t0 + 0.4 + k * 0.3, k: k % 4 === 3 && st.s >= 1 ? 'rusher' : 'grunt', surge: true });
+  }
   if (st.n >= 2 && w >= 2 && !bossWave && R() < 0.3) ev.push({ t: 6 + R() * 10, k: 'gold' });
-  let capT = bossWave ? [6, 14, 24, 32, 40] : w === 5 ? [3, 8, 13, 18, 22, 26] : [3, 7.5, 12, 16.5, 21];   // 판이 작게 시작하니 기체가 자주 와야 한다
+  let capT = bossWave ? [6, 14, 24, 32, 40] : last ? [3, 8, 13, 18, 22, 26] : [3, 7.5, 12, 16.5, 21];   // 판이 작게 시작하니 기체가 자주 와야 한다
+  if ((kind === 'long' || kind === 'rush') && !bossWave) capT = capT.concat([5.5, 14.5]);   // 장기전: 캡슐이 많아 오래 키운다. 러시: 짧은 만큼 빨리 채운다
   if (twist === 'supply') {
     capT = [2, 5, 8, 11, 14, 17, 20];
     for (let k = 0; k < 2; k++) ev.push({ t: 6 + k * 7, k: st.s >= 3 ? 'thief' : st.s >= 1 ? 'rusher' : 'grunt' });
   }
   capT.forEach((t, k) => {
-    const a = rollReward(st.n, Math.min(w, 3));
-    ev.push({ t, k: 'cap', r: k % 2 ? [a, rollReward(st.n, Math.min(w, 3), a)] : a });
+    const a = rollReward(st.n, Math.min(lw, 3));
+    ev.push({ t, k: 'cap', r: k % 2 ? [a, rollReward(st.n, Math.min(lw, 3), a)] : a });
   });
   return ev.sort((a, b) => a.t - b.t);
 }
@@ -450,10 +488,12 @@ function startWave(n) {
     return;
   }
   S.events = buildWave(st, n);
-  if (st.boss && n === st.waves) { S.warning = 3; S.banner = null; play('drums', 0.7); }
-  else if (n === 1) S.banner = { text: `STAGE ${st.n}`, sub: '정찰대가 방어선을 떠보고 있어요', color: st.sector.color, t: 0, life: 2.4 };
-  else if (n === 4) { const [tt, sub] = TWIST_TEXT[twistOf(st)]; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.8 }; }
-  else S.banner = { text: `WAVE ${n}`, sub: n === 2 ? '적 본대가 도착했어요' : n === 3 ? (st.n >= 2 ? '공격형 함선이 합류했어요' : '적의 공세가 거세져요') : '마지막 총공세! 버텨내세요', color: n === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2.4 };
+  const K = STAGE_KINDS[st.kind || 'base'], lastW = n === st.waves;
+  if (st.boss && lastW) { S.warning = 3; S.banner = null; play('drums', 0.7); }
+  else if (n === 1) S.banner = { text: `STAGE ${st.n}`, sub: K.name ? `${K.name}: ${K.sub}` : '정찰대가 방어선을 떠보고 있어요', color: K.col || st.sector.color, t: 0, life: 2.6 };
+  else if (n === twistWave(st)) { const [tt, sub] = TWIST_TEXT[twistOf(st)]; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.8 }; }
+  else if (st.kind === 'brush') S.banner = { text: `WAVE ${n}`, sub: n === 3 ? '포격 순양함이 다가와요' : '엘리트 전함이 다가와요', color: '#ff5a6a', t: 0, life: 2.4 };
+  else S.banner = { text: `WAVE ${n}`, sub: lastW ? '마지막 총공세! 버텨내세요' : n === 2 ? '적 본대가 도착했어요' : n === 3 ? (st.n >= 2 ? '공격형 함선이 합류했어요' : '적의 공세가 거세져요') : '적이 점점 거세져요', color: lastW ? '#ff5a6a' : '#ffd966', t: 0, life: 2.4 };
 }
 // 튜토리얼: 1 캡슐 탭하기, 2 같은 기체 합체하기, 3 붉은 칸 피하기. 끝나야 첫 웨이브가 시작된다
 function updateTut(dt) {

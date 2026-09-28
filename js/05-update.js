@@ -549,7 +549,7 @@ function update(dt) {
     S.crisis = false;
     if (st.endless && S.wave >= 10) ach('endless_10');
     if (st.endless && S.wave >= 30) ach('endless_30');
-    if (!st.endless && S.wave === 3 && st.n >= 2 && !S.tut) { S.mode = 'perk'; S.perkChoices = rollPerks(); S.banner = null; }
+    if (!st.endless && (S.wave === (st.waves <= 3 ? 2 : 3) || (st.kind === 'long' && S.wave === 5)) && st.n >= 2 && !S.tut) { S.mode = 'perk'; S.perkChoices = rollPerks(); S.banner = null; }   // 중간 강화 (장기전은 한 번 더)
     if (st.endless) { S.score += 100; if (S.wave % 5 === 0) { S.mode = 'perk'; if (S.daily) S.rng = mulberry(seedOf('perk' + S.daily.day + S.wave)); S.perkChoices = rollPerks(); S.rng = null; S.banner = null; } }
   }
 }

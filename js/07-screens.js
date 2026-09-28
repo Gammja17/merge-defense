@@ -672,7 +672,7 @@ function drawMap() {
     ctx.fillText(`// SECTOR ${String(s + 1).padStart(2, '0')}`, 30, y + 14);
     ctx.font = FK(18); outlineText(sec.name, 30, y + 32, '#fff', 4);
     ctx.font = FK(12); ctx.fillStyle = 'rgba(220,230,255,.8)';
-    ctx.fillText(sec.info, 140, y + 32);
+    ctx.fillText(sec.info, 132, y + 14);   // 윗줄: 스테이지 종류 이름표와 안 겹치게
   });
   ctx.lineWidth = 2.5; ctx.setLineDash([6, 8]); ctx.lineDashOffset = -t * 20;
   for (let n = 1; n < STAGE_COUNT; n++) {
@@ -703,11 +703,14 @@ function drawMap() {
     }
     // 이 스테이지를 깨면 풀리는 기체
     const gift = UNIT_ORDER.find(k => UNIT[k].unlock.stage === n);
-    if (gift && !isOwned(gift)) { ctx.font = FU(8); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd24a'; ctx.fillText('NEW', p.x, p.y - p.r - 6); }
+    const kn = st.kind !== 'base' ? STAGE_KINDS[st.kind] : null;   // 스테이지 종류 이름표 (러시, 장기전 ...)
+    if (kn) { ctx.font = FK(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = open ? 1 : 0.45; outlineText(kn.name, p.x, p.y - p.r - 9, kn.col, 3); ctx.globalAlpha = 1; }
+    if (gift && !isOwned(gift)) { ctx.font = FU(8); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd24a'; ctx.fillText('NEW', p.x, p.y - p.r - (kn ? 20 : 6)); }
     if (!open) {
-      ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(p.x + p.r * 0.35, p.y - p.r - 2, 12, 10);
+      const lx = p.x + p.r * 0.75, ly = p.y - p.r * 0.75;   // 자물쇠: 오른쪽 위 (종류 이름표와 안 겹치게)
+      ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(lx, ly, 12, 10);
       ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(p.x + p.r * 0.35 + 6, p.y - p.r - 2, 4, Math.PI, 0); ctx.stroke();
+      ctx.beginPath(); ctx.arc(lx + 6, ly, 4, Math.PI, 0); ctx.stroke();
     }
     for (let k = 0; k < 3; k++) drawStar(p.x + (k - 1) * 12, p.y + p.r + 11, 5, k < stars ? '#ffd24a' : 'rgba(255,255,255,.14)');
     BUTTONS.push({ x: p.x - p.r - 8, y: p.y - p.r - 8, w: p.r * 2 + 16, h: p.r * 2 + 24, act: 'stage', n });
@@ -1332,8 +1335,10 @@ function drawPrep() {
   panel(x, y, w, h, col);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FT(26, 900); glitchText(st ? `STAGE ${P.n}` : 'ENDLESS', W / 2, y + 38, '#fff', 5, 0);
-  ctx.font = FK(16); ctx.fillStyle = col; ctx.fillText(st ? `${st.sector.name}${st.boss ? ', 보스' : ''}` : '무한 방어선', W / 2, y + 70);
-  if (st) { ctx.font = FK(13); ctx.fillStyle = 'rgba(200,220,245,.8)'; ctx.fillText(st.sector.info, W / 2, y + 94); }
+  const K = st && st.kind !== 'base' ? STAGE_KINDS[st.kind] : null;
+  ctx.font = FK(16); ctx.fillStyle = col; ctx.fillText(st ? `${st.sector.name}${st.boss ? ', 보스' : ''}, ${st.waves}웨이브` : '무한 방어선', W / 2, y + 66);
+  if (K) { ctx.font = FK(15); outlineText(`${K.name}: ${K.sub}`, W / 2, y + 90, K.col, 3); }
+  else if (st) { ctx.font = FK(13); ctx.fillStyle = 'rgba(200,220,245,.8)'; ctx.fillText(st.sector.info, W / 2, y + 92); }
   ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)';
   ctx.fillText(`// 출격 편성 ${PROG.deck.length}/${DECK_N}`, x + 22, y + 124);
   const sw = 84, g = 8, sx0 = W / 2 - (DECK_N * (sw + g) - g) / 2;

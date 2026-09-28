@@ -126,7 +126,7 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 // ── 스폰 ──────────────────────────────────────────────────
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s];
 let ENDLESS_GROWTH = 1.22;
-const hpMul = () => S.stage.endless ? 0.9 * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (S.wave - 1)) * stageMul();
+const hpMul = () => S.stage.endless ? 0.9 * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();
 function spawnEnemy(k, x, y) {
   const d = ENEMY[k];
   const hp = d.hp * (d.boss ? BOSS_MUL * (S.stage.endless ? 0.7 * Math.pow(ENDLESS_GROWTH, S.wave - 10) : 1) : hpMul());
@@ -150,6 +150,7 @@ function runEvent(ev) {
       break;
     }
     case 'meteor': launchAttack('meteor', null, 3); break;
+    case 'surge': addText(W / 2, 250, '몰아치기!', '#ff8a6a', 30, 1.3); play('drums', 0.45, 1.2); S.fx.push({ kind: 'warp', x: W / 2, y: 24, t: 0, life: 0.5 }); break;
     case 'freeze': launchAttack('freeze', null, 0); break;
     case 'gold': {
       const deck = battleDeck().filter(t => UNIT[t].shape === 1);
@@ -181,7 +182,7 @@ function runEvent(ev) {
         if (!S.boss || S.boss.dead) S.boss = b;
         if (!S.bossCine && !S.tut && !SHOT) { S.bossCine = { k: ev.k, t: 0 }; play('vo_hostile', 0.8); play('drums', 0.5, 0.8); }
         if (ev.k === 'boss3') hintOnce('b3', '모선 보호막은 폭발이나 번개로');
-      } else if (ev.k === 'grunt' && S.wave >= 2 && Math.random() < 0.25) {
+      } else if (ev.k === 'grunt' && !ev.surge && S.wave >= 2 && Math.random() < 0.25) {
         const x = 110 + Math.random() * (W - 220);
         for (const [dx, dy] of [[0, 0], [-46, -40], [46, -40]]) { const g = spawnEnemy('grunt', x + dx, -50 + dy); g.hp = g.maxHp = g.maxHp * 0.45; }
         S.fx.push({ kind: 'warp', x, y: 24, t: 0, life: 0.45 });
