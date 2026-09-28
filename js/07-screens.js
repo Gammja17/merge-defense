@@ -882,6 +882,28 @@ function drawCard() {
       BUTTONS.push({ x: sx, y: sy, w: sw, h: 104, act: 'swapWith', type: t2, old: ot });
     });
   }
+  if (!c.inGame && own) {   // 바닥색 고르기: 왼쪽 위 색 칩
+    const bx = x + 20, bY = y + 52;
+    ctx.fillStyle = 'rgba(4,10,28,.9)'; chamfer(bx, bY, 92, 30, 7); ctx.fill(); ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.stroke();
+    unitTint(bx + 6, bY + 6, 18, 18, def.col, 4, 1.4); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; chamfer(bx + 6, bY + 6, 18, 18, 4); ctx.stroke();
+    ctx.font = FK(14); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#e6f4ff'; ctx.fillText('바닥색', bx + 32, bY + 16);
+    BUTTONS.push({ x: bx, y: bY, w: 92, h: 30, act: 'colorOpen' });
+  }
+  if (c.color && !c.inGame) {
+    const py = y + 90, ph = 176, sw = 38, g = 6, sx0 = W / 2 - (10 * (sw + g) - g) / 2;
+    ctx.fillStyle = 'rgba(4,10,28,.97)'; chamfer(x + 16, py, w - 32, ph, 12); ctx.fill();
+    ctx.strokeStyle = def.col; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FK(18); outlineText(`${def.name} 바닥색`, W / 2, py + 22, '#fff', 4);
+    UNIT_ORDER.forEach((ot, k) => {
+      const cc = UNIT[ot].col0, sx = sx0 + (k % 10) * (sw + g), sy = py + 44 + Math.floor(k / 10) * (sw + g);
+      ctx.fillStyle = 'rgba(14,22,44,1)'; chamfer(sx, sy, sw, sw, 6); ctx.fill(); unitTint(sx, sy, sw, sw, cc, 6, 1.4);
+      const on = cc === def.col;
+      ctx.strokeStyle = on ? '#fff' : cc; ctx.lineWidth = on ? 3 : 1.2; chamfer(sx, sy, sw, sw, 6); ctx.stroke();
+      if (cc === def.col0) { ctx.font = FK(11); ctx.fillStyle = '#fff'; ctx.fillText('기본', sx + sw / 2, sy + sw / 2); }
+      BUTTONS.push({ x: sx, y: sy, w: sw, h: sw, act: 'colorPick', type: t2, col: cc });
+    });
+    ctx.font = FK(13); ctx.fillStyle = 'rgba(200,220,245,.8)'; ctx.fillText('판 위 칸 바닥과 테두리 색이 바뀌어요', W / 2, py + ph - 20);
+  }
   if (UI.toast && UI.toast.until > t) { ctx.font = FK(16); ctx.textAlign = 'center'; outlineText(UI.toast.text, W / 2, y + 766, '#ffb0b0', 4); }
   // 카드 오른쪽 위 코어 계기
   coreLabel(x + w - 22, y + 30, UI.coreShown, 14, 'right');

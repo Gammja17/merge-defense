@@ -136,7 +136,7 @@ const boardList = b => (b || '').split(',').filter(x => /^[a-z][1-8]$/.test(x) &
 // ── 저장 (이 브라우저에만) ────────────────────────────────
 const SAVE_KEY = 'mergeDefense.v1';
 const DEFAULT_SETTINGS = { sfxVol: 0.8, bgmVol: 0.7, shake: true, fx: true, nums: true };
-function freshProg() { return { stars: {}, seen: {}, deck: ['f', 't'], owned: [], credits: 0, mk: {}, records: [], settings: { ...DEFAULT_SETTINGS } }; }
+function freshProg() { return { stars: {}, seen: {}, deck: ['f', 't'], owned: [], credits: 0, mk: {}, colors: {}, records: [], settings: { ...DEFAULT_SETTINGS } }; }
 let PROG = freshProg();
 try {
   const s = JSON.parse(localStorage.getItem(SAVE_KEY));

@@ -27,7 +27,7 @@ function shotRun(frames, maxLv = 4) {
 }
 function setupShot(k) {
   save = () => {};
-  PROG = freshProg(); PROG.owned = UNIT_ORDER.slice(); PROG.credits = 4280;
+  PROG = freshProg(); PROG.owned = UNIT_ORDER.slice(); PROG.credits = 4280; applyColors();
   for (let n = 1; n <= 13; n++) PROG.stars[n] = n < 12 ? 3 : 2;
   PROG.mk = { f: 6, t: 3, b: 4, s: 2, e: 1 };
   PROG.seen = new Proxy({}, { get: () => true });

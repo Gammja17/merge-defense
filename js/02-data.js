@@ -102,6 +102,10 @@ const UNIT = {
        desc: '적 함선을 해킹해 잠시 우리 편으로 싸우게 해요.', unlock: { shop: 700 } },
 };
 const UNIT_ORDER = ['f', 't', 's', 'g', 'm', 'e', 'd', 'w', 'c', 'l', 'a', 'q', 'b', 'y', 'r', 'h', 'n', 'x', 'v', 'k'];
+// 기체 색 바꾸기: 격납고 카드에서 기체마다 바닥색을 고를 수 있다 (col0이 기본 고유색)
+for (const t in UNIT) UNIT[t].col0 = UNIT[t].col;
+function applyColors() { for (const t in UNIT) UNIT[t].col = (PROG.colors && PROG.colors[t]) || UNIT[t].col0; }
+applyColors();
 const LV_MUL = [1, 2.3, 5.3, 12.2, 28, 64, 147, 338];
 const LV_COL = ['#48c8ff', '#48c8ff', '#5ae0ff', '#b86bff', '#ffd24a', '#4a8cff', '#ff3a5a', '#ff7ae0'];
 // 초월(Lv6~8): 합칠 때마다 화력 ×2.3, Lv5 주기 스킬 대기시간 -25%. 초월 III 계급장 별은 무지갯빛

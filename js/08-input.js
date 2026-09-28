@@ -79,6 +79,12 @@ function doAction(b) {
       if (PROG.deck.length >= DECK_N) { toast('편성에서 하나를 먼저 빼 주세요'); return; }
       PROG.deck.push(b.type); save(); UI.card = null; return;
     case 'swapOpen': if (UI.card) UI.card.swap = !UI.card.swap; return;
+    case 'colorOpen': if (UI.card) { UI.card.color = !UI.card.color; UI.card.swap = false; } return;
+    case 'colorPick': {
+      PROG.colors = PROG.colors || {};
+      if (b.col === UNIT[b.type].col0) delete PROG.colors[b.type]; else PROG.colors[b.type] = b.col;
+      applyColors(); save(); if (UI.card) UI.card.color = false; play('confirm', 0.5); return;
+    }
     case 'swapWith': { const i = PROG.deck.indexOf(b.old); if (i >= 0 && !PROG.deck.includes(b.type)) { PROG.deck[i] = b.type; save(); play('confirm', 0.5); } UI.card = null; return; }
     case 'undeploy': PROG.deck = PROG.deck.filter(t => t !== b.type); save(); UI.card = null; return;
     case 'buy': {
@@ -127,7 +133,7 @@ function doAction(b) {
     case 'toggle': PROG.settings[b.key] = !PROG.settings[b.key]; save(); return;
     case 'slider': UI.sliding = b; setSlider(b, UI.lastP.x); return;
     case 'reset':
-      if (UI.resetArm > now) { PROG = freshProg(); save(); UI.settings = false; goMap(); return; }
+      if (UI.resetArm > now) { PROG = freshProg(); applyColors(); save(); UI.settings = false; goMap(); return; }
       UI.resetArm = now + 3; return;
   }
 }
