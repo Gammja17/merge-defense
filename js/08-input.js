@@ -176,7 +176,7 @@ cv.addEventListener('pointermove', ev => {
 });
 function doMerge(target, from) {
   mergeInto(target, from);
-  const q = unitPos(target), col = LV_COL[target.lv - 1];
+  const q = unitPos(target), col = UNIT[target.type].col;
   boom(q.x, q.y, 1 + target.lv * 0.15, col);
   S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.5, color: col },
             { kind: 'ring', x: q.x, y: q.y, t: -0.12, life: 0.6, color: '#ffffff' },

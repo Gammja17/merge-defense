@@ -709,7 +709,7 @@ function mergeInto(t, from) {
   if (t.lv >= 5) ach('gold_unit');
   if (t.lv >= 6) ach('transcend');
   if (t.lv >= 8) ach('rainbow');
-  S.skillPop = { lv: t.lv, name, color: LV_COL[t.lv - 1], t: 0, life: 1.9, unit: UNIT[t.type].name, cmp: `전투력 ${fmt(sa.v)} → ${fmt(sb.v)}` };
+  S.skillPop = { lv: t.lv, name, color: UNIT[t.type].col, t: 0, life: 1.9, unit: UNIT[t.type].name, cmp: `전투력 ${fmt(sa.v)} → ${fmt(sb.v)}` };
 }
 
 // ── 이펙트 ────────────────────────────────────────────────

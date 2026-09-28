@@ -473,6 +473,7 @@ function drawSkillPop() {
   ctx.fillText(`UPGRADE COMPLETE // ${k.unit} LV.${k.lv}`, 0, -28);
   ctx.font = FK(34); glitchText(k.name + '!', 0, 4, k.color, 7, k.t < 0.3 ? (0.3 - k.t) * 30 : 0);
   ctx.font = FT(13, 900); ctx.fillStyle = '#5affc8'; ctx.fillText('▲ ' + k.cmp, 0, 32);
+  lvBadge(k.lv, -138, 4, k.color, 1.3);   // 새 계급장
   ctx.restore();
 }
 
@@ -544,7 +545,7 @@ function drawEndlessEnd() {
   ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.85)'; ctx.fillText('// 전투 분석: 기체별 피해 비중과 투입량 (1코 = Lv1 한 대)', 62, top + 304);
   types.forEach((t2, i) => {
     const def = UNIT[t2], y = top + 336 + i * 46, d = dmg[t2] || 0, pct = Math.round(d / tot * 100);
-    ctx.fillStyle = 'rgba(12,24,52,.9)'; chamfer(56, y - 20, W - 112, 40, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(12,24,52,.9)'; chamfer(56, y - 20, W - 112, 40, 8); ctx.fill(); unitTint(56, y - 20, 48, 40, def.col, 8);
     drawUnitArt(t2, 1, 80, y, Math.min(30 / def.iw, 28 / def.ih), 1, null);
     ctx.textAlign = 'left'; ctx.font = FK(15); ctx.fillStyle = '#fff'; ctx.fillText(def.name, 104, y - 8);
     ctx.font = FK(12); ctx.fillStyle = 'rgba(190,215,245,.8)'; ctx.fillText(`1코 ${fmt(S.used && S.used[t2] || 0)}기 투입`, 104, y + 10);
@@ -703,7 +704,7 @@ function drawMap() {
   ctx.font = FU(10); ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(140,220,255,.7)'; ctx.fillText('// SQUADRON', 22, 858);
   PROG.deck.forEach((t2, k) => {
     const x = 42 + k * 50, y = 896;
-    ctx.fillStyle = 'rgba(10,20,44,.8)'; chamfer(x - 22, y - 22, 44, 44, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(10,20,44,.8)'; chamfer(x - 22, y - 22, 44, 44, 7); ctx.fill(); unitTint(x - 22, y - 22, 44, 44, UNIT[t2].col, 7);
     ctx.strokeStyle = UNIT[t2].col; ctx.lineWidth = 1.2; ctx.stroke();
     const def = UNIT[t2], k2 = Math.min(34 / def.iw, 34 / def.ih);
     drawUnitArt(t2, 1, x, y, k2, 1, null);
@@ -725,6 +726,7 @@ function drawHangar() {
   for (let k = 0; k < DECK_N; k++) {
     const x = 20 + k * 102, y = 108, t2 = PROG.deck[k];
     ctx.fillStyle = t2 ? 'rgba(10,26,56,.9)' : 'rgba(10,20,44,.4)'; chamfer(x, y, 94, 80, 10); ctx.fill();
+    if (t2) unitTint(x, y, 94, 80, UNIT[t2].col, 10);
     ctx.strokeStyle = t2 ? UNIT[t2].col : 'rgba(120,220,255,.25)'; ctx.lineWidth = 1.5;
     if (!t2) ctx.setLineDash([4, 5]);
     ctx.stroke(); ctx.setLineDash([]);
@@ -743,7 +745,8 @@ function drawHangar() {
     const x = gx + (i % 4) * (cw + 6), y = gy + Math.floor(i / 4) * (ch + 6), def = UNIT[t2];
     const own = isOwned(t2), inDeck = PROG.deck.includes(t2);
     ctx.fillStyle = own ? 'rgba(10,24,54,.88)' : 'rgba(8,10,24,.8)'; chamfer(x, y, cw, ch, 12); ctx.fill();
-    ctx.strokeStyle = inDeck ? def.col : own ? 'rgba(120,220,255,.3)' : 'rgba(255,255,255,.1)'; ctx.lineWidth = inDeck ? 2.5 : 1.2; ctx.stroke();
+    unitTint(x, y, cw, ch, def.col, 12, own ? 0.8 : 0.3);
+    ctx.strokeStyle = inDeck ? def.col : own ? def.col + '66' : 'rgba(255,255,255,.1)'; ctx.lineWidth = inDeck ? 2.5 : 1.2; ctx.stroke();
     if (inDeck) drawGlow(def.col, x + cw / 2, y + 56, 50, 0.18);
     const k2 = Math.min(76 / def.iw, 50 / def.ih);
     ctx.globalAlpha = own ? 1 : 0.35;
@@ -789,11 +792,11 @@ function drawCard() {
   if (c.isNew) { ctx.font = FU(14); glitchText('// NEW UNIT UNLOCKED', W / 2, y + 30, '#ffd24a', 3, Math.random() < 0.1 ? 4 : 0.5); }
   else { ctx.font = FU(12); ctx.fillStyle = def.col; ctx.fillText(`// UNIT DATA / ${t2.toUpperCase()}`, W / 2, y + 30); }
   // 기체 그림: 레벨 1→8을 돌아가며 보여준다 (전투 중엔 그 기체의 레벨)
-  const showLv = c.inGame ? c.u.lv : 1 + Math.floor(t / 1.2) % MAX_LV, sc = rankCol(showLv);
+  const showLv = c.inGame ? c.u.lv : 1 + Math.floor(t / 1.2) % MAX_LV, sc = def.col;
   const k2 = Math.min(150 / def.iw, 130 / def.ih);
   drawGlow(sc, W / 2, y + 140, 90, 0.25);
   drawUnitArt(t2, showLv, W / 2, y + 140, k2, 1, null);
-  lvBadge(showLv, W / 2 + 110, y + 70, sc);
+  lvBadge(showLv, W / 2 + 110, y + 70, sc, 1.4);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FK(32); outlineText(def.name + (mkOf(t2) ? `  Mk.${mkOf(t2)}` : ''), W / 2, y + 232, mkOf(t2) ? '#ffe9a8' : '#fff', 5);
   ctx.font = FK(16); ctx.fillStyle = def.col; ctx.fillText(def.role + (def.shape === 1 ? ', 1칸' : ''), W / 2, y + 262);
@@ -815,12 +818,12 @@ function drawCard() {
   ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)';
   ctx.fillText('// 합칠수록 이만큼 세져요', x + 36, y + 400);
   st8.forEach((q, i) => {
-    const bh = 8 + 40 * Math.sqrt(q.v / mx), bx = gx0 + i * gw + gw * 0.2, bw = gw * 0.6, on = i + 1 === showLv, col = rankCol(i + 1);
+    const bh = 8 + 40 * Math.sqrt(q.v / mx), bx = gx0 + i * gw + gw * 0.2, bw = gw * 0.6, on = i + 1 === showLv, col = def.col;
     ctx.fillStyle = on ? col : 'rgba(120,200,255,.3)';
     ctx.fillRect(bx, gy0 - bh, bw, bh);
     if (on) drawGlow(col, bx + bw / 2, gy0 - bh, 18, 0.5);
     ctx.textAlign = 'center'; ctx.font = FT(9, 900); ctx.fillStyle = on ? '#fff' : 'rgba(255,255,255,.7)'; ctx.fillText(fmt(q.v), bx + bw / 2, gy0 - bh - 8);
-    ctx.font = FU(9); ctx.fillStyle = col; ctx.fillText(`LV${i + 1}`, bx + bw / 2, gy0 + 9);
+    lvBadge(i + 1, bx + bw / 2, gy0 + 12, on ? col : 'rgba(120,200,255,.3)', 0.62);
   });
   // 합체 비교: 같은 기체 두 대를 그대로 둘 때와 합쳤을 때
   const cmpL = Math.min(showLv, 4), two = st8[cmpL - 1].v * 2, one = st8[cmpL].v, cells = SHAPES[def.shape].length, nextT = TRANSCEND[showLv - 5];
@@ -829,15 +832,16 @@ function drawCard() {
     : nextT ? `Lv${showLv} 두 대를 합치면 ${nextT}: 화력 ×2.3, 스킬 더 자주` : '최고 단계 초월 III';
   ctx.fillText(cmpTxt, W / 2, y + 494);
   // 스킬 목록 (Lv1~5) + 초월 한 줄 (Lv6~8)
-  const rowsK = SKILLS[t2].map(([nm, ds], i) => [`LV${i + 1}`, nm, ds, i + 1 === Math.min(showLv, 5) && showLv <= 5, RANK_COL[i]]);
-  rowsK.push(['LV6~8', '초월 I~III', transDesc(t2), showLv >= 6, RANK_COL[6]]);
+  const rowsK = SKILLS[t2].map(([nm, ds], i) => [`LV${i + 1}`, nm, ds, i + 1 === Math.min(showLv, 5) && showLv <= 5, def.col]);
+  rowsK.push(['LV6~8', '초월 I~III', transDesc(t2), showLv >= 6, def.col]);
   rowsK.forEach(([lvT, nm, ds, on, col], i) => {
     const sy = y + 530 + i * 42;
     ctx.fillStyle = on ? 'rgba(90,210,255,.12)' : 'rgba(255,255,255,.03)'; chamfer(x + 24, sy - 20, w - 48, 40, 8); ctx.fill();
     if (on) { ctx.strokeStyle = col; ctx.globalAlpha = 0.6; ctx.lineWidth = 1.2; ctx.stroke(); ctx.globalAlpha = 1; }
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.font = FK(12); const ln = wrapLines(ds, w - 130), two = ln.length > 1;
-    ctx.font = FT(i === 5 ? 10 : 12, 900); ctx.fillStyle = col; ctx.fillText(lvT, x + 34, sy - (two ? 9 : 6));
+    lvBadge(i === 5 ? Math.max(6, Math.min(8, showLv)) : i + 1, x + 52, sy - 6, on ? col : 'rgba(150,180,220,.35)', 0.72);
+    ctx.textAlign = 'center'; ctx.font = FT(8, 900); ctx.fillStyle = on ? '#fff' : 'rgba(200,215,240,.6)'; ctx.fillText(lvT, x + 52, sy + 12); ctx.textAlign = 'left';
     ctx.font = FK(15); ctx.fillStyle = '#fff'; ctx.fillText(nm, x + 88, sy - (two ? 11 : 7));
     ctx.font = FK(12); ctx.fillStyle = 'rgba(200,220,245,.85)';
     if (two) { ctx.fillText(ln[0], x + 88, sy + 4); ctx.fillText(ln.slice(1).join(' '), x + 88, sy + 15); }
@@ -869,7 +873,7 @@ function drawCard() {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FK(20); outlineText(`${def.name}${josaWa(def.name)} 바꿀 기체를 고르세요`, W / 2, py + 26, '#fff', 4);
     PROG.deck.forEach((ot, k) => {
       const sw = 76, sx = W / 2 - (DECK_N * (sw + 6) - 6) / 2 + k * (sw + 6), sy = py + 50, od = UNIT[ot];
-      ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(sx, sy, sw, 104, 9); ctx.fill();
+      ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(sx, sy, sw, 104, 9); ctx.fill(); unitTint(sx, sy, sw, 104, od.col, 9);
       ctx.strokeStyle = od.col; ctx.lineWidth = 1.5; ctx.stroke();
       drawUnitArt(ot, 1, sx + sw / 2, sy + 42, Math.min(54 / od.iw, 54 / od.ih), 1, null);
       ctx.font = FK(13); ctx.fillStyle = '#e6f0ff'; ctx.fillText(od.name, sx + sw / 2, sy + 90);
@@ -1212,7 +1216,7 @@ function drawRecords() {
     ctx.font = FK(14); ctx.fillStyle = 'rgba(140,220,255,.9)'; ctx.fillText(`${day} 오늘의 편성, 모두 같은 기체로 겨뤄요`, W / 2, 138);
     deck.forEach((t2, k) => {
       const def = UNIT[t2], x = W / 2 + (k - 2) * 84, y = 186;
-      ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(x - 38, y - 32, 76, 64, 9); ctx.fill(); ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(x - 38, y - 32, 76, 64, 9); ctx.fill(); unitTint(x - 38, y - 32, 76, 64, def.col, 9); ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.stroke();
       drawUnitArt(t2, 1, x, y - 6, Math.min(46 / def.iw, 36 / def.ih), 1, null);
       ctx.font = FK(12); ctx.fillStyle = '#e6f0ff'; ctx.fillText(def.name, x, y + 22);
     });
@@ -1254,7 +1258,7 @@ function drawRecords() {
     (sel.deck || []).forEach((t2, k, a) => {
       const def = UNIT[t2]; if (!def) return;
       const x = W / 2 + (k - (a.length - 1) / 2) * 84, y = py + 150;
-      ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(x - 38, y - 34, 76, 76, 9); ctx.fill(); ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(x - 38, y - 34, 76, 76, 9); ctx.fill(); unitTint(x - 38, y - 34, 76, 76, def.col, 9); ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.stroke();
       drawUnitArt(t2, 1, x, y - 4, Math.min(50 / def.iw, 44 / def.ih), 1, null);
       ctx.font = FK(12); ctx.fillStyle = '#e6f0ff'; ctx.fillText(def.name, x, y + 30);
     });
@@ -1262,10 +1266,10 @@ function drawRecords() {
     ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)'; ctx.fillText(bl.length ? '// 마지막 판의 기체' : '// 마지막 판 기록이 없어요', W / 2, py + 218);
     bl.forEach((u, k) => {
       const col = k % 6, row = Math.floor(k / 6), x = px + 44 + col * 66, y = py + 262 + row * 70, def = UNIT[u.t];
-      ctx.fillStyle = 'rgba(12,24,52,.9)'; chamfer(x - 30, y - 30, 60, 60, 8); ctx.fill();
-      ctx.strokeStyle = rankCol(u.lv); ctx.lineWidth = u.lv >= 5 ? 2.5 : 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(12,24,52,.9)'; chamfer(x - 30, y - 30, 60, 60, 8); ctx.fill(); unitTint(x - 30, y - 30, 60, 60, def.col, 8);
+      ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.stroke();
       drawUnitArt(u.t, u.lv, x, y - 2, Math.min(44 / def.iw, 40 / def.ih), 1, null);
-      lvBadge(u.lv, x, y + 27, rankCol(u.lv), 0.85);
+      lvBadge(u.lv, x, y + 27, def.col, 0.85);
     });
     button(W / 2 - 90, py + ph - 64, 180, 46, '닫기', 'recClose', 'ghost');
     BUTTONS.push({ x: 0, y: 0, w: W, h: py, act: 'recClose' }); BUTTONS.push({ x: 0, y: py + ph, w: W, h: H - py - ph, act: 'recClose' });

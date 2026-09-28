@@ -405,7 +405,7 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
   const SH = n => lv >= 8 && IMG[n + '_r0'] ? n + '_r' + (Math.floor(t * 6 + x * 0.02) % 6) : L(n);
   const shine = lv >= 4 ? (lv >= 8 ? 0.45 : lv >= 6 ? 0.3 : lv >= 5 ? 0.22 : 0.14) + 0.12 * Math.sin(t * 3 + x * 0.1) : 0;
   const ang = u ? u.ang : -Math.PI / 2, kick = u ? (u.kick || 0) : 0, flash = u ? (u.flash || 0) : 0;
-  const col = type === 'f' || lv >= 5 ? lvCol(lv) : def.col;
+  const col = def.col;
   let tier = Math.min(lv, 8), NI = IMG['units/' + type + tier];
   while (tier > 1 && !(NI && NI.width)) NI = IMG['units/' + type + --tier];   // 그 레벨 그림이 없으면 아래 단계 그림
   if (NI && NI.width) {
@@ -423,7 +423,7 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
       ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 44 * k, -0.4, 0.4); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
-    if (lv >= 6 && u && tier < lv) drawGlow(rankCol(lv), x, y + 4, 44 * k * (lv >= 8 ? 1.15 : 1), 0.35 + 0.12 * Math.sin(t * 4), 0.8);
+    if (lv >= 6 && u && tier < lv) drawGlow(col, x, y + 4, 44 * k * (lv >= 8 ? 1.15 : 1), 0.35 + 0.12 * Math.sin(t * 4), 0.8);
     if (def.air) drawFlame(x, y + dh * 0.44 + ky, (8 + lv * 3) * (0.8 + Math.random() * 0.35) * k, 3 + tier, col, alpha * 0.8);
     ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y - 2 + ky); if (rot) ctx.rotate(rot);
     ctx.drawImage(fitImg(NI, dw, dh), -dw / 2, -dh / 2, dw, dh);
@@ -480,15 +480,15 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
 function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   const t = performance.now() / 1000;
   const s = (1 + u.pop * 0.8) * big * (1 + (u.lv - 1) * 0.05) * U_SCALE;
-  const def = UNIT[u.type], col = u.type === 'f' || u.lv >= 5 ? lvCol(u.lv) : def.col;
+  const def = UNIT[u.type];
   const dm = shapeDims(u.type), wide = dm.w > 1 ? dm.w * 0.95 : 1, tall = dm.h > 1 ? dm.h * 0.95 : 1;
-  drawGlow(def.col, x, y + 6, 40 * Math.max(wide, tall), (0.08 + 0.03 * Math.sin(t * 2 + x)) * alpha, 0.55 * tall / wide);   // 은은한 바탕 빛만 (레벨은 그림과 칸 테두리로 구분)
+  drawGlow(def.col, x, y + 6, 40 * Math.max(wide, tall), (0.08 + 0.03 * Math.sin(t * 2 + x)) * alpha, 0.55 * tall / wide);   // 은은한 바탕 빛은 기체 고유색 (레벨은 계급장으로)
   // 발밑 그림자, 비행 기체는 살짝 둥실거린다
   ctx.fillStyle = `rgba(0,0,0,${0.35 * alpha})`; ctx.beginPath(); ctx.ellipse(x, y + 18 * tall, 26 * s * wide, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
   if (def.air && u.cells) y += Math.sin(t * 2.2 + x * 0.07) * 1.8;
   // 레벨 그림이 없을 때만 발밑 회전 링으로 레벨을 알린다
   if (u.lv >= 4 && !(IMG['units/' + u.type + Math.min(u.lv, 8)] || {}).width) {
-    const rc = u.lv >= 5 ? lvCol(u.lv) : '#c07bff';
+    const rc = def.col;
     drawTex('p_ring', rc, x, y + 14 * tall, 84 * s * wide, t * 1.5, (0.55 + 0.2 * Math.sin(t * 3)) * alpha, true, 0.36);
     if (u.lv >= 6) drawTex('p_ring', u.lv >= 8 ? RAINBOW[(Math.floor(t * 6) + 3) % 6] : rc, x, y + 14 * tall, 112 * s * wide, -t * 2.2, 0.4 * alpha, true, 0.36);
     drawTex('p_light', rc, x, y + 12 * tall, 70 * s * wide, -t, 0.3 * alpha, true, 0.4);
@@ -496,7 +496,7 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   if (u.type === 'g' && u.cells) {
     // 방패 드론이 지키는 범위: 상하좌우 4칸
     ctx.save(); ctx.globalAlpha = alpha * (0.22 + 0.1 * Math.sin(t * 3));
-    ctx.strokeStyle = '#6ad0ff'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
+    ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
     const c0 = u.cells[0], r0 = Math.floor(c0 / COLS), k0 = c0 % COLS;
     for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
       const nr = r0 + dr, nc = k0 + dc;
@@ -515,7 +515,7 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   const bot = y + (tall > 1 ? CH * 0.95 : 26);
   if (!onPad) {
   // 레벨 = 금색 별 개수. 어두운 받침판 위에 그려 기체 그림이나 체력 바에 묻히지 않게. 초월 III(Lv8)만 무지개
-  ctx.globalAlpha = alpha; lvBadge(u.lv, x, bot, rankCol(u.lv), big < 1 ? 0.85 : 1); ctx.globalAlpha = 1;
+  ctx.globalAlpha = alpha; lvBadge(u.lv, x, bot, def.col, big < 1 ? 0.85 : 1); ctx.globalAlpha = 1;
   if (u.maxHp) {
     const bw = wide > 1 ? 110 : 48, bx = x - bw / 2, by = bot + 7, r = Math.max(0, u.hp / u.maxHp);
     ctx.globalAlpha = alpha;
@@ -562,6 +562,7 @@ function drawCap(c) {
   spr(look.cap, x, y, 58 * s, 56 * s);
   if (!rw.heal) {
     const def = UNIT[rw.type], k = Math.min(40 / def.iw, 40 / def.ih);
+    ctx.fillStyle = def.col + '50'; ctx.beginPath(); ctx.arc(x, y + 2, 21, 0, Math.PI * 2); ctx.fill();   // 캡슐 속도 기체 고유색
     drawUnitArt(rw.type, rw.lv, x, y + 2, k, 1, null);
   }
   if (c.flash > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, c.flash * 8); spr(look.cap, x, y, 58, 56); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
@@ -569,7 +570,7 @@ function drawCap(c) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = /[가-힣]/.test(look.label) ? FK(22) : FT(19, 900);
   outlineText(look.label, x, y - 58, '#fff');
-  if (!rw.heal) { ctx.font = FK(13); outlineText(UNIT[rw.type].name, x, y - 76, col, 3); }
+  if (!rw.heal) { ctx.font = FK(13); outlineText(UNIT[rw.type].name, x, y - 76, UNIT[rw.type].col, 3); }
   ctx.fillStyle = 'rgba(4,8,22,.92)'; chamfer(x - 22, y + 31, 44, 20, 5); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.font = FT(12, 900); ctx.fillStyle = '#fff';
@@ -775,8 +776,7 @@ function drawBaseLive() {
     for (const x of [GRID_X - 3, GRID_X + COLS * CW + 3]) { ctx.fillStyle = on ? '#ffd24a' : 'rgba(255,210,74,.2)'; ctx.fillRect(x - 1, GRID_Y + 18 + k * 46, 2, 7); if (on) drawGlow('#ffd24a', x, GRID_Y + 21 + k * 38, 10, 0.5); }
   }
 }
-// 기체 레벨 틀: 칸 테두리 색과 굵기(칸 그릴 때), 체력 막대와 별(기체를 그린 뒤 맨 위)
-// 레벨 표시: 작은 판에 숫자 하나
+// 기체 틀: 칸 테두리는 기체 고유색(칸 그릴 때), 체력 막대와 계급장(기체를 그린 뒤 맨 위)
 // 기체가 차지하는 칸 모양을 작은 판 그림으로 (가운데 cx, cy)
 function drawShapeIcon(type, cx, cy, cell, col, label) {
   const pts = SHAPES[UNIT[type].shape], hh = Math.max(...pts.map(p => p[0])) + 1, ww = Math.max(...pts.map(p => p[1])) + 1, g = 2;
@@ -785,12 +785,31 @@ function drawShapeIcon(type, cx, cy, cell, col, label) {
   for (const [r, c] of pts) { ctx.fillStyle = col; ctx.globalAlpha = 0.85; ctx.fillRect(x0 + c * (cell + g), y0 + r * (cell + g), cell, cell); ctx.globalAlpha = 1; }
   if (label) { ctx.font = FK(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(210,230,255,.8)'; ctx.fillText(label, cx, y0 - 14); }
 }
+// 기체 고유색으로 칸 바닥 물들이기 (판, 격납고, 편성 칸, 카드가 같은 색을 쓴다)
+function unitTint(x, y, w, h, col, c = 9, k = 1) {
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, col + Math.round(0x66 * k).toString(16).padStart(2, '0')); g.addColorStop(1, col + Math.round(0x24 * k).toString(16).padStart(2, '0'));
+  ctx.fillStyle = g; chamfer(x, y, w, h, c); ctx.fill();
+}
+// 레벨 계급장: 꺾쇠 1~3개(Lv1~3), 별 1~2개(Lv4~5), 날개 달린 별(초월 Lv6~8, 날개 깃이 1~3개). 테두리는 기체 고유색
+const RANK_GOLD = '#ffd24a';
 function lvBadge(lv, cx, cy, col, sc = 1) {
+  const hw = lv >= 6 ? 23 : lv === 5 ? 17 : 12, hh = lv <= 3 ? 10 + (lv - 1) * 2 : lv >= 6 ? 11 : 10;
   ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc);
-  ctx.fillStyle = 'rgba(0,6,20,.94)'; chamfer(-12, -9, 24, 18, 5); ctx.fill();
+  ctx.fillStyle = 'rgba(0,6,20,.94)'; chamfer(-hw, -hh, hw * 2, hh * 2, 5); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.font = FU(14, 700); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col;   // Orbitron의 7은 ㄱ처럼 보여서 Chakra Petch
-  ctx.fillText(String(lv), 0, 1);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (lv <= 3) {
+    ctx.strokeStyle = RANK_GOLD; ctx.lineWidth = 2.6;
+    for (let k = 0; k < lv; k++) { const y = (k - (lv - 1) / 2) * 5.5 + 2.5; ctx.beginPath(); ctx.moveTo(-6.5, y); ctx.lineTo(0, y - 5); ctx.lineTo(6.5, y); ctx.stroke(); }
+  } else if (lv <= 5) {
+    for (let k = 0; k < lv - 3; k++) drawStar((k - (lv - 4) / 2) * 13, 0.5, 7, RANK_GOLD);
+  } else {
+    const star = lv >= 8 ? RAINBOW[Math.floor(performance.now() / 180) % 6] : RANK_GOLD;
+    ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 2.2;
+    for (const s of [-1, 1]) for (let k = 0; k < lv - 5; k++) { ctx.beginPath(); ctx.moveTo(s * 9, -1 + k * 3.5); ctx.lineTo(s * (20 - k * 2.5), -7 + k * 6); ctx.stroke(); }
+    drawStar(0, 0.5, 8, star);
+  }
   ctx.restore();
 }
 function unitBox(u) {
@@ -801,16 +820,11 @@ function unitBox(u) {
 function drawUnitFrames(top) {
   const t = S.time;
   for (const u of gridUnits()) {
-    const { x, y, w, h } = unitBox(u), col = rankCol(u.lv);
+    const { x, y, w, h } = unitBox(u), col = UNIT[u.type].col;
     ctx.globalAlpha = drag && drag.unit === u && drag.moved ? 0.3 : 1;
     if (!top) {
       if (u.lv >= 5) drawGlow(col, x + w / 2, y + h / 2, Math.max(w, h) * 0.5, 0.1 + 0.03 * Math.sin(t * 3), 1);
-      let sc = col;
-      if (u.lv >= 8 && ctx.createConicGradient) {
-        sc = ctx.createConicGradient(t * 2, x + w / 2, y + h / 2);
-        RAINBOW.concat([RAINBOW[0]]).forEach((c, i) => sc.addColorStop(i / RAINBOW.length, c));
-      }
-      ctx.strokeStyle = sc; ctx.lineWidth = u.lv >= 8 ? 4 : u.lv >= 5 ? 3.2 : u.lv >= 3 ? 2.4 : 1.6;
+      ctx.strokeStyle = col; ctx.lineWidth = u.lv >= 6 ? 3 : 2.2;   // 테두리도 기체 고유색 (레벨은 아래 계급장)
       if (uSize(u) === (w + 8) / CW * (h + 8) / CH) { chamfer(x, y, w, h, 9); ctx.stroke(); }
       else for (const c of u.cells) { const q = cellPos(c); chamfer(q.x - CW / 2 + 4, q.y - CH / 2 + 4, CW - 8, CH - 8, 9); ctx.stroke(); }
     } else {
@@ -888,6 +902,7 @@ function drawPads() {
     const pg = ctx.createLinearGradient(0, y, 0, y + h);
     pg.addColorStop(0, 'rgba(26,38,66,.94)'); pg.addColorStop(1, 'rgba(7,11,24,.94)');
     ctx.fillStyle = pg; chamfer(x, y, w, h, 9); ctx.fill();
+    if (u) unitTint(x, y, w, h, lit, 9);   // 기체가 앉은 칸은 바닥을 그 기체 고유색으로 물들인다 (이 색 = 이 기체)
     ctx.strokeStyle = fc; ctx.globalAlpha = f ? 0.85 : u ? 0.6 : 0.3; ctx.lineWidth = f ? 2 : 1.2; ctx.stroke();
     if (f) { ctx.fillStyle = fc; ctx.globalAlpha = 0.1 + 0.05 * f.lv; chamfer(x, y, w, h, 9); ctx.fill(); ctx.globalAlpha = 0.8; ctx.fillRect(x + 12, y, w - 24, 2.5); }   // 강화 칸: 효과 색으로 옅게 칠하고 윗변 띠
     ctx.save(); ctx.translate(p.x, p.y + 4); ctx.rotate(u ? t * 0.5 : 0);

@@ -56,58 +56,56 @@ function spr(name, x, y, w, h, rot = 0, alpha = 1) {
   ctx.restore();
 }
 
-// ── 기체 16종 ─────────────────────────────────────────────
+// ── 기체 20종 ─────────────────────────────────────────────
 // stat: [화력, 연사, 내구] 1~5 (카드 표시용)
+// col: 기체마다 겹치지 않는 고유색. 칸 바닥, 테두리, 격납고, 캡슐이 이 색을 쓴다 (레벨은 색이 아니라 계급장)
 const UNIT = {
-  f: { name: '레이저 전투기', role: '연사', img: 'f1', iw: 66, ih: 50, air: true, hp: 3, dmg: 6, cd: 0.35, sp: 950, turn: 9, shape: 1, cost: 8, col: '#48c8ff', stat: [2, 5, 1],
+  f: { name: '레이저 전투기', role: '연사', img: 'f1', iw: 66, ih: 50, air: true, hp: 3, dmg: 6, cd: 0.35, sp: 950, turn: 9, shape: 1, cost: 8, col: '#1a90f0', stat: [2, 5, 1],
        desc: '빠르게 레이저를 쏘는 기본 기체예요. 캡슐을 까는 데 강해요.', unlock: 'base' },
-  t: { name: '미사일 포탑', role: '범위 폭발', img: 't1', iw: 60, ih: 60, hp: 4, dmg: 22, cd: 1.3, sp: 520, turn: 5, splash: 70, shape: 1, cost: 18, col: '#ff9a3c', stat: [3, 2, 3],
+  t: { name: '미사일 포탑', role: '범위 폭발', img: 't1', iw: 60, ih: 60, hp: 4, dmg: 22, cd: 1.3, sp: 520, turn: 5, splash: 70, shape: 1, cost: 18, col: '#ffc870', stat: [3, 2, 3],
        desc: '느리지만 폭발로 몰려오는 적을 쓸어요.', unlock: 'base' },
-  s: { name: '저격기', role: '보스 저격', img: 'u_s', iw: 66, ih: 44, air: true, hp: 3, dmg: 45, cd: 1.7, sp: 1700, turn: 30, shape: 1, cost: 14, col: '#7dff7a', stat: [4, 1, 1],
+  s: { name: '저격기', role: '보스 저격', img: 'u_s', iw: 66, ih: 44, air: true, hp: 3, dmg: 45, cd: 1.7, sp: 1700, turn: 30, shape: 1, cost: 14, col: '#98ff20', stat: [4, 1, 1],
        desc: '가장 튼튼한 적을 골라 강한 한 방을 꽂아요.', unlock: { stage: 1 } },
-  g: { name: '방패 드론', role: '보호', img: 'u_g', iw: 66, ih: 31, hp: 7, dmg: 5, cd: 0.6, sp: 950, turn: 9, shape: 1, cost: 14, col: '#6ad0ff', stat: [1, 3, 5],
+  g: { name: '방패 드론', role: '보호', img: 'u_g', iw: 66, ih: 31, hp: 7, dmg: 5, cd: 0.6, sp: 950, turn: 9, shape: 1, cost: 14, col: '#10c0f0', stat: [1, 3, 5],
        desc: '상하좌우로 붙은 기체가 받는 공격을 대신 맞아 줘요.', unlock: { stage: 2 } },
-  m: { name: '수리 드론', role: '회복', img: 'u_m', iw: 52, ih: 34, hp: 4, dmg: 5, cd: 0.6, sp: 950, turn: 9, shape: 1, cost: 14, col: '#6dff8a', stat: [1, 3, 2],
+  m: { name: '수리 드론', role: '회복', img: 'u_m', iw: 52, ih: 34, hp: 4, dmg: 5, cd: 0.6, sp: 950, turn: 9, shape: 1, cost: 14, col: '#1ed040', stat: [1, 3, 2],
        desc: '다친 기체를 주기적으로 고쳐요.', unlock: { stage: 3 } },
-  e: { name: '전자전기', role: '연쇄 번개', img: 'u_e', iw: 64, ih: 48, air: true, hp: 3, dmg: 6, cd: 0.8, shape: 1, cost: 14, col: '#ffe24a', stat: [2, 4, 1],
+  e: { name: '전자전기', role: '연쇄 번개', img: 'u_e', iw: 64, ih: 48, air: true, hp: 3, dmg: 6, cd: 0.8, shape: 1, cost: 14, col: '#fff34a', stat: [2, 4, 1],
        desc: '번개가 적 사이를 튀어 다니고, 레벨이 오르면 보호막을 잘 깨요.', unlock: { stage: 4 } },
-  d: { name: '드론 모함', role: '캡슐 특화', img: 'u_d', iw: 64, ih: 49, air: true, hp: 3, dmg: 5, cd: 1, shape: 1, cost: 16, col: '#ff6a5a', stat: [2, 4, 1],
+  d: { name: '드론 모함', role: '캡슐 특화', img: 'u_d', iw: 64, ih: 49, air: true, hp: 3, dmg: 5, cd: 1, shape: 1, cost: 16, col: '#ff2a1a', stat: [2, 4, 1],
        desc: '드론을 띄워 캡슐을 먼저 까요. 캡슐이 없으면 적을 쏴요.', unlock: { stage: 5 } },
-  c: { name: '빙결포', role: '감속, 빙결', img: 'u_c2', iw: 44, ih: 52, hp: 4, dmg: 7, cd: 0.7, sp: 800, turn: 8, shape: 1, cost: 14, col: '#9ff0ff', stat: [1, 4, 2],
+  c: { name: '빙결포', role: '감속, 빙결', img: 'u_c2', iw: 44, ih: 52, hp: 4, dmg: 7, cd: 0.7, sp: 800, turn: 8, shape: 1, cost: 14, col: '#8ee4ff', stat: [1, 4, 2],
        desc: '냉기로 적을 느리게 하고, 레벨이 오르면 얼려요.', unlock: { stage: 7 } },
-  a: { name: '방공포', role: '산탄, 요격', img: 'u_a', iw: 52, ih: 53, rot: true, hp: 4, dmg: 4, cd: 0.75, sp: 1000, turn: 10, shape: 1, cost: 14, col: '#d0d8e8', stat: [2, 3, 3],
+  a: { name: '방공포', role: '산탄, 요격', img: 'u_a', iw: 52, ih: 53, rot: true, hp: 4, dmg: 4, cd: 0.75, sp: 1000, turn: 10, shape: 1, cost: 14, col: '#9aa0ac', stat: [2, 3, 3],
        desc: '산탄을 뿌리고, 레벨이 오르면 날아오는 공격을 요격해요.', unlock: { stage: 10 } },
-  b: { name: '전함', role: '대형, 가로 2칸', img: 'u_b2', iw: 130, ih: 80, air: true, hp: 9, dmg: 34, cd: 1.0, sp: 680, turn: 4, splash: 62, shape: 'h2', cost: 36, col: '#7fe8ff', stat: [4, 3, 5],
+  b: { name: '전함', role: '대형, 가로 2칸', img: 'u_b2', iw: 130, ih: 80, air: true, hp: 9, dmg: 34, cd: 1.0, sp: 680, turn: 4, splash: 62, shape: 'h2', cost: 36, col: '#4050ff', stat: [4, 3, 5],
        desc: '두 칸을 차지하지만 튼튼하고 화력이 강해요.', unlock: { stage: 12 } },
-  r: { name: '요새포', role: '대형, 세로 2칸', img: 'u_r', iw: 76, ih: 150, hp: 8, dmg: 120, cd: 2.6, sp: 430, turn: 3, splash: 90, shape: 'v2', cost: 34, col: '#ffb0a0', stat: [5, 1, 5],
+  r: { name: '요새포', role: '대형, 세로 2칸', img: 'u_r', iw: 76, ih: 150, hp: 8, dmg: 120, cd: 2.6, sp: 430, turn: 3, splash: 90, shape: 'v2', cost: 34, col: '#ff90bd', stat: [5, 1, 5],
        desc: '사거리 밖의 적까지 포격하는 초장거리 포대예요.', unlock: { stage: 15 } },
-  h: { name: '화염방사기', role: '근거리 화력', img: 'u_h', iw: 48, ih: 48, rot: true, hp: 5, dmg: 55, cd: 0.1, shape: 1, cost: 16, col: '#ff7a2a', stat: [5, 5, 3],
+  h: { name: '화염방사기', role: '근거리 화력', img: 'u_h', iw: 48, ih: 48, rot: true, hp: 5, dmg: 55, cd: 0.1, shape: 1, cost: 16, col: '#ff8000', stat: [5, 5, 3],
        desc: '가까이 온 적을 불길로 녹여요. 사거리가 짧아요.', unlock: { shop: 300 } },
-  n: { name: '기뢰 부설기', role: '함정', img: 'u_n', iw: 60, ih: 38, hp: 4, dmg: 75, cd: 2.5, shape: 1, cost: 16, col: '#ff4a6a', stat: [4, 1, 2],
+  n: { name: '기뢰 부설기', role: '함정', img: 'u_n', iw: 60, ih: 38, hp: 4, dmg: 75, cd: 2.5, shape: 1, cost: 16, col: '#ed0e90', stat: [4, 1, 2],
        desc: '전장에 기뢰를 깔아 지나가는 적을 터뜨려요.', unlock: { shop: 400 } },
-  x: { name: '레이더 기지', role: '지원', img: 'u_x', iw: 42, ih: 70, hp: 4, dmg: 0, cd: 1, shape: 1, cost: 16, col: '#48ffd8', stat: [0, 0, 2],
+  x: { name: '레이더 기지', role: '지원', img: 'u_x', iw: 42, ih: 70, hp: 4, dmg: 0, cd: 1, shape: 1, cost: 16, col: '#0aa982', stat: [0, 0, 2],
        desc: '주변 8칸 기체의 공격 속도와 화력을 올려요. 직접 쏘지는 않아요.', unlock: { shop: 500 } },
-  v: { name: '중력포', role: '끌어모으기', img: 'u_v2', iw: 64, ih: 28, hp: 4, dmg: 40, cd: 2.2, sp: 360, turn: 3, shape: 1, cost: 16, col: '#b86bff', stat: [2, 1, 2],
+  v: { name: '중력포', role: '끌어모으기', img: 'u_v2', iw: 64, ih: 28, hp: 4, dmg: 40, cd: 2.2, sp: 360, turn: 3, shape: 1, cost: 16, col: '#f45bef', stat: [2, 1, 2],
        desc: '중력장으로 적을 한데 모으고 느리게 해요. 미사일과 잘 어울려요.', unlock: { shop: 600 } },
-  w: { name: '방벽 요새', role: '대형, ㄱ자 3칸', img: 'u_a', iw: 130, ih: 130, hp: 14, dmg: 5, cd: 0.8, sp: 1000, turn: 10, shape: 'L', cost: 30, col: '#6ad0ff', stat: [1, 3, 5],
+  w: { name: '방벽 요새', role: '대형, ㄱ자 3칸', img: 'u_a', iw: 130, ih: 130, hp: 14, dmg: 5, cd: 0.8, sp: 1000, turn: 10, shape: 'L', cost: 30, col: '#ab7042', stat: [1, 3, 5],
        desc: 'ㄱ자로 세 칸을 차지하는 요새예요. 받는 피해가 절반이고, 주변 칸을 노린 공격을 쏴서 막아요.', unlock: { stage: 6 } },
-  l: { name: '레일 포대', role: '대형, 가로 3칸', img: 'u_s', iw: 200, ih: 70, hp: 10, dmg: 70, cd: 2.2, shape: 'h3', cost: 40, col: '#5ae0ff', stat: [5, 2, 4],
+  l: { name: '레일 포대', role: '대형, 가로 3칸', img: 'u_s', iw: 200, ih: 70, hp: 10, dmg: 70, cd: 2.2, shape: 'h3', cost: 40, col: '#b8a0ff', stat: [5, 2, 4],
        desc: '가로 세 칸짜리 레일건이에요. 적을 꿰뚫는 레일탄으로 한 줄에 선 적을 모두 뚫어요.', unlock: { stage: 8 } },
-  q: { name: '이온 캐논', role: '대형, 세로 3칸', img: 'u_v2', iw: 60, ih: 200, hp: 12, dmg: 38, cd: 3, shape: 'v3', cost: 44, col: '#b86bff', stat: [4, 2, 4],
+  q: { name: '이온 캐논', role: '대형, 세로 3칸', img: 'u_v2', iw: 60, ih: 200, hp: 12, dmg: 38, cd: 3, shape: 'v3', cost: 44, col: '#9a3cff', stat: [4, 2, 4],
        desc: '세로 한 줄을 통째로 쓰는 빔 포탑이에요. 자기 줄 위로 오는 적을 모두 태워요. 어느 줄에 둘지가 중요해요.', unlock: { stage: 11 } },
-  y: { name: '대형 모함', role: '대형, 2×2 4칸', img: 'u_b2', iw: 140, ih: 140, hp: 16, dmg: 24, cd: 1.4, sp: 620, turn: 4, splash: 55, shape: 'sq', cost: 50, col: '#5affc8', stat: [3, 4, 5],
+  y: { name: '대형 모함', role: '대형, 2×2 4칸', img: 'u_b2', iw: 140, ih: 140, hp: 16, dmg: 24, cd: 1.4, sp: 620, turn: 4, splash: 55, shape: 'sq', cost: 50, col: '#a8a010', stat: [3, 4, 5],
        desc: '네 칸을 차지하는 거대 모함이에요. 주포를 쏘고 드론 편대를 띄워 캡슐과 적을 동시에 노려요.', unlock: { stage: 14 } },
-  k: { name: '해커', role: '적 탈취', img: 'u_k', iw: 50, ih: 44, hp: 3, dmg: 25, cd: 7, shape: 1, cost: 16, col: '#5aff9a', stat: [3, 1, 1],
+  k: { name: '해커', role: '적 탈취', img: 'u_k', iw: 50, ih: 44, hp: 3, dmg: 25, cd: 7, shape: 1, cost: 16, col: '#7afdc7', stat: [3, 1, 1],
        desc: '적 함선을 해킹해 잠시 우리 편으로 싸우게 해요.', unlock: { shop: 700 } },
 };
 const UNIT_ORDER = ['f', 't', 's', 'g', 'm', 'e', 'd', 'w', 'c', 'l', 'a', 'q', 'b', 'y', 'r', 'h', 'n', 'x', 'v', 'k'];
 const LV_MUL = [1, 2.3, 5.3, 12.2, 28, 64, 147, 338];
 const LV_COL = ['#48c8ff', '#48c8ff', '#5ae0ff', '#b86bff', '#ffd24a', '#4a8cff', '#ff3a5a', '#ff7ae0'];
-// 초월(Lv6~8): 합칠 때마다 화력 ×2.3, Lv5 주기 스킬 대기시간 -25%. 초월 III은 무지갯빛
-const RANK_COL = ['#aebdcc', '#6dff8a', '#48b8ff', '#b86bff', '#ffd24a', '#ff4a3a', '#ff4ad2', '#ff7ae0'];   // 회색 초록 파랑 보라 금색 빨강 분홍 무지개
+// 초월(Lv6~8): 합칠 때마다 화력 ×2.3, Lv5 주기 스킬 대기시간 -25%. 초월 III 계급장 별은 무지갯빛
 const RAINBOW = ['#ff4a6a', '#ffa03a', '#ffe24a', '#5aff9a', '#48c8ff', '#b86bff'];
-const rankCol = lv => lv >= 8 ? RAINBOW[Math.floor(performance.now() / 180) % 6] : RANK_COL[lv - 1];
-const lvCol = lv => lv >= 8 ? RAINBOW[Math.floor(performance.now() / 180) % 6] : LV_COL[lv - 1];
 const lvIdx = lv => Math.min(lv, 5) - 1;   // 레벨별 표(5칸)는 초월해도 Lv5 값을 쓴다
 const tier = u => Math.max(0, u.lv - 5);
 const TRANSCEND = ['초월 I', '초월 II', '초월 III'];
