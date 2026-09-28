@@ -1296,7 +1296,7 @@ function drawEnemyIntro() {
   ctx.font = FK(17); ctx.fillStyle = 'rgba(225,235,255,.95)';
   wrapLines(ENEMY_HINT[k] || '', w - 60).forEach((l, i) => ctx.fillText(l, W / 2, y + 306 + i * 26));
   ctx.globalAlpha = 1;
-  if (e > 0.5) button(W / 2 - 100, y + h - 74, 200, 52, '알겠어요', 'introOk', 'primary');
+  if (e > 0.5) button(W / 2 - 100, y + h - 74, 200, 52, '확인', 'introOk', 'primary');
 }
 function unlockUnit(t) {
   PROG.newUnits = (PROG.newUnits || []).filter(k => k !== t).concat([t]);
