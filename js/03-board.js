@@ -197,11 +197,23 @@ function makeCap(rw, x, mul) {
   S.caps.push(c);
   return c;
 }
+// 캡슐 색 = 안에 든 기체의 색 (격납고에서 고른 색 포함). 종류는 위 글자로 구분
 function capLook(rw) {
   if (rw.heal) return { cap: 'cap_heal', col: '#6dff8a', label: '수리' };
-  if (rw.gold) return { cap: 'cap_up', col: '#ffd24a', label: '황금' };
-  if (UNIT[rw.type].shape !== 1) return { cap: 'cap_t', col: '#ff8a4a', label: '대형' };
-  if (rw.lv >= 2) return { cap: 'cap_up', col: '#ffd84a', label: 'Lv' + rw.lv };
-  return { cap: 'cap_f', col: '#48c8ff', label: '+' + rw.n };
+  const col = UNIT[rw.type].col, cap = capTint(col);
+  if (rw.gold) return { cap, col, label: '황금', gold: true };
+  if (UNIT[rw.type].shape !== 1) return { cap, col, label: '대형' };
+  if (rw.lv >= 2) return { cap, col, label: 'Lv' + rw.lv };
+  return { cap, col, label: '+' + rw.n };
+}
+// 캡슐 그림에 기체 색을 입힌다 (밝기는 그대로, 색만 바꿈). 색마다 한 번 만든다
+function capTint(col) {
+  const key = 'capc' + col, im = IMG.cap_f;
+  if (!IMG[key] && im && im.width) IMG[key] = offscreen(im.width, im.height, g => {
+    g.drawImage(im, 0, 0);
+    g.globalCompositeOperation = 'color'; g.fillStyle = col; g.fillRect(0, 0, im.width, im.height);
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(im, 0, 0);
+  });
+  return IMG[key] ? key : 'cap_f';
 }
 

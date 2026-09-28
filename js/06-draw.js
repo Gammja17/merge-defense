@@ -538,6 +538,10 @@ function drawCap(c) {
   const x = c.x + jx, y = c.y + jy + (c.carrier ? 0 : Math.sin(S.time * 3 + c.bob) * 3);
   const s = 1, sq = c.sq || 0;
   drawGlow(col, x, y, 64, 0.32 + 0.14 * Math.sin(S.time * 4 + c.bob));
+  if (look.gold) {   // 황금 캡슐: 기체 색 위에 금빛 테두리
+    drawGlow('#ffd24a', x, y, 78, 0.35 + 0.15 * Math.sin(S.time * 6));
+    ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 49, 0, Math.PI * 2); ctx.stroke();
+  }
   if (S.focus === c) {
     drawGlow('#ff3040', x, y, 76, 0.28);
     ctx.save(); ctx.translate(x, y); ctx.rotate(S.time * 1.6);
@@ -565,7 +569,7 @@ function drawCap(c) {
   ctx.restore();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = /[가-힣]/.test(look.label) ? FK(22) : FT(19, 900);
-  outlineText(look.label, x, y - 58, '#fff');
+  outlineText(look.label, x, y - 58, look.gold ? '#ffd24a' : '#fff');
   if (!rw.heal) { ctx.font = FK(13); outlineText(UNIT[rw.type].name, x, y - 76, UNIT[rw.type].col, 3); }
   ctx.fillStyle = 'rgba(4,8,22,.92)'; chamfer(x - 22, y + 31, 44, 20, 5); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
