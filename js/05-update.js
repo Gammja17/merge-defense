@@ -62,7 +62,7 @@ function updateEnemy(e, dt) {
     e.x += Math.sin(e.t * 1.3) * 18 * dt;
     e.atkT -= dt;
     if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) {
-      if (launchAttack(d.atk, e, d.atkDmg)) { e.atkLeft--; e.atkT = d.atkCd * (mutOn('rapid') ? 0.7 : 1); } else e.atkT = 1;
+      if (launchAttack(d.atk, e, d.atkDmg)) { e.atkLeft--; e.atkT = d.atkCd * (mutOn('rapid') ? 0.7 : 1) * endlessAtkMul(); } else e.atkT = 1;
     }
   }
   if (e.boss && e.y > 80) {
@@ -72,7 +72,7 @@ function updateEnemy(e, dt) {
   }
   if (e.boss && d.atk && e.y > 60) {
     e.atkT -= dt;
-    if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) e.atkT = launchAttack(e.nextAtk || d.atk, e, d.atkDmg) ? d.atkCd * (mutOn('rapid') ? 0.7 : 1) : 1;
+    if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) e.atkT = launchAttack(e.nextAtk || d.atk, e, d.atkDmg) ? d.atkCd * (mutOn('rapid') ? 0.7 : 1) * endlessAtkMul() : 1;
   }
   // 부서질수록 연기, 더 부서지면 불
   if (!e.boss && e.maxHp > 90 && e.k !== 'rock') {
@@ -353,13 +353,14 @@ function update(dt) {
         S.shieldHits.push({ x: e.x, t: 0 });
         continue;
       }
-      if (e.boss) S.hp = 0;
-      else S.hp -= ENEMY[e.k].dmg;
+      const hitDmg = e.mini ? 5 : ENEMY[e.k].dmg;   // 미니보스로 나온 예전 보스는 방어막 -5
+      if (e.boss && !e.mini) S.hp = 0;
+      else S.hp -= hitDmg;
       shake(0.5);
       S.shieldHits.push({ x: e.x, t: 0 });
       play('vo_shields', 0.7) || play('base_hit', 0.45);
       boom(e.x, LINE_Y, 1.2, '#ff5050');
-      addText(e.x, LINE_Y - 30, e.boss ? '방어막 붕괴!' : `방어막 -${ENEMY[e.k].dmg}`, '#ff6060', 24); S.baseHitT = 0.6;
+      addText(e.x, LINE_Y - 30, e.boss && !e.mini ? '방어막 붕괴!' : `방어막 -${hitDmg}`, '#ff6060', 24); S.baseHitT = 0.6;
       play('shieldDown', 0.4);
     }
   }

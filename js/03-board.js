@@ -125,7 +125,7 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 
 // ── 스폰 ──────────────────────────────────────────────────
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s];
-let ENDLESS_GROWTH = 1.22;
+let ENDLESS_GROWTH = 1.21;   // 주기마다 섞여 나오는 적이 늘어난 만큼 체력 성장은 살짝 낮춤
 const hpMul = () => S.stage.endless ? 0.9 * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();
 function spawnEnemy(k, x, y) {
   const d = ENEMY[k];
@@ -179,6 +179,7 @@ function runEvent(ev) {
       if (ENEMY[ev.k].boss) {
         const b = spawnEnemy(ev.k, ev.x || W / 2, -120);
         if (ev.x) b.cx = ev.x;
+        if (ev.mini) { for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) b[k] *= 0.4; b.mini = true; }   // 미니보스로 나온 예전 보스
         if (!S.boss || S.boss.dead) S.boss = b;
         if (!S.bossCine && !S.tut && !SHOT) { S.bossCine = { k: ev.k, t: 0 }; play('vo_hostile', 0.8); play('drums', 0.5, 0.8); }
         if (ev.k === 'boss3') hintOnce('b3', '모선 보호막은 폭발이나 번개로');

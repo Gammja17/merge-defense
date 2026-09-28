@@ -362,6 +362,9 @@ const cyclePos = w => (w - 1) % 10 + 1;
 // 한 주기: 1 숨 돌리기, 2~4 오름, 5 미니보스, 6 숨 돌리기(변이), 7~8 오름, 9 위기, 10 보스
 const PACE = [0.75, 0.9, 1, 1.1, 1.35, 0.75, 0.95, 1.05, 1.15, 1];
 const LULL = ci => ci === 1 || ci === 6;
+const ENDLESS_CYCLE_TEXT = ['이제 엘리트 전함이 졸병처럼 섞여 나와요', '포격 순양함과 교란함이 섞여 나와요', '미니보스 자리에 예전 보스가 나와요'];
+// 무한 방어선: 주기마다 적의 공격 간격이 8%씩 짧아진다
+const endlessAtkMul = () => S.stage && S.stage.endless ? Math.pow(0.92, Math.floor((S.wave - 1) / 10)) : 1;
 function buildEndlessWave(w) {
   const ci = cyclePos(w), cyc = Math.floor((w - 1) / 10);
   const tier = Math.min(3, Math.floor((w - 1) / 6));
@@ -370,7 +373,10 @@ function buildEndlessWave(w) {
   S.stage.s = bossW ? bs : tier; S.stage.sector = SECTORS[S.stage.s];
   const st = { n: Math.min(20, 3 + w), s: tier, i: Math.min(3, Math.floor(w / 5)), sector: SECTORS[S.stage.s], boss: bossW, waves: 5, twist: supply ? 'supply' : TWISTS[1 + cyc % 2] };
   const ev = buildWave(st, bossW ? 5 : supply ? 4 : [2, 3, 4, 4, 5, 2, 3, 4, 5][ci - 1]);
-  if (ci === 5) { ev.push({ t: 4, k: 'elite' }); if (cyc >= 2) ev.push({ t: 12, k: 'elite' }); }   // 미니보스
+  if (ci === 5) {   // 미니보스: 4주기부터는 예전 보스가 이 자리에 (체력을 줄여서)
+    if (cyc >= 3) ev.push({ t: 3, k: SECTORS[Math.floor(R() * SECTORS.length)].boss, mini: true });
+    else { ev.push({ t: 4, k: 'elite' }); if (cyc >= 2) ev.push({ t: 12, k: 'elite' }); }
+  }
   if (LULL(ci) && !supply) for (const t of [5, 13]) ev.push({ t, k: 'cap', r: rollReward(st.n, 3) });   // 숨 돌리는 웨이브엔 캡슐을 더
   const atk = st.sector.atk, add = (k, t, x) => ev.push({ t, k, x });
   if (S.crisis) {
@@ -378,6 +384,11 @@ function buildEndlessWave(w) {
     for (let t = 2; t < 26; t += 1.6) add('grunt', t);
   }
   if (mutOn('raid') && !bossW) for (let k = 0; k < 2; k++) add(atk[Math.floor(R() * atk.length)], 6 + k * 7);
+  // 주기가 돌수록 처음엔 중간 보스였던 적이 졸병처럼 섞여 나온다: 2주기 엘리트 전함, 3주기 포격 순양함과 교란함
+  if (!bossW && !LULL(ci) && ci !== 5) {
+    for (let k = 0; k < Math.min(3, cyc); k++) add('elite', 5 + k * 7 + R() * 3);
+    if (cyc >= 2) { add('artillery', 8 + R() * 6); for (let k = 0; k < Math.min(2, cyc - 1); k++) add('jammer', 4 + k * 8 + R() * 4); }
+  }
   if (mutOn('swarm')) { const gs = ev.filter(e => e.k === 'grunt'); for (let k = 0; k < Math.round(gs.length * 0.6); k++) add('grunt', gs[k].t + 0.5); }
   if (bossW && w >= 30) {
     const b1 = ev.find(e => ENEMY[e.k] && ENEMY[e.k].boss);
@@ -481,7 +492,8 @@ function startWave(n) {
     if (ci === 10) { S.warning = 3; S.banner = null; play('drums', 0.7); if (n >= 30) S.warnText = '보스 두 척이 한꺼번에 접근하고 있어요'; }
     else if (mut) { S.banner = { text: 'MUTATION', sub: `${mut.name}: ${mut.desc}`, color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.55, 1.1); S.glitch = 0.5; }
     else if (ci === 9) { S.banner = { text: 'CRISIS', sub: '보스 전 총공세! 공격형 함선이 몰려와요', color: '#ff3a4a', t: 0, life: 2.8 }; play('drums', 0.7); shake(0.5); }
-    else if (ci === 5) { S.banner = { text: 'MINI BOSS', sub: '엘리트 전함이 나타났어요. 넘기면 강화를 고를 수 있어요', color: '#ffb347', t: 0, life: 2.8 }; play('drums', 0.6); }
+    else if (ci === 5) { S.banner = { text: 'MINI BOSS', sub: n > 30 ? '예전 보스가 미니보스로 나타났어요. 넘기면 강화를 골라요' : '엘리트 전함이 나타났어요. 넘기면 강화를 고를 수 있어요', color: '#ffb347', t: 0, life: 2.8 }; play('drums', 0.6); }
+    else if (ci === 1 && n > 10) { const cy = Math.floor((n - 1) / 10); S.banner = { text: `CYCLE ${cy + 1}`, sub: ENDLESS_CYCLE_TEXT[Math.min(cy, 3) - 1] + ', 적 공격도 더 잦아져요', color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.6, 0.9); }
     else if (LULL(ci) && !(ci === 1 && n > 10)) S.banner = { text: 'LULL', sub: '잠시 잠잠해요. 캡슐을 모으고 기체를 합칠 때예요', color: '#5affc8', t: 0, life: 2.6 };
     else if (ci === 4 || (ci === 1 && n > 10)) { const [tt, sub] = TWIST_TEXT[ci === 4 ? TWISTS[1 + Math.floor((n - 1) / 10) % 2] : 'supply']; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.6 }; }
     else S.banner = { text: `WAVE ${n}`, sub: `${ci === 4 ? '다음은 미니보스예요. 대비하세요' : ci === 8 ? '다음은 위기, 그다음은 보스예요. 대비하세요' : '끝없는 방어선'}`, color: ci === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2 };
