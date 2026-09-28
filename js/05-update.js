@@ -273,7 +273,7 @@ function updateDrones(u, dt) {
     d.cd -= dt * (1 + u.buffSpd) * cellSpd(u);
     if (tgt && d.cd <= 0 && Math.hypot(tgt.x - d.x, tgt.y - d.y) < 150) {
       d.cd = 0.45 * Math.pow(0.8, tier(u));
-      if (tgt.maxHits) hitCap(tgt); else hitEnemy(tgt, dmg, 'laser', true);
+      if (tgt.maxHits) hitCap(tgt, capPow(u.lv)); else hitEnemy(tgt, dmg, 'laser', true);
       S.fx.push({ kind: 'bolt', pts: [{ x: d.x, y: d.y }, { x: tgt.x, y: tgt.y }], t: 0, life: 0.1, col: '#ff8a7a' });
     }
   });
@@ -395,7 +395,7 @@ function update(dt) {
     u.hurt = Math.max(0, u.hurt - dt);
     if (u.res != null) continue;
     if (u.hp < u.maxHp * 0.5 && Math.random() < 0.08) { const p = unitPos(u); smoke(p.x + (Math.random() - .5) * 20, p.y - 10); }
-    DMG_BY = u.type;
+    DMG_BY = u.type; CUR_U = u;
     if (drag && drag.unit === u) continue;
     if (S.mode === 'clearing') continue;
     if (u.ice > 0) { u.ice -= dt; continue; }
@@ -415,6 +415,7 @@ function update(dt) {
     }
     RANGE_Y = FIRE_Y;
   }
+  CUR_U = null;
 
   for (const s of S.shots) {
     DMG_BY = s.ut || null;
@@ -429,7 +430,7 @@ function update(dt) {
         impactSparks(s.x, s.y, s.vx, s.vy, s.col, 6);
         sparks(s.x, s.y, s.col, 4, 200);
       }
-      for (const c of S.caps) if (!c.dead && !s.hitSet.has(c) && Math.hypot(c.x - s.x, c.y - s.y) < c.r + 6) { s.hitSet.add(c); hitCap(c, 2); }
+      for (const c of S.caps) if (!c.dead && !s.hitSet.has(c) && Math.hypot(c.x - s.x, c.y - s.y) < c.r + 6) { s.hitSet.add(c); hitCap(c, Math.max(2, s.cp || 2)); }
     } else if (s.type === 'bomb') {
       s.t = (s.t || 0) + dt;
       s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= Math.pow(0.1, dt); s.vy *= Math.pow(0.1, dt);
@@ -526,7 +527,7 @@ function update(dt) {
       if (Math.random() < 0.3) sparks(e.x, e.y, '#ffe27a', 1, 260);
     }
     b.capT += dt;
-    if (b.capT > 0.1) { b.capT = 0; for (const c of S.caps) if (!c.dead && distToRay(c.x, c.y, b.x, b.y, b.ang) < c.r + 18) hitCap(c); }
+    if (b.capT > 0.1) { b.capT = 0; for (const c of S.caps) if (!c.dead && distToRay(c.x, c.y, b.x, b.y, b.ang) < c.r + 18) hitCap(c, b.u ? capPow(b.u.lv) : 1); }
   }
   S.beams = S.beams.filter(b => b.t < b.life && b.u.cells);
 
@@ -556,7 +557,7 @@ function update(dt) {
 }
 function impact(s, t) {
   impactSparks(s.x, s.y, s.vx, s.vy, s.isCap ? '#ffe9a8' : s.type === 'f' ? LV_COL[s.lv - 1] : UNIT[s.type] ? UNIT[s.type].col : '#ffb347', s.type === 'f' || s.type === 'a' ? 4 : 7);
-  if (s.isCap) { hitCap(t); t.pending = Math.max(0, t.pending - 1); S.fx.push({ kind: 'hit', x: s.x, y: s.y, t: 0, life: 0.15 }); return; }
+  if (s.isCap) { hitCap(t, s.cp || 1); t.pending = Math.max(0, t.pending - (s.cp || 1)); S.fx.push({ kind: 'hit', x: s.x, y: s.y, t: 0, life: 0.15 }); return; }
   t.pending = Math.max(0, t.pending - s.dmg);
   switch (s.type) {
     case 't': {

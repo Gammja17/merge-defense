@@ -167,7 +167,7 @@ function runEvent(ev) {
     }
     case 'elite': hintOnce('elite', '엘리트 전함을 잡으면 고급 캡슐'); spawnEnemy('elite', W / 2, -60); break;
     case 'cap': {
-      const mul = (1 + 0.25 * (S.wave - 1)) * (1 + 0.03 * (S.stage.n - 1));
+      const mul = (1 + 0.25 * (S.wave - 1)) * (1 + 0.015 * (S.stage.n - 1));   // 뒤 스테이지일수록 조금씩 단단해진다 (예전 0.03의 절반)
       if (Array.isArray(ev.r)) {
         const a = makeCap(ev.r[0], 150, mul), b = makeCap(ev.r[1], W - 150, mul);
         a.pair = b; b.pair = a;

@@ -153,7 +153,10 @@ function focusValid() {
   if (!f || f.dead || f.y <= RANGE_Y) return false;
   return f.maxHits ? S.caps.includes(f) : S.enemies.includes(f);
 }
-let DMG_BY = null;   // 지금 피해를 주는 기체 종류 (전투 분석용)
+let DMG_BY = null;
+// 캡슐은 맞은 발 수로 깨진다. 센 기체일수록 한 발에 더 깎는다 (합칠수록 캡슐도 빨리 깐다)
+let CUR_U = null;   // 지금 쏘는 기체
+const capPow = lv => lv >= 6 ? 4 : lv >= 5 ? 3 : lv >= 3 ? 2 : 1;   // 지금 피해를 주는 기체 종류 (전투 분석용)
 const shootable = e => !e.dead && !(e.hacked > 0) && !(e.ph > 0);
 function pickTarget() {
   const fOk = focusValid();
@@ -199,10 +202,11 @@ function shoot(type, x, y, dmg, lv, fan = 0, tgt = null, extra = null) {
   tgt = tgt || pickTarget();
   if (!tgt) return null;
   const isCap = !!tgt.maxHits;
-  tgt.pending += isCap ? 1 : dmg;
+  const cp = isCap ? capPow(CUR_U ? CUR_U.lv : lv) : 0;
+  tgt.pending += isCap ? cp : dmg;
   const ang = Math.atan2(tgt.y - y, tgt.x - x) + fan;
   const def = UNIT[type] || UNIT.f;
-  const s = { type, x, y, vx: Math.cos(ang) * def.sp, vy: Math.sin(ang) * def.sp, sp: def.sp, turn: def.turn, tgt, dmg, lv, isCap };
+  const s = { type, x, y, vx: Math.cos(ang) * def.sp, vy: Math.sin(ang) * def.sp, sp: def.sp, turn: def.turn, tgt, dmg, lv, isCap, cp };
   if (extra) Object.assign(s, extra);
   s.ut = DMG_BY; S.shots.push(s);
   return s;
@@ -212,8 +216,9 @@ function snapFocus(f) {
   const cap = !!f.maxHits;
   for (const sh of S.shots) {
     if (!sh.tgt || sh.tgt === f || sh.hitSet || !sh.turn || sh.done) continue;
-    const old = sh.tgt; old.pending = Math.max(0, (old.pending || 0) - (sh.isCap ? 1 : sh.dmg));
-    sh.tgt = f; sh.isCap = cap; f.pending = (f.pending || 0) + (cap ? 1 : sh.dmg); sh.turn = Math.max(sh.turn, 10);
+    const old = sh.tgt; old.pending = Math.max(0, (old.pending || 0) - (sh.isCap ? sh.cp || 1 : sh.dmg));
+    if (cap && !sh.cp) sh.cp = capPow(sh.lv || 1);
+    sh.tgt = f; sh.isCap = cap; f.pending = (f.pending || 0) + (cap ? sh.cp : sh.dmg); sh.turn = Math.max(sh.turn, 10);
   }
   for (const u of gridUnits()) u.cd = Math.min(u.cd, 0.08);
 }
@@ -222,14 +227,14 @@ function pierce(x, y, dmg, lv, tgt = null, col = '#b86bff', extra = null) {
   if (!tgt) return null;
   if (!tgt.maxHits) tgt.pending += dmg;
   const ang = Math.atan2(tgt.y - y, tgt.x - x);
-  const s = { type: 'p', x, y, vx: Math.cos(ang) * 1150, vy: Math.sin(ang) * 1150, dmg, lv, hitSet: new Set(), col, tgt };
+  const s = { type: 'p', x, y, vx: Math.cos(ang) * 1150, vy: Math.sin(ang) * 1150, dmg, lv, hitSet: new Set(), col, tgt, cp: capPow(CUR_U ? CUR_U.lv : lv) };
   if (extra) Object.assign(s, extra);
   s.ut = DMG_BY; S.shots.push(s);
   return s;
 }
 function lightning(from, first, dmg, lv) {
   const pts = [{ x: from.x, y: from.y }];
-  if (first.maxHits) { hitCap(first); pts.push({ x: first.x, y: first.y }); S.fx.push({ kind: 'bolt', pts, t: 0, life: 0.18, col: '#ffe24a' }); return; }
+  if (first.maxHits) { hitCap(first, capPow(CUR_U ? CUR_U.lv : lv)); pts.push({ x: first.x, y: first.y }); S.fx.push({ kind: 'bolt', pts, t: 0, life: 0.18, col: '#ffe24a' }); return; }
   const n = [2, 3, 3, 5, 5][lv - 1], seen = new Set();
   let cur = first;
   for (let k = 0; k < n && cur; k++) {
@@ -641,7 +646,7 @@ function hitCap(c, n = 1) {
   const before = c.hits / c.maxHits;
   c.hits -= n; c.flash = 0.1; c.jit = 0.12;
   c.sq = Math.min(0.35, (c.sq || 0) + 0.12 * n); c.tilt = (Math.random() - .5) * 0.4;
-  if (!c.carrier) c.y -= 1.2 * n;
+  if (!c.carrier) c.y -= 1.2 * Math.min(n, 2);
   const col = capLook(c.rw).col;
   sparks(c.x + (Math.random() - .5) * 30, c.y + 10 + Math.random() * 16, col, 3 + n, 200);
   play('caphit', 0.18, 1 + Math.random() * 0.08);
