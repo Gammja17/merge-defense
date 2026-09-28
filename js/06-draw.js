@@ -800,12 +800,12 @@ function lvBadge(lv, cx, cy, col, sc = 1) {
 // 판 위 기체: 칸 오른쪽 위 모서리에 딱 붙은 계급장 탭 (ㄱ자 기체처럼 모서리가 빈 모양은 맨 윗줄 오른쪽 칸 기준)
 function rankCorner(u, col) {
   const top = Math.min(...u.cells.map(c => Math.floor(c / COLS))), c0 = Math.max(...u.cells.filter(c => Math.floor(c / COLS) === top).map(c => c % COLS));
-  const rx = GRID_X + (c0 + 1) * CW - 4, ty = GRID_Y + top * CH + 4, lv = u.lv, s = 0.78;
-  const tw = lv >= 6 ? 40 : lv >= 5 ? 31 : lv === 4 ? 22 : 21, th = lv <= 3 ? 12 + lv * 4.3 : 20;
+  const rx = GRID_X + (c0 + 1) * CW - 4, ty = GRID_Y + top * CH + 4, lv = u.lv, s = 0.95;
+  const tw = lv >= 6 ? 50 : lv >= 5 ? 38 : 28, th = lv <= 3 ? 15 + lv * 5.5 : 25;
   ctx.fillStyle = 'rgba(0,6,20,.92)'; ctx.beginPath();
   ctx.moveTo(rx - tw, ty); ctx.lineTo(rx - 9, ty); ctx.lineTo(rx, ty + 9); ctx.lineTo(rx, ty + th); ctx.lineTo(rx - tw + 7, ty + th); ctx.lineTo(rx - tw, ty + th - 7); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.save(); ctx.translate(rx - tw / 2 - 0.5, ty + th / 2 + 0.5); ctx.scale(s, s); rankIcons(lv); ctx.restore();
+  ctx.save(); ctx.translate(rx - tw / 2 - 1.5, ty + th / 2 + 1); ctx.scale(s, s); rankIcons(lv); ctx.restore();
 }
 function rankIcons(lv) {
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -826,16 +826,49 @@ function unitBox(u) {
   const x = GRID_X + Math.min(...xs) * CW + 4, y = GRID_Y + Math.min(...ys) * CH + 4;
   return { x, y, w: (Math.max(...xs) - Math.min(...xs) + 1) * CW - 8, h: (Math.max(...ys) - Math.min(...ys) + 1) * CH - 8 };
 }
+// 테두리: 기체 고유색 그대로, 레벨이 오를수록 화려하게. Lv2 굵게, Lv3 안쪽 두 줄, Lv4 모서리 장식, Lv5 빛나는 테두리, 초월 테두리를 따라 흐르는 빛
+function frameFx(lv, boxes, col, t) {
+  if (lv >= 5) for (const b of boxes) drawGlow(col, b.x + b.w / 2, b.y + b.h / 2, Math.max(b.w, b.h) * 0.55, 0.12 + 0.04 * lv / 8 + 0.04 * Math.sin(t * 3), 1);
+  ctx.save();
+  if (lv >= 5) { ctx.shadowColor = col; ctx.shadowBlur = 6 + (lv - 5) * 3; }
+  ctx.strokeStyle = col; ctx.lineWidth = lv >= 6 ? 3.2 : lv >= 2 ? 2.6 : 1.8;
+  for (const b of boxes) { chamfer(b.x, b.y, b.w, b.h, 9); ctx.stroke(); }
+  ctx.shadowBlur = 0;
+  if (lv >= 3) { ctx.globalAlpha *= 0.55; ctx.lineWidth = 1.2; for (const b of boxes) { chamfer(b.x + 4, b.y + 4, b.w - 8, b.h - 8, 7); ctx.stroke(); } ctx.globalAlpha /= 0.55; }
+  if (lv >= 4) {   // 모서리 장식: 밝은 ㄴ자 쇠붙이
+    ctx.strokeStyle = '#ffffff'; ctx.globalAlpha *= 0.75; ctx.lineWidth = 2;
+    for (const b of boxes) for (const [cx, cy, sx, sy] of [[b.x, b.y + 9, 1, 1], [b.x + b.w, b.y + b.h - 9, -1, -1]]) { ctx.beginPath(); ctx.moveTo(cx, cy + sy * 10); ctx.lineTo(cx, cy); ctx.lineTo(cx + sx * 9, cy - sy * 9); ctx.stroke(); }
+    ctx.globalAlpha /= 0.75;
+  }
+  if (lv >= 6) {   // 초월: 테두리를 따라 도는 흰 빛줄기 (Lv7, Lv8은 줄기가 늘어난다)
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.4; ctx.shadowColor = col; ctx.shadowBlur = 10;
+    for (const b of boxes) { const per = 2 * (b.w + b.h); ctx.setLineDash([per * 0.09, per / (lv - 4) - per * 0.09]); ctx.lineDashOffset = -t * per * 0.35; chamfer(b.x, b.y, b.w, b.h, 9); ctx.stroke(); }
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+// 바닥: 레벨이 오를수록 색이 진해지고, Lv4부터 옅은 사선 무늬, 초월은 바닥을 가로지르는 빛
+function floorFx(lv, x, y, w, h, col, t) {
+  unitTint(x, y, w, h, col, 9, Math.min(1.35, 0.9 + lv * 0.06));
+  if (lv < 4) return;
+  ctx.save(); chamfer(x, y, w, h, 9); ctx.clip();
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.16 + 0.03 * (lv - 4); ctx.lineWidth = 2;
+  for (let k = -h; k < w; k += 12) { ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke(); }
+  if (lv >= 6) {
+    const p = ((t * 0.45) % 1.6) * (w + h) - h, g = ctx.createLinearGradient(x + p, y + h, x + p + 40, y);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, `rgba(255,255,255,${0.1 + 0.05 * (lv - 6)})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  }
+  ctx.restore();
+}
 function drawUnitFrames(top) {
   const t = S.time;
   for (const u of gridUnits()) {
     const { x, y, w, h } = unitBox(u), col = UNIT[u.type].col;
     ctx.globalAlpha = drag && drag.unit === u && drag.moved ? 0.3 : 1;
     if (!top) {
-      if (u.lv >= 5) drawGlow(col, x + w / 2, y + h / 2, Math.max(w, h) * 0.5, 0.1 + 0.03 * Math.sin(t * 3), 1);
-      ctx.strokeStyle = col; ctx.lineWidth = u.lv >= 6 ? 3 : 2.2;   // 테두리도 기체 고유색 (레벨은 아래 계급장)
-      if (uSize(u) === (w + 8) / CW * (h + 8) / CH) { chamfer(x, y, w, h, 9); ctx.stroke(); }
-      else for (const c of u.cells) { const q = cellPos(c); chamfer(q.x - CW / 2 + 4, q.y - CH / 2 + 4, CW - 8, CH - 8, 9); ctx.stroke(); }
+      const boxes = uSize(u) === (w + 8) / CW * (h + 8) / CH ? [{ x, y, w, h }] : u.cells.map(c => { const q = cellPos(c); return { x: q.x - CW / 2 + 4, y: q.y - CH / 2 + 4, w: CW - 8, h: CH - 8 }; });
+      frameFx(u.lv, boxes, col, t + u.cells[0] * 0.3);
     } else {
       if (u.maxHp) {
         // 체력: 칸 왼쪽 가장자리의 굵은 세로 게이지 (늘 또렷하게, 위험하면 빨갛게 깜빡)
@@ -954,7 +987,7 @@ function drawPads() {
     const pg = ctx.createLinearGradient(0, y, 0, y + h);
     pg.addColorStop(0, 'rgba(26,38,66,.94)'); pg.addColorStop(1, 'rgba(7,11,24,.94)');
     ctx.fillStyle = pg; chamfer(x, y, w, h, 9); ctx.fill();
-    if (u) unitTint(x, y, w, h, lit, 9);   // 기체가 앉은 칸은 바닥을 그 기체 고유색으로 물들인다 (이 색 = 이 기체)
+    if (u) floorFx(u.lv, x, y, w, h, lit, t + u.cells[0] * 0.3);   // 기체가 앉은 칸은 바닥을 그 기체 고유색으로 물들인다 (이 색 = 이 기체)
     ctx.strokeStyle = fc; ctx.globalAlpha = f ? 0.85 : u ? 0.6 : 0.3; ctx.lineWidth = f ? 2 : 1.2; ctx.stroke();
     if (f) { ctx.fillStyle = fc; ctx.globalAlpha = 0.1 + 0.05 * f.lv; chamfer(x, y, w, h, 9); ctx.fill(); ctx.globalAlpha = 0.8; ctx.fillRect(x + 12, y, w - 24, 2.5); }   // 강화 칸: 효과 색으로 옅게 칠하고 윗변 띠
     ctx.save(); ctx.translate(p.x, p.y + 4); ctx.rotate(u ? t * 0.5 : 0);
