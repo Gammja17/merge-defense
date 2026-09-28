@@ -756,9 +756,9 @@ function drawHangar() {
     ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
     ctx.font = FK(16); ctx.fillStyle = own ? '#fff' : 'rgba(255,255,255,.5)'; ctx.fillText(def.name, x + cw / 2, y + 80);
-    ctx.font = FK(12); ctx.fillStyle = own ? def.col : 'rgba(200,210,230,.45)'; ctx.fillText(def.role, x + cw / 2, y + 96);
+    ctx.font = FK(12); ctx.fillStyle = own ? 'rgba(235,245,255,.85)' : 'rgba(200,210,230,.45)'; ctx.fillText(def.role, x + cw / 2, y + 96);
     ctx.font = FU(10);
-    if (inDeck) { ctx.fillStyle = def.col; ctx.fillText('● DEPLOYED', x + cw / 2, y + 110); }
+    if (inDeck) { ctx.fillStyle = '#fff'; ctx.fillText('● DEPLOYED', x + cw / 2, y + 110); }
     else if (!own) {
       const u = def.unlock;
       ctx.fillStyle = u.shop ? '#ffd24a' : 'rgba(255,190,120,.8)';

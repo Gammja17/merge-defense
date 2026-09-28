@@ -527,7 +527,7 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   if (rank > 0) {
     const cx0 = x - (wide > 1 ? 58 : 26), cy0 = y + 14;
     ctx.globalAlpha = alpha; ctx.fillStyle = '#ffd24a'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 1;
-    for (let k = 0; k < rank; k++) { const yy = cy0 - k * 5; ctx.beginPath(); ctx.moveTo(cx0 - 6, yy + 3); ctx.lineTo(cx0, yy - 2); ctx.lineTo(cx0 + 6, yy + 3); ctx.lineTo(cx0 + 6, yy + 5); ctx.lineTo(cx0, yy); ctx.lineTo(cx0 - 6, yy + 5); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    for (let k = 0; k < rank; k++) { hexPath(cx0, cy0 + 4 - k * 8, 3.6); ctx.fill(); ctx.stroke(); }   // 연구 등급: 격납고 Mk 배지처럼 작은 육각형 (계급장 꺾쇠와 헷갈리지 않게)
     ctx.globalAlpha = 1;
   }
 }
@@ -784,7 +784,7 @@ function drawShapeIcon(type, cx, cy, cell, col, label) {
 // 기체 고유색으로 칸 바닥 물들이기 (판, 격납고, 편성 칸, 카드가 같은 색을 쓴다)
 function unitTint(x, y, w, h, col, c = 9, k = 1) {
   const g = ctx.createLinearGradient(0, y, 0, y + h);
-  g.addColorStop(0, col + Math.round(0x66 * k).toString(16).padStart(2, '0')); g.addColorStop(1, col + Math.round(0x24 * k).toString(16).padStart(2, '0'));
+  g.addColorStop(0, col + Math.round(0xa8 * k).toString(16).padStart(2, '0')); g.addColorStop(1, col + Math.round(0x50 * k).toString(16).padStart(2, '0'));
   ctx.fillStyle = g; chamfer(x, y, w, h, c); ctx.fill();
 }
 // 레벨 계급장: 꺾쇠 1~3개(Lv1~3), 별 1~2개(Lv4~5), 날개 달린 별(초월 Lv6~8, 날개 깃이 1~3개). 테두리는 기체 고유색
@@ -794,6 +794,20 @@ function lvBadge(lv, cx, cy, col, sc = 1) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc);
   ctx.fillStyle = 'rgba(0,6,20,.94)'; chamfer(-hw, -hh, hw * 2, hh * 2, 5); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+  rankIcons(lv);
+  ctx.restore();
+}
+// 판 위 기체: 칸 오른쪽 위 모서리에 딱 붙은 계급장 탭 (ㄱ자 기체처럼 모서리가 빈 모양은 맨 윗줄 오른쪽 칸 기준)
+function rankCorner(u, col) {
+  const top = Math.min(...u.cells.map(c => Math.floor(c / COLS))), c0 = Math.max(...u.cells.filter(c => Math.floor(c / COLS) === top).map(c => c % COLS));
+  const rx = GRID_X + (c0 + 1) * CW - 4, ty = GRID_Y + top * CH + 4, lv = u.lv, s = 0.78;
+  const tw = lv >= 6 ? 40 : lv >= 5 ? 31 : lv === 4 ? 22 : 21, th = lv <= 3 ? 12 + lv * 4.3 : 20;
+  ctx.fillStyle = 'rgba(0,6,20,.92)'; ctx.beginPath();
+  ctx.moveTo(rx - tw, ty); ctx.lineTo(rx - 9, ty); ctx.lineTo(rx, ty + 9); ctx.lineTo(rx, ty + th); ctx.lineTo(rx - tw + 7, ty + th); ctx.lineTo(rx - tw, ty + th - 7); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.save(); ctx.translate(rx - tw / 2 - 0.5, ty + th / 2 + 0.5); ctx.scale(s, s); rankIcons(lv); ctx.restore();
+}
+function rankIcons(lv) {
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   if (lv <= 3) {
     ctx.strokeStyle = RANK_GOLD; ctx.lineWidth = 2.6;
@@ -806,7 +820,6 @@ function lvBadge(lv, cx, cy, col, sc = 1) {
     for (const s of [-1, 1]) for (let k = 0; k < lv - 5; k++) { ctx.beginPath(); ctx.moveTo(s * 9, -1 + k * 3.5); ctx.lineTo(s * (20 - k * 2.5), -7 + k * 6); ctx.stroke(); }
     drawStar(0, 0.5, 8, star);
   }
-  ctx.restore();
 }
 function unitBox(u) {
   const xs = u.cells.map(c => c % COLS), ys = u.cells.map(c => Math.floor(c / COLS));
@@ -837,7 +850,7 @@ function drawUnitFrames(top) {
         if (r < 1 && r <= 0.25) drawGlow('#ff4a5a', gx + 2, gy + gh / 2, 16, 0.4 + 0.3 * Math.sin(t * 8));
         ctx.globalAlpha = drag && drag.unit === u && drag.moved ? 0.3 : 1;
       }
-      lvBadge(u.lv, x + w / 2, y + h, col);
+      rankCorner(u, col);
     }
     ctx.globalAlpha = 1;
   }
@@ -912,9 +925,9 @@ function drawZoneMarks() {
   }
   for (const u of us) {
     if (!heal.has(u) && !guard.has(u) && !boost.has(u)) continue;
-    const b = unitBox(u), rx = b.x + b.w - 13, seed = u.cells[0] * 0.37;
-    if (guard.has(u)) shieldMark(rx, b.y + 14, 9, 0.8 + 0.2 * Math.sin(t * 3 + seed));
-    if (boost.has(u)) { const k = (t * 0.9 + seed) % 1; arrowMark(rx, b.y + (guard.has(u) ? 40 : 18) - k * 8, 7, UNIT.x.col, Math.min(1, (1 - k) * 2.5)); }
+    const b = unitBox(u), rx = b.x + b.w - 13, by = b.y + b.h - 15, seed = u.cells[0] * 0.37;   // 오른쪽 위는 계급장 자리라 아래 모서리에
+    if (guard.has(u)) shieldMark(rx, by, 9, 0.8 + 0.2 * Math.sin(t * 3 + seed));
+    if (boost.has(u)) { const k = (t * 0.9 + seed) % 1; arrowMark(guard.has(u) ? rx - 22 : rx, by + 2 - k * 8, 7, UNIT.x.col, Math.min(1, (1 - k) * 2.5)); }
     if (heal.has(u)) {   // 가끔 떠오르는 초록 +
       const k = (t * 0.55 + seed) % 1.6;
       if (k < 1) plusMark(b.x + b.w / 2 + 10, b.y + b.h * 0.55 - k * 34, 7, Math.min(1, k * 5) * (1 - k));
@@ -985,7 +998,7 @@ function drawPads() {
     ctx.strokeStyle = hot ? '#ff8ae0' : 'rgba(255,120,220,.45)'; ctx.lineWidth = hot ? 2 : 1.2;
     if (!S.reserve[k]) { ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]); } else ctx.stroke();
   }
-  if (!S.reserve.some(Boolean)) { ctx.font = FU(8); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,140,220,.7)'; ctx.fillText('RESERVE', RES_X + (RES_N * (RES_W + 4) - 4) / 2, LINE_Y - 58); }
+  if (!S.reserve.some(Boolean)) { ctx.font = FK(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,140,220,.75)'; ctx.fillText('대기함', RES_X + (RES_N * (RES_W + 4) - 4) / 2, LINE_Y - 58); }
 }
 function drawFieldStuff() {
   for (const z of S.zones) {
