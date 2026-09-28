@@ -392,11 +392,10 @@ function startStage(n, endless = false, daily = false) {
   if (daily) { S.daily = { day: dayKey(), deck: dailyDeck(dayKey()) }; lbFetchDaily(true); }
   const types = battleDeck().filter(t => UNIT[t].shape === 1).sort((a, b) => UNIT[b].stat[0] * UNIT[b].stat[1] - UNIT[a].stat[0] * UNIT[a].stat[1]);
   START_LV[endless ? 1 : st.s].forEach((lv, j) => { const u = makeUnit(types[j % types.length] || 'f', lv); S.used[u.type] = (S.used[u.type] || 0) + Math.pow(2, lv - 1); const sp = findSpot(u); if (sp) place(u, sp); });
-  hintOnce('focus', '가까이 온 적이 없으면 기체들이 알아서 캡슐을 쏴요. 캡슐을 탭하면 적이 있어도 그쪽부터 집중 사격해요.');
-  hintOnce('info', '기체를 꾹 누르거나 우클릭하면 스킬과 성능을 볼 수 있어요.');
-  hintOnce('cells', '부품을 모으면 정비소에서 칸을 강화하거나 줄을 늘릴 수 있어요. 필요 없는 기체는 위쪽 전장으로 끌어 놓으면 해체돼요.');
-  if (endless) hintOnce('endless3', '무한 방어선은 10웨이브가 한 주기예요. 5웨이브째는 미니보스, 10웨이브째는 보스예요. 1, 6웨이브째는 잠잠하니 그때 정비하세요. 미니보스를 넘기면 강화를 골라요.');
+  hintOnce('info', '기체를 꾹 누르면 정보가 나와요');
+  if (endless) hintOnce('endless3', '5웨이브마다 강화, 10웨이브마다 보스');
   if (n === 1 && !endless && !PROG.tut && !PROG.stars[1] && !SHOT) S.tut = { step: 1, t: 0 };
+  if (!SHOT && !PROG.seen.cmdTut && cmdOpen()) S.cmdTut = {};
   startWave(1);
   if (!SHOT) play('vo_welcome', 0.6);   // 전투 시작 음성
 }
@@ -454,10 +453,10 @@ function updateTut(dt) {
       T.cap = makeCap({ type: PROG.deck[0] || 'f', lv: 1, n: 1 }, W / 2, 1);
       T.cap.lock = true; T.cap.y = 150; T.cap.speed = 16; T.cap.hits = T.cap.maxHits = 8;
     }
-    if (T.cap.claimed) { T.step = 2; T.t = 0; play('confirm', 0.5); }
+    if (T.cap.claimed) { T.step = 2; T.t = 0; tutOk(); }
   } else if (T.step === 2) {
     if (!pairOnGrid()) { const u = gridUnits()[0]; if (u) giveUnit(u.type, u.lv, W / 2, 420, '#8dff9a'); }
-    if (T.merged) { T.step = 3; T.t = 0; play('confirm', 0.5); }
+    if (T.merged) { T.step = 3; T.t = 0; tutOk(); }
   } else if (T.step === 3) {
     if (!T.e) {
       T.unit = gridUnits().filter(u => uSize(u) === 1).sort((a, b) => a.cells[0] - b.cells[0])[0];
@@ -470,71 +469,97 @@ function updateTut(dt) {
     if (T.atk && (T.atk.done || T.atk.cancelled || T.e.dead)) {
       T.step = 4; T.t = 0;
       if (!T.e.dead) { T.e.hp = T.e.maxHp = T.e.maxHp / 30; T.e.atkLeft = 0; }
-      addText(W / 2, 420, T.dodged ? '잘 피했어요!' : '다음엔 붉은 칸에서 기체를 빼 주세요', T.dodged ? '#8dff9a' : '#ffb08a', 24, 1.6);
-      play(T.dodged ? 'levelup' : 'deny', 0.5);
+      if (T.dodged) tutOk(); else { addText(W / 2, 420, '붉은 칸에서 빼 주세요', '#ffb08a', 24, 1.6); play('deny', 0.5); }
     }
   } else if (T.step === 4) {   // 해체: 부품 얻기
     if (!T.s4) { T.s4 = true; if (!allUnits().some(u => u.lv === 1 && uSize(u) === 1)) giveUnit(PROG.deck[0] || 'f', 1, W / 2, 420, '#8dff9a'); }
-    if (T.scrapped) { T.step = 5; T.t = 0; play('confirm', 0.5); }
+    if (T.scrapped) { T.step = 5; T.t = 0; tutOk(); }
   } else if (T.step === 5) {   // 정비소: 칸 강화
     if (!T.s5 && T.t > 0.8) { T.s5 = true; const need = cellNewCost() - S.gear; if (need > 0) addGear(need, W / 2, 420); }
-    if (S.cellFx.some(Boolean)) { T.step = 6; T.t = 0; play('confirm', 0.5); addText(W / 2, 420, '강화 완료! 이제 실전이에요', '#8dff9a', 24, 1.6); }
+    if (S.cellFx.some(Boolean)) { T.step = 6; T.t = 0; tutOk(); }
   } else if (T.t > 1.4) {
     S.tut = null; PROG.tut = true; save();
-    S.banner = { text: 'WAVE 1', sub: '실전이에요. 정찰대가 방어선을 떠보고 있어요', color: S.stage.sector.color, t: 0, life: 2.4 };
+    S.banner = { text: 'WAVE 1', sub: '이제 실전이에요', color: S.stage.sector.color, t: 0, life: 2.4 };
   }
 }
 function pairOnGrid() {
   const us = allUnits();
   return us.some(a => us.some(b => a !== b && a.type === b.type && a.lv === b.lv));
 }
+// 손가락 그림: (x, y)가 손끝. press 0~1이면 누르는 중
+function drawHand(x, y, press = 0, alpha = 1) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y); ctx.rotate(-0.35); ctx.scale(1 - 0.1 * press, 1 - 0.1 * press);
+  const rr = (x0, y0, w, h, r) => { ctx.beginPath(); ctx.moveTo(x0 + r, y0); ctx.arcTo(x0 + w, y0, x0 + w, y0 + h, r); ctx.arcTo(x0 + w, y0 + h, x0, y0 + h, r); ctx.arcTo(x0, y0 + h, x0, y0, r); ctx.arcTo(x0, y0, x0 + w, y0, r); ctx.closePath(); };
+  ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+  ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1a2238'; ctx.lineWidth = 3;
+  rr(-8, 0, 16, 40, 8); ctx.fill(); ctx.stroke();                 // 집게손가락
+  rr(-14, 30, 40, 38, 12); ctx.fill(); ctx.stroke();              // 손바닥
+  for (const fx of [8, 18]) { rr(fx - 1, 24, 12, 22, 6); ctx.fill(); ctx.stroke(); }
+  rr(-24, 40, 14, 22, 7); ctx.fill(); ctx.stroke();               // 엄지
+  ctx.shadowColor = 'transparent';
+  rr(-8, 0, 16, 40, 8); ctx.fill();
+  ctx.restore();
+}
+function tapRipple(x, y, k) { ctx.strokeStyle = `rgba(255,236,150,${1 - k})`; ctx.lineWidth = 4 * (1 - k) + 1; ctx.beginPath(); ctx.arc(x, y, 10 + 34 * k, 0, Math.PI * 2); ctx.stroke(); }
+// 누르기 시연: 손이 내려와 톡 누르고 물결이 퍼진다
+function tapDemo(x, y) {
+  const c = (S.time % 1.3) / 1.3, press = c > 0.35 && c < 0.55 ? 1 : 0;
+  if (c > 0.4) tapRipple(x, y, Math.min(1, (c - 0.4) / 0.5));
+  drawHand(x + (c < 0.35 ? (0.35 - c) * 60 : 0), y + (c < 0.35 ? (0.35 - c) * 90 : 0), press, c > 0.85 ? (1 - c) / 0.15 : 1);
+}
+// 끌기 시연: 반투명한 기체를 들고 손이 목적지까지 간다
+function dragDemo(from, to, u) {
+  if (drag && drag.moved) return;
+  const c = (S.time % 1.9) / 1.9, k = Math.max(0, Math.min(1, (c - 0.18) / 0.55)), e = k * k * (3 - 2 * k);
+  const x = from.x + (to.x - from.x) * e, y = from.y + (to.y - from.y) * e, a = c > 0.88 ? (1 - c) / 0.12 : 1;
+  ctx.save(); ctx.globalAlpha = 0.35 * a; ctx.strokeStyle = '#ffe690'; ctx.lineWidth = 3; ctx.setLineDash([8, 8]);
+  ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke(); ctx.restore();
+  if (u && c > 0.12) { ctx.save(); ctx.globalAlpha = 0.6 * a; drawUnit(u, x, y - 18, 0.75, 0.9); ctx.restore(); }
+  if (c > 0.74) tapRipple(to.x, to.y, Math.min(1, (c - 0.74) / 0.2));
+  drawHand(x, y, c > 0.12 && c < 0.76 ? 1 : 0, a);
+}
+// 해냈을 때 가운데에 잠깐 뜨는 초록 체크
+function tutOk() { S.tutOkT = S.time; play('confirm', 0.5); }
+function drawTutOk() {
+  const k = (S.time - (S.tutOkT ?? -9)) / 0.9;
+  if (k < 0 || k > 1) return;
+  const sc = k < 0.25 ? 0.5 + k * 2.4 : 1.1 - (k - 0.25) * 0.1, a = k > 0.7 ? (1 - k) / 0.3 : 1, cx = W / 2, cy = 330;
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(cx, cy); ctx.scale(sc, sc);
+  drawGlow('#5aff9a', 0, 0, 70, 0.5);
+  ctx.fillStyle = 'rgba(10,40,24,.92)'; ctx.beginPath(); ctx.arc(0, 0, 44, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#6dff9a'; ctx.lineWidth = 5; ctx.stroke();
+  ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(-18, 2); ctx.lineTo(-5, 16); ctx.lineTo(20, -14); ctx.stroke();
+  ctx.restore();
+}
+// 위쪽 이름표: 단계 번호와 두세 단어
+function tutLabel(txt, step, total) {
+  ctx.font = FK(19); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const lab = total ? `${step}/${total}  ${txt}` : txt, w = ctx.measureText(lab).width + 36, y = 92;
+  ctx.fillStyle = 'rgba(4,12,34,.85)'; chamfer(W / 2 - w / 2, y - 18, w, 36, 10); ctx.fill();
+  ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 1.5; ctx.stroke();
+  outlineText(lab, W / 2, y + 1, '#fff', 4);
+}
 function drawTut() {
+  drawTutOk();
   const T = S.tut;
   if (!T || T.step > 5) return;
-  const t = S.time;
-  const [head, sub] = [
-    ['캡슐을 탭하세요', '모든 기체가 그쪽을 쏴요. 깨면 새 기체가 와요'],
-    ['같은 기체끼리 겹치세요', '한 기체를 끌어서 똑같은 기체 위에 놓으면 합체해요'],
-    ['붉은 칸의 기체를 옮기세요', '경고가 끝나면 그 칸이 공격받아요'],
-    ['기체를 위 전장으로 끌어 해체하세요', '적을 잡거나 기체를 해체하면 부품이 나와요'],
-    ['정비소에서 칸을 강화하세요', '부품으로 칸을 강화하거나 새 기체를 소환해요'],
-  ][T.step - 1];
-  const y = 470;
-  ctx.fillStyle = 'rgba(4,12,34,.88)'; chamfer(30, y - 44, W - 60, 88, 12); ctx.fill();
-  ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = FU(11); ctx.fillStyle = '#ffd24a'; ctx.fillText(`TUTORIAL ${T.step}/5`, W / 2, y - 28);
-  ctx.font = FK(24); outlineText(head, W / 2, y - 4, '#fff', 4);
-  ctx.font = FK(15); ctx.fillStyle = 'rgba(220,235,255,.9)'; ctx.fillText(sub, W / 2, y + 24);
-  // 가리키는 화살표
-  const arrow = (x, yy) => {
-    const b = Math.sin(t * 6) * 8;
-    ctx.fillStyle = '#ffd24a';
-    ctx.beginPath(); ctx.moveTo(x, yy + b); ctx.lineTo(x - 14, yy - 20 + b); ctx.lineTo(x - 5, yy - 20 + b); ctx.lineTo(x - 5, yy - 40 + b); ctx.lineTo(x + 5, yy - 40 + b); ctx.lineTo(x + 5, yy - 20 + b); ctx.lineTo(x + 14, yy - 20 + b); ctx.closePath(); ctx.fill();
-  };
-  if (T.step === 1 && T.cap && !T.cap.dead) arrow(T.cap.x, T.cap.y - 64);
+  tutLabel(['캡슐 누르기', '같은 기체 겹치기', '붉은 칸에서 빼기', '위로 끌어 해체', '정비소에서 칸 강화'][T.step - 1], T.step, 5);
+  if (T.step === 1 && T.cap && !T.cap.dead) tapDemo(T.cap.x, T.cap.y + 10);
   if (T.step === 2) {
     const us = allUnits();
-    for (const a of us) { const b = us.find(o => o !== a && o.type === a.type && o.lv === a.lv); if (!b) continue;
-      const p = unitPos(a), q = unitPos(b), k = (t * 0.8) % 1;
-      ctx.strokeStyle = 'rgba(255,210,74,.7)'; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.lineDashOffset = -t * 40;
-      ctx.beginPath(); ctx.moveTo(p.x, p.y - 20); ctx.lineTo(q.x, q.y - 20); ctx.stroke(); ctx.setLineDash([]);
-      drawGlow('#ffd24a', p.x + (q.x - p.x) * k, p.y - 20 + (q.y - p.y) * k, 24, 0.9);
-      break; }
+    for (const a of us) { const b = us.find(o => o !== a && o.type === a.type && o.lv === a.lv); if (b && a.cells && b.cells) { dragDemo(unitPos(a), unitPos(b), a); break; } }
   }
-  if (T.step === 3 && T.unit && T.unit.cells) { const p = unitPos(T.unit); arrow(p.x, p.y - 40); }
+  if (T.step === 3 && T.atk && T.unit && T.unit.cells && T.unit.cells.includes(T.cell)) {
+    const c = T.cell, r = Math.floor(c / COLS), free = [c + 1, c - 1, c + COLS, c - COLS].find(i => i >= 0 && i < COLS * openRows() && Math.floor(i / COLS) === r + (i === c + COLS ? 1 : i === c - COLS ? -1 : 0) && !S.slots[i]);
+    if (free != null) dragDemo(unitPos(T.unit), cellPos(free), T.unit);
+  }
   if (T.step === 4) {
-    const u = allUnits().filter(q => uSize(q) === 1).sort((a, b) => a.lv - b.lv)[0];
-    if (u && !(drag && drag.moved)) {
-      const p = unitPos(u), k = (t * 0.8) % 1;
-      ctx.strokeStyle = 'rgba(255,120,90,.7)'; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.lineDashOffset = t * 40;
-      ctx.beginPath(); ctx.moveTo(p.x, p.y - 20); ctx.lineTo(p.x, SCRAP_Y - 90); ctx.stroke(); ctx.setLineDash([]);
-      drawGlow('#ff7a5a', p.x, p.y - 20 + (SCRAP_Y - 70 - p.y) * k, 24, 0.9);
-      arrow(p.x, p.y - 40);
-    }
+    const u = allUnits().filter(q => uSize(q) === 1 && q.cells).sort((a, b) => a.lv - b.lv)[0];
+    if (u) { const p = unitPos(u); dragDemo(p, { x: p.x, y: SCRAP_Y - 110 }, u); }
   }
-  if (T.step === 5) arrow(SHOP_BX + 53, LINE_Y - 50);
-  button(W - 124, 124, 108, 36, '건너뛰기', 'tutskip', 'ghost');
+  if (T.step === 5 && !UI.shop) tapDemo(SHOP_BX + 53, LINE_Y - 24);
+  button(12, 74, 92, 32, '건너뛰기', 'tutskip', 'ghost');
 }
 function hint(msg) {
   if (S.hint === msg || S.hintQueue.includes(msg)) return;

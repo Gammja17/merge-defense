@@ -195,7 +195,7 @@ function doMerge(target, from) {
   if (target.lv > 5) {
     play('unlock', 0.5); play('thud', 0.6, 0.8); punch(1.2); shockwave(q.x, q.y, 300);
     S.fx.push({ kind: 'pillar', x: q.x, y: q.y, t: 0, life: 0.6 });
-    hintOnce('trans', 'Lv5 두 대를 합치면 초월해요. 초월은 Lv8(초월 III)까지 오르고, 화력이 크게 늘고 주기 스킬이 더 자주 터져요.');
+    hintOnce('trans', 'Lv5 둘을 합치면 초월해요');
   }
 }
 function dropUnit(u, x, y) {
@@ -282,7 +282,8 @@ function loop(now) {
   let gdt = dt;
   if (S.hitStop > 0) { S.hitStop -= dt; gdt = dt * 0.15; }
   if (drag && drag.moved && (S.mode === 'play' || S.mode === 'break')) gdt *= 0.3;   // 기체를 들고 있는 동안은 전투가 느려진다
-  if (UI.aim) { if (S.mode !== 'play') UI.aim = null; else gdt *= 0.35; }   // 포격 조준 중에도
+  if (UI.aim) { if (S.mode !== 'play') UI.aim = null; else gdt *= 0.35; }
+  else if (S.cmdTut && S.cmdTut.on && !S.cmdTut.done) gdt *= 0.35;   // 처음 써 보는 동안 느리게   // 포격 조준 중에도
   if (S.stage && !S.paused && !UI.settings && !UI.enemyIntro) {
     if (S.bossCine) { S.bossCine.t += dt; if (S.bossCine.t < 1.9) gdt *= 0.15; if (S.bossCine.t > 2.4) S.bossCine = null; }
     if (S.slowmo > 0) { S.slowmo -= dt; gdt *= 0.25 + 0.75 * Math.max(0, 1 - S.slowmo / 1.3) ** 2; }

@@ -88,7 +88,6 @@ function addGear(n, x, y) {
   S.gear += n;
   S.fx.push({ kind: 'parts', x, y, tx: SHOP_BX + 53, ty: LINE_Y - 30, n, t: 0, life: 0.6 });
   addText(x, y - 30, `부품 +${n}`, '#ffb347', 18);
-  hintOnce('gear', '부품을 얻었어요! 소환 버튼으로 새 기체를 부르거나, 정비소 버튼을 눌러 칸을 강화하고 줄을 늘릴 수 있어요.');
 }
 function neighborsOf(u) {
   const set = new Set();
@@ -154,7 +153,7 @@ function runEvent(ev) {
       const left = Math.random() < 0.5, c = makeCap({ type: deck[Math.floor(Math.random() * deck.length)] || 'f', lv: 3, n: 1, gold: true }, left ? -40 : W + 40, 1);
       c.y = 250 + Math.random() * 80; c.vx = left ? 115 : -115; c.speed = 4; c.lock = true; c.hits = c.maxHits = Math.round(22 * (1 + 0.04 * S.stage.n));
       addText(W / 2, 300, '황금 캡슐!', '#ffd24a', 28, 1.4); play('unlock', 0.4, 1.2);
-      hintOnce('gold', '황금 캡슐은 금방 지나가요. 탭해서 집중 사격하면 Lv3 기체가 나와요.');
+      hintOnce('gold', '황금 캡슐을 누르면 Lv3 기체');
       break;
     }
     case 'ambush': {
@@ -162,13 +161,13 @@ function runEvent(ev) {
       for (let i = 0; i < 3; i++) { const e = spawnEnemy('rusher', left ? 20 : W - 20, 120 + i * 50); e.vx = left ? 160 : -160; }
       break;
     }
-    case 'elite': hintOnce('elite', '엘리트 전함은 보호막과 세로줄 포격을 가진 중형 보스예요. 격추하면 고급 캡슐을 떨궈요.'); spawnEnemy('elite', W / 2, -60); break;
+    case 'elite': hintOnce('elite', '엘리트 전함을 잡으면 고급 캡슐'); spawnEnemy('elite', W / 2, -60); break;
     case 'cap': {
       const mul = (1 + 0.25 * (S.wave - 1)) * (1 + 0.03 * (S.stage.n - 1));
       if (Array.isArray(ev.r)) {
         const a = makeCap(ev.r[0], 150, mul), b = makeCap(ev.r[1], W - 150, mul);
         a.pair = b; b.pair = a;
-        hintOnce('pair', '두 캡슐이 묶여 오면 먼저 연 쪽만 얻어요. 나머지는 터져요.');
+        hintOnce('pair', '묶인 캡슐은 하나만 얻어요');
       } else makeCap(ev.r, rx(), mul);
       break;
     }
@@ -178,7 +177,7 @@ function runEvent(ev) {
         if (ev.x) b.cx = ev.x;
         if (!S.boss || S.boss.dead) S.boss = b;
         if (!S.bossCine && !S.tut && !SHOT) { S.bossCine = { k: ev.k, t: 0 }; play('vo_hostile', 0.8); play('drums', 0.5, 0.8); }
-        if (ev.k === 'boss3') hintOnce('b3', 'UFO 모선의 보호막은 레이저가 잘 안 먹혀요. 폭발이나 번개로 깨야 해요.');
+        if (ev.k === 'boss3') hintOnce('b3', '모선 보호막은 폭발이나 번개로');
       } else if (ev.k === 'grunt' && S.wave >= 2 && Math.random() < 0.25) {
         const x = 110 + Math.random() * (W - 220);
         for (const [dx, dy] of [[0, 0], [-46, -40], [46, -40]]) { const g = spawnEnemy('grunt', x + dx, -50 + dy); g.hp = g.maxHp = g.maxHp * 0.45; }

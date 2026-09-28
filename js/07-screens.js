@@ -313,17 +313,12 @@ function drawHud() {
   if (S.hint) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, S.hintT * 2);
-    const hy = LINE_Y - 118;
-    const hg = ctx.createLinearGradient(0, hy, 0, hy + 76);
-    hg.addColorStop(0, 'rgba(8,24,60,.94)'); hg.addColorStop(1, 'rgba(4,10,30,.94)');
-    ctx.fillStyle = hg; chamfer(18, hy, W - 36, 76, 12); ctx.fill();
-    ctx.strokeStyle = 'rgba(90,210,255,.65)'; ctx.lineWidth = 1.5; ctx.stroke();
-    brackets(24, hy + 6, W - 48, 64, 10, 'rgba(90,210,255,.4)', 1);
-    ctx.fillStyle = '#48c8ff'; chamfer(32, hy - 9, 58, 18, 5); ctx.fill();
-    ctx.font = FU(10); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#041428'; ctx.fillText('// TIP', 61, hy + 1);
-    ctx.font = FK(17);
-    wrapText(S.hint, W / 2, hy + 40, W - 84, 23);
+    const hy = S.boss && !S.boss.dead ? 132 : S.tut || (S.cmdTut && S.cmdTut.on) ? 128 : 92;
+    let fs = 17; ctx.font = FK(fs); while (fs > 12 && ctx.measureText(S.hint).width > W - 150) ctx.font = FK(--fs);
+    const tw = Math.min(W - 110, ctx.measureText(S.hint).width + 34);
+    ctx.fillStyle = 'rgba(4,12,34,.82)'; chamfer(W / 2 - tw / 2, hy - 16, tw, 32, 9); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,210,255,.55)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText(S.hint, W / 2, hy + 1, '#e6f2ff', 3);
     ctx.restore();
   }
   if (S.mode === 'win' || S.mode === 'lose') drawEnd();
@@ -421,9 +416,15 @@ function drawCmd() {
     ctx.font = FT(10, 900); ctx.fillStyle = ready ? '#fff' : 'rgba(170,190,220,.6)'; ctx.fillText(String(c.cost), x + 6, y + 33);
     BUTTONS.push({ x: x - 22, y: y - 28, w: 56, h: 56, act: 'cmd', k: c.k });
   });
+  const C = S.cmdTut;
+  if (C && C.on && !C.done) {
+    tutLabel(UI.aim ? '적이 모인 곳 누르기' : '궤도 포격 써 보기');
+    if (!UI.aim) tapDemo(x + 6, gy + 30);
+    else { let best = null, bn = -1; for (const e of S.enemies) if (shootable(e) && e.y < LINE_Y - 60) { const n = S.enemies.filter(o => shootable(o) && Math.hypot(o.x - e.x, o.y - e.y) < 130).length; if (n > bn) { bn = n; best = e; } } if (best) tapDemo(best.x, best.y); }
+  }
   if (UI.aim) {
     ctx.fillStyle = 'rgba(255,90,40,.08)'; ctx.fillRect(0, 60, W, LINE_Y - 60);
-    ctx.font = FK(20); outlineText('포격할 곳을 누르세요', W / 2 + 20, 140, '#ffd0a0', 5);
+    if (!(C && C.on && !C.done)) { ctx.font = FK(20); outlineText('포격할 곳을 누르세요', W / 2 + 20, 140, '#ffd0a0', 5); }
     const p = UI.hoverP;
     if (p && p.y < LINE_Y) { ctx.strokeStyle = 'rgba(255,120,60,.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, 130, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x - 20, p.y); ctx.lineTo(p.x + 20, p.y); ctx.moveTo(p.x, p.y - 20); ctx.lineTo(p.x, p.y + 20); ctx.stroke(); }
   }
@@ -1090,7 +1091,7 @@ function drawShop() {
       ctx.strokeStyle = '#fff'; ctx.globalAlpha = a; ctx.lineWidth = 3; chamfer(q.x - mw / 2 + 1, q.y - mh / 2 + 1, mw - 2, mh - 2, 9); ctx.stroke(); ctx.globalAlpha = 1;
     }
   }
-  if (guide != null) { const q = mpos(guide); ctx.font = FK(16); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('칸을 눌러 보세요', q.x, q.y - mh / 2 - 12, '#fff', 4); }
+  if (guide != null) { const q = mpos(guide); if (S.tut && S.tut.step === 5) tapDemo(q.x, q.y); else { ctx.font = FK(16); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('칸을 눌러 보세요', q.x, q.y - mh / 2 - 12, '#fff', 4); } }
   // 고른 칸
   const py = my0 + rows * mh + 18, sc = UI.selCell, sf = sc != null ? S.cellFx[sc] : null;
   ctx.fillStyle = 'rgba(10,20,44,.9)'; chamfer(x + 16, py, w - 32, 150, 12); ctx.fill();
@@ -1105,6 +1106,7 @@ function drawShop() {
       FX_KEYS.forEach((k, j) => {
         const d = CELL_FX[k], bw2 = 112, bx2 = W / 2 - 2 * (bw2 + 8) + 4 + j * (bw2 + 8);
         button(bx2, py + 48, bw2, 54, d.name, 'cellfx', S.gear >= cost ? 'gold' : 'ghost', { c: sc, k });
+        if (j === 0 && S.tut && S.tut.step === 5) UI.tutFx = { x: bx2 + bw2 / 2, y: py + 75 };
         ctx.font = FK(14); ctx.fillStyle = d.col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.txt(d.v[0]), bx2 + bw2 / 2, py + 124);
       });
     } else {
@@ -1134,6 +1136,8 @@ function drawShop() {
   ctx.fillText('필요 없는 기체를 위 전장으로 끌어 놓으면 부품이 나와요.', W / 2, y + h - 96);
   button(W / 2 - 120, y + h - 70, 240, 54, '전투로 돌아가기', 'closeshop', 'primary');
   if (UI.toast && UI.toast.until > performance.now() / 1000) { ctx.font = FK(18); outlineText(UI.toast.text, W / 2, y + 160, '#ffb0b0', 4); }
+  if (S.tut && S.tut.step === 5 && UI.selCell != null && UI.tutFx && !S.cellFx.some(Boolean)) tapDemo(UI.tutFx.x, UI.tutFx.y);
+  UI.tutFx = null;
 }
 function drawPerk() {
   BUTTONS = [];

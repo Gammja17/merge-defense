@@ -68,7 +68,7 @@ function updateEnemy(e, dt) {
   if (e.boss && e.y > 80) {
     e.weakCd = (e.weakCd == null ? 7 : e.weakCd) - dt;
     if (e.weak > 0) e.weak -= dt;
-    if (e.weakCd <= 0) { e.weakCd = 10; e.weak = 3.5; play('vo_anomaly', 0.6); addText(e.x, e.y + e.h * 0.2, '약점 노출!', '#ffd24a', 26, 1.2); hintOnce('weak', '보스가 약점을 드러냈어요. 그동안은 피해가 2배예요. 보스를 탭해서 집중 사격하세요.'); }
+    if (e.weakCd <= 0) { e.weakCd = 10; e.weak = 3.5; play('vo_anomaly', 0.6); addText(e.x, e.y + e.h * 0.2, '약점 노출!', '#ffd24a', 26, 1.2); hintOnce('weak', '약점이 열린 동안 크게 맞아요'); }
   }
   if (e.boss && d.atk && e.y > 60) {
     e.atkT -= dt;
@@ -285,7 +285,7 @@ function update(dt) {
   S.glitch = Math.max(0, S.glitch - dt);
 
   if (S.hint) { S.hintT -= dt; if (S.hintT <= 0) S.hint = null; }
-  if (!S.hint && S.hintQueue.length && !S.tut) { S.hint = S.hintQueue.shift(); S.hintT = 5.5; }
+  if (!S.hint && S.hintQueue.length && !S.tut) { S.hint = S.hintQueue.shift(); S.hintT = 4; }
 
   for (const t of S.texts) t.t += dt;
   S.texts = S.texts.filter(t => t.t < t.life);
@@ -309,6 +309,8 @@ function update(dt) {
     if (S.breakT <= 0) startWave(S.wave + 1);
   } else if (S.mode === 'play') {
     if (S.tut) updateTut(dt);
+    if (S.cmdTut && !S.cmdTut.on && S.mode === 'play' && S.enemies.filter(e => shootable(e) && e.y > 90 && e.y < LINE_Y - 150).length >= 3) { S.cmdTut.on = true; S.cmd = Math.max(S.cmd || 0, 50); play('open', 0.4); }
+    if (S.cmdTut && S.cmdTut.done && S.time - S.cmdTut.done > 1.2) S.cmdTut = null;
     else {
       S.waveT += dt;
       while (S.events.length && S.events[0].t <= S.waveT) runEvent(S.events.shift());

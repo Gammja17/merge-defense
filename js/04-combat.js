@@ -36,7 +36,7 @@ function launchAttack(kind, src, dmg) {
   if (!cells) return false;
   const warn = kind === 'meteor' || kind === 'freeze' ? 1.8 : kind === 'row' || kind === 'cross' ? 1.9 : 1.5;
   S.attacks.push({ kind, cells, src, dmg, t: 0, warn });
-  if (src && !src.boss) hintOnce('atkfocus', '공격하려는 적을 탭하면 집중 사격해요. 경고가 끝나기 전에 격추하면 공격이 취소돼요.');
+  if (src && !src.boss) hintOnce('atkfocus', '공격하는 적을 누르면 먼저 격추');
   return true;
 }
 function cellsCenter(cells) {
@@ -127,7 +127,7 @@ function damageUnit(u, dmg) {
     sparks(p.x, p.y, '#c8d0e0', 16, 300, 'shard');
     S.glitch = Math.max(S.glitch, 0.35); S.shake = Math.max(S.shake, 0.7);
     addText(p.x, p.y - 8, '기체 파괴!', '#ff4a5a', 22, 1.3);
-    hintOnce('lost', '파괴된 기체는 이번 판에서 돌아오지 않아요. 붉은 칸이 보이면 미리 옮기세요.');
+    hintOnce('lost', '파괴된 기체는 돌아오지 않아요');
     const rb = gridUnits().find(m => m.type === 'm' && m.lv >= 5 && m.t2 <= 0);
     if (rb) { rb.t2 = 25; S.rebuilds.push({ type: u.type, t: 2, from: unitPos(rb) }); }
   }
@@ -534,6 +534,7 @@ function useCmd(k, x, y) {
   const c = CMD.find(q => q.k === k);
   if (!c || (S.cmd || 0) < c.cost || S.mode !== 'play') return denied();
   S.cmd -= c.cost; UI.aim = null;
+  if (S.cmdTut && S.cmdTut.on && !S.cmdTut.done) { S.cmdTut.done = S.time; PROG.seen.cmdTut = true; save(); tutOk(); }
   if (k === 'orbit') {
     DMG_BY = null;
     S.fx.push({ kind: 'pillar', x, y, t: 0, life: 0.7, nuke: true });
@@ -554,14 +555,13 @@ function killEnemy(e) {
   e.dead = true;
   if (S.mode === 'play' && cmdOpen()) {
     const was = S.cmd || 0;
-    S.cmd = Math.min(100, was + (e.boss ? 30 : e.k === 'elite' ? 15 : ENEMY[e.k].atk ? 4 : e.k === 'rock' || e.k === 'splitS' ? 0.5 : 1.5) * S.pk.cmd);
-    if (was < 40 && S.cmd >= 40) hintOnce('cmd', '적을 격추하면 왼쪽 사령관 게이지가 차요. 버튼을 눌러 궤도 포격, 비상 방어막, 전체 빙결을 써 보세요.');
+    S.cmd = Math.min(100, was + (e.boss ? 30 : e.k === 'elite' ? 15 : ENEMY[e.k].atk ? 4 : e.k === 'rock' || e.k === 'splitS' ? 0.5 : 1.5) * 0.75 * S.pk.cmd);
   }
   const drop = e.boss ? 30 : e.k === 'elite' ? 10 : ENEMY[e.k].atk ? 2 : (e.k === 'tank' || e.k === 'shield' || e.k === 'healer') && Math.random() < 0.35 ? 1 : 0;
   if (drop) {
     S.cores += drop;
     for (let k = 0; k < Math.min(drop, 8); k++) S.fx.push({ kind: 'coin', x: e.x + (Math.random() - .5) * 30, y: e.y + (Math.random() - .5) * 30, t: -k * 0.04, life: 0.7, sx: (Math.random() - .5) * 160, n: k === 0 ? drop : 0 });
-    hintOnce('core', '적을 격추하면 에너지 코어가 떨어져요. 코어로 기체를 사고 연구소에서 강화해요.');
+    hintOnce('core', '코어로 연구소에서 강화해요');
   }
   S.score += e.boss ? 1000 : e.k === 'elite' ? 200 : 10;
   if (e.carry) { e.carry.carrier = null; e.carry = null; }
@@ -651,8 +651,8 @@ function giveUnit(type, lv, fromX, fromY, col) {
     const k = S.reserve.findIndex(r => !r);
     if (k < 0) return 'lost';
     toReserve(u, k); where = resPos(k);
-    if (shapeDims(type).h > openRows()) hintOnce('tall', '세로 3칸 기체는 줄을 늘려야 올릴 수 있어요. 필요 없으면 위 전장으로 끌어 해체하면 부품이 나와요.');
-    hintOnce('reserve', '자리가 없어서 대기함으로 갔어요. 대기 중인 기체는 쏘지 않아요. 칸을 비우고 끌어다 놓거나, 같은 기체에 겹쳐 합체하세요.');
+    if (shapeDims(type).h > openRows()) hintOnce('tall', '세로 3칸 기체는 줄을 늘려야 올라가요');
+    hintOnce('reserve', '자리가 없으면 대기함으로 가요');
   }
   S.fx.push({ kind: 'fly', x: fromX, y: fromY, tx: where.x, ty: where.y, t: 0, life: 0.45, color: col });
   S.fx.push({ kind: 'arrive', x: where.x, y: where.y, t: -0.42, life: 0.5, big: spot && uSize(u) > 1 ? 1.5 : 1 });   // 날아와 앉는 순간 하얗게 짜잔
@@ -681,7 +681,7 @@ function claimCap(c) {
     addText(c.x, c.y - 30, `${name} +${placed + reserved}`, '#7fe0ff', 20);
     if (reserved) addText(c.x, c.y - 6, `대기함으로 ${reserved}기`, '#ffd24a', 18);
     if (lost) { addText(c.x, c.y + 18, `자리 없음! ${lost}기 손실`, '#ff7070', 18); hint('칸과 대기함이 모두 차면 새 기체가 사라져요. 미리 합쳐서 자리를 비워 두세요.'); }
-    if (UNIT[rw.type].shape !== 1) hintOnce('big', '대형 기체는 여러 칸을 차지해요. 옮길 때도 그만큼 비어야 하니 회피할 자리를 미리 생각하세요.');
+    if (UNIT[rw.type].shape !== 1) hintOnce('big', '대형 기체는 여러 칸을 차지해요');
     checkMergeHint();
   }
   if (c.pair && !c.pair.dead) {
@@ -695,7 +695,7 @@ function checkMergeHint() {
   const seen = {};
   for (const u of allUnits()) {
     const key = u.type + u.lv;
-    if (seen[key]) { hintOnce('merge', '같은 종류, 같은 레벨 기체를 끌어서 겹치면 합체해요. 레벨마다 새 스킬이 생겨요!'); return; }
+    if (seen[key]) return;
     seen[key] = true;
   }
 }
@@ -710,7 +710,6 @@ function mergeInto(t, from) {
   if (t.lv >= 6) ach('transcend');
   if (t.lv >= 8) ach('rainbow');
   S.skillPop = { lv: t.lv, name, color: LV_COL[t.lv - 1], t: 0, life: 1.9, unit: UNIT[t.type].name, cmp: `전투력 ${fmt(sa.v)} → ${fmt(sb.v)}` };
-  hintOnce('sk_' + t.type + t.lv, `${UNIT[t.type].name} Lv${t.lv} ${name}: ${desc}`);
 }
 
 // ── 이펙트 ────────────────────────────────────────────────
