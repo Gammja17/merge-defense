@@ -143,7 +143,7 @@ function coreLabel(x, y, value, size = 16, align = 'left', color = '#bff6ff') {
   else outlineText(txt, x0 + r * 2 + gap, y + 1, color, 3);
 }
 
-const ENGINE_COL = { grunt: '#7dff7a', tank: '#a9b4ff', minion: '#ff7a5a', rusher: '#ffb35a', shield: '#6ad0ff', sniper: '#ff5ad8', gunship: '#ff4a4a', bomber: '#ffb040', phase: '#bff4ff', grav: '#c89bff' };
+const ENGINE_COL = { artillery: '#ff8a2a', jammer: '#e0ff3a', mother: '#3affc0', grunt: '#7dff7a', tank: '#a9b4ff', minion: '#ff7a5a', rusher: '#ffb35a', shield: '#6ad0ff', sniper: '#ff5ad8', gunship: '#ff4a4a', bomber: '#ffb040', phase: '#bff4ff', grav: '#c89bff' };
 
 const STARS = [];
 [[70, 10, 1.1, .45], [40, 26, 1.6, .7], [16, 64, 2.2, 1]].forEach(([n, sp, sz, a], layer) => {
@@ -697,14 +697,15 @@ function drawAttacks() {
     }
     for (const c of a.cells) {
       const q = cellPos(c), x = q.x - CW / 2 + 3, y = q.y - CH / 2 + 3, w = CW - 6, h = CH - 6;
-      ctx.fillStyle = a.kind === 'freeze' ? `rgba(120,220,255,${0.14 + 0.2 * pulse * (0.5 + p)})` : `rgba(255,30,60,${0.12 + 0.2 * pulse * (0.5 + p)})`;
+      const jam = a.kind === 'jam';   // 교란은 노란 칸
+      ctx.fillStyle = a.kind === 'freeze' ? `rgba(120,220,255,${0.14 + 0.2 * pulse * (0.5 + p)})` : jam ? `rgba(220,255,60,${0.12 + 0.2 * pulse * (0.5 + p)})` : `rgba(255,30,60,${0.12 + 0.2 * pulse * (0.5 + p)})`;
       chamfer(x, y, w, h, 8); ctx.fill();
       ctx.save(); chamfer(x, y, w, h, 8); ctx.clip();
-      ctx.fillStyle = `rgba(255,60,80,${0.18 + 0.12 * p})`;
+      ctx.fillStyle = jam ? `rgba(230,255,90,${0.18 + 0.12 * p})` : `rgba(255,60,80,${0.18 + 0.12 * p})`;
       const o = (S.time * 50) % 18;
       for (let sx = x - h + o; sx < x + w; sx += 18) { ctx.beginPath(); ctx.moveTo(sx, y + h); ctx.lineTo(sx + h, y); ctx.lineTo(sx + h + 7, y); ctx.lineTo(sx + 7, y + h); ctx.fill(); }
       ctx.restore();
-      ctx.strokeStyle = `rgba(255,80,100,${0.5 + 0.5 * pulse})`; ctx.lineWidth = 2;
+      ctx.strokeStyle = jam ? `rgba(230,255,90,${0.5 + 0.5 * pulse})` : `rgba(255,80,100,${0.5 + 0.5 * pulse})`; ctx.lineWidth = 2;
       chamfer(x, y, w, h, 8); ctx.stroke();
       ctx.fillStyle = '#ff4a5a'; ctx.fillRect(x + 6, y + h - 7, (w - 12) * (1 - p), 3);
     }

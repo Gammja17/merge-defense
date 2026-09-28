@@ -134,7 +134,7 @@ function spawnEnemy(k, x, y) {
   const e = { k, x, y, hp, maxHp: hp, shield: sh, maxShield: sh, downT: 0, pending: 0, r: d.r, speed: d.speed,
               vx: 0, rot: 0, spin: d.spin ? d.spin * (Math.random() < 0.5 ? -1 : 1) : 0, t: 0, flash: 0,
               img: d.img, w: d.w, h: d.h, boss: !!d.boss, phase: 0, spawnT: 0, skillT: 0,
-              atkT: d.boss ? 3 : 1.2, atkLeft: 3, hoverY: 250 + Math.random() * 90,
+              atkT: d.boss ? 3 : 1.2, atkLeft: d.atkN || 3, hoverY: d.hover ? d.hover[0] + Math.random() * (d.hover[1] - d.hover[0]) : 250 + Math.random() * 90,
               stun: 0, frozen: 0, slow: 0, slowT: 0, burnT: 0, burnD: 0, hacked: 0, hackT: 0 };
   if (k === 'rock') { e.img = Math.random() < 0.5 ? 'enemies/rock1' : 'enemies/rock2'; e.spin = (Math.random() - 0.5) * 4; }
   S.enemies.push(e);

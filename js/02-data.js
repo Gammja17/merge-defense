@@ -180,6 +180,10 @@ const ENEMY = {
   bomber:  { img: 'enemies/bomber',  hp: 130, speed: 48,  r: 30, dmg: 1, w: 76,  h: 62, atk: 'diag',   atkCd: 5.5, atkDmg: 2, name: '폭격기' },
   phase:   { img: 'enemies/phase',   hp: 90,  speed: 58,  r: 28, dmg: 1, w: 64,  h: 66,  name: '위상함' },
   grav:    { img: 'enemies/grav',    hp: 190, speed: 30,  r: 34, dmg: 2, w: 78,  h: 78,  name: '중력함' },
+  // 새 적 (그림은 기존 그림에 색을 입힌 임시 그림)
+  artillery: { img: 'enemies/artillery', hp: 900, speed: 26, r: 50, dmg: 3, w: 118, h: 140, shield: 0.2, atk: 'barrage', atkCd: 5.5, atkDmg: 2, atkN: 6, hover: [200, 290], name: '포격 순양함' },
+  jammer:  { img: 'enemies/jammer',  hp: 150, speed: 42,  r: 32, dmg: 1, w: 72,  h: 72,  atk: 'jam',    atkCd: 6,   atkDmg: 0, atkN: 4, name: '교란함' },
+  mother:  { img: 'enemies/mother',  hp: 1000, speed: 13, r: 62, dmg: 3, w: 160, h: 158, name: '침공 모함' },
   boss1:   { img: 'enemies/boss1', hp: 8000,  speed: 11, r: 90,  dmg: 99, w: 224, h: 196, boss: true, name: '외계 모함', atk: 'column', atkCd: 7, atkDmg: 3 },
   boss2:   { img: 'enemies/boss2', hp: 9500,  speed: 10, r: 100, dmg: 99, w: 230, h: 226, boss: true, name: '거대 운석 핵', spin: 0.3, atk: 'meteor', atkCd: 6, atkDmg: 3 },
   boss3:   { img: 'enemies/boss3',  hp: 9000,  speed: 10, r: 96,  dmg: 99, w: 210, h: 210, boss: true, name: 'UFO 모선', spin: 0.8, shield: 0.35, regen: 6, atk: 'row', atkCd: 8, atkDmg: 3 },
@@ -205,6 +209,9 @@ const ENEMY_HINT = {
   phase:   '위상함은 잠깐씩 투명해져서 공격이 통하지 않아요. 다시 보일 때 노리세요.',
   grav:    '중력함은 근처 캡슐을 끌어당겨 위로 데려가요. 캡슐을 지키려면 먼저 격추하세요.',
   freeze:  '파란 칸은 빙결 포격이에요. 맞은 기체는 4초 동안 얼어서 쏘지 못해요.',
+  artillery: '포격 순양함은 위쪽에 버티고 서서 여러 칸에 포탄을 떨어뜨려요. 붉은 칸을 비우거나 먼저 격추하세요.',
+  jammer:  '교란함이 노란 칸의 기체를 전파로 묶어 못 쏘게 해요. 교란함을 격추하면 바로 풀려요.',
+  mother:  '침공 모함은 천천히 내려오며 작은 드론을 계속 뿌려요. 드론이 쌓이기 전에 모함을 노리세요.',
 };
 
 // ── 구역과 스테이지 ───────────────────────────────────────
@@ -212,15 +219,15 @@ const SECTORS = [
   { name: '궤도 방어선', color: '#48c8ff', planet: ['#7fe0d0', '#3a6fa8', '#1d1f4a'],
     info: '졸개, 중장갑, 운석 떼, 저격함', pool: ['tank', 'rocks'], atk: ['sniper'], fresh: [], boss: 'boss1' },
   { name: '소행성대', color: '#ffb347', planet: ['#ffd08a', '#b0643a', '#3a1d18'],
-    info: '새 적: 분열 운석, 돌격기, 포격함, 운석 낙하', pool: ['tank', 'rocks', 'split', 'rusher'], atk: ['sniper', 'gunship', 'meteor'], fresh: ['split', 'rusher'], boss: 'boss2' },
+    info: '새 적: 분열 운석, 돌격기, 포격함, 운석 낙하, 교란함', pool: ['tank', 'rocks', 'split', 'rusher'], atk: ['sniper', 'gunship', 'meteor', 'jammer'], fresh: ['split', 'rusher'], boss: 'boss2' },
   { name: '성운', color: '#c77dff', planet: ['#f0a8ff', '#7a3fb0', '#24123e'],
-    info: '새 적: 보호막함, 수리선, 폭격기', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer'], atk: ['sniper', 'gunship', 'bomber'], fresh: ['shield', 'healer'], boss: 'boss3' },
+    info: '새 적: 보호막함, 수리선, 폭격기, 침공 모함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'mother'], atk: ['sniper', 'gunship', 'jammer', 'bomber'], fresh: ['shield', 'healer', 'mother'], boss: 'boss3' },
   { name: '적 본성', color: '#ff5a6a', planet: ['#ff9a8a', '#a8323a', '#2a0a14'],
-    info: '새 적: 캡슐 도둑', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief'], atk: ['sniper', 'gunship', 'bomber', 'meteor'], fresh: ['thief'], boss: 'boss4' },
+    info: '새 적: 캡슐 도둑, 포격 순양함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor'], fresh: ['thief'], boss: 'boss4' },
   { name: '얼음 고리', color: '#a8f0ff', planet: ['#effcff', '#6ab8d8', '#12304a'],
-    info: '새 적: 위상함, 빙결 포격', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'phase'], atk: ['sniper', 'gunship', 'bomber', 'freeze'], fresh: ['phase'], boss: 'boss5' },
+    info: '새 적: 위상함, 빙결 포격', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'freeze'], fresh: ['phase'], boss: 'boss5' },
   { name: '블랙홀', color: '#ffc46a', planet: ['#fff0c8', '#c07a2a', '#1a0f06'],
-    info: '새 적: 중력함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'phase', 'grav'], atk: ['sniper', 'gunship', 'bomber', 'meteor', 'freeze'], fresh: ['grav'], boss: 'boss6' },
+    info: '새 적: 중력함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['grav'], boss: 'boss6' },
 ];
 const STAGE_COUNT = SECTORS.length * 5;
 function stageInfo(n) {
@@ -285,6 +292,7 @@ function buildWave(st, w) {
     }
   }
   if (twist === 'elite') ev.push({ t: 4, k: 'elite' });
+  if (st.s >= 3 && !bossWave && w === 3 && (st.i === 0 || R() < 0.4)) ev.push({ t: 7, k: 'artillery' });   // 적 본성부터: 중간 보스 포격 순양함
   if (twist === 'ambush') for (let k = 0; k < 4; k++) ev.push({ t: 4 + k * 4.5, k: 'ambush' });
   if (twist === 'meteors') for (let k = 0; k < 3; k++) { ev.push({ t: 5 + k * 5.5, k: 'meteor' }); ev.push({ t: 3 + k * 6, k: 'rocks' }); }
   if (bossWave) ev.push({ t: 1.5, k: st.sector.boss });

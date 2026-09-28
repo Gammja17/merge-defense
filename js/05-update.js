@@ -123,6 +123,18 @@ function updateEnemy(e, dt) {
       }
       break;
     }
+    case 'artillery':   // 위쪽에 멈춰 좌우로 오가며 포격
+      if (e.y >= e.hoverY - 1) { e.x += Math.cos(e.t * 0.6) * 70 * dt; e.x = Math.max(70, Math.min(W - 70, e.x)); }
+      break;
+    case 'mother': {   // 천천히 내려오며 작은 드론을 뿌린다
+      e.spawnT += dt;
+      if (e.spawnT > 4.5 && e.y > 30 && S.enemies.filter(o => o.k === 'minion' && !o.dead).length < 10) {
+        e.spawnT = 0;
+        for (const dx of [-50, 50]) { const m = spawnEnemy('minion', e.x + dx, e.y + 40); m.vx = dx * 1.2; }
+        S.fx.push({ kind: 'ring', x: e.x, y: e.y + 30, t: 0, life: 0.4, color: '#3affc0' });
+      }
+      break;
+    }
     case 'boss1':
       e.x = (e.cx || W / 2) + Math.sin(S.time * 0.6) * 60 * (e.cx ? 0.4 : 1);
       e.spawnT += dt;
@@ -386,6 +398,10 @@ function update(dt) {
     if (drag && drag.unit === u) continue;
     if (S.mode === 'clearing') continue;
     if (u.ice > 0) { u.ice -= dt; continue; }
+    if (u.jam > 0) {
+      if (!u.jamBy || u.jamBy.dead || u.jamBy.hacked > 0) { u.jam = 0; const p = unitPos(u); addText(p.x, p.y - 24, '교란 해제', '#e8ff6a', 16, 0.8); }
+      else { u.jam -= dt; continue; }
+    }
     RANGE_Y = FIRE_Y - cellRange(u);
     u.cd -= dt * (1 + u.buffSpd) * S.pk.spd * cellSpd(u);
     if (u.cd <= 0) {

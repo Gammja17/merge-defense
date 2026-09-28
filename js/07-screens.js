@@ -49,6 +49,17 @@ function draw(dt) {
     ctx.strokeStyle = `rgba(220,250,255,${0.9 * a})`; ctx.lineWidth = 2; ctx.stroke();
     ctx.font = FU(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText(u.ice.toFixed(1), b.x + b.w / 2, b.y + 12, '#e8fbff', 3);
   }
+  for (const u of gridUnits()) if (u.jam > 0 && u.jamBy) {   // 교란: 잡음 줄이 지글거리고, 교란함까지 지그재그 선
+    const b = unitBox(u), p = unitPos(u), e = u.jamBy;
+    ctx.save(); chamfer(b.x, b.y, b.w, b.h, 9); ctx.clip();
+    ctx.fillStyle = 'rgba(20,24,8,.35)'; ctx.fillRect(b.x, b.y, b.w, b.h);
+    for (let k = 0; k < 9; k++) { const yy = b.y + Math.random() * b.h; ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '230,255,120' : '255,255,255'},${0.15 + Math.random() * 0.3})`; ctx.fillRect(b.x, yy, b.w, 1 + Math.random() * 3); }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(230,255,90,.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(e.x, e.y);
+    for (let k = 1; k < 10; k++) { const q = k / 10; ctx.lineTo(e.x + (p.x - e.x) * q + (Math.random() - .5) * 14, e.y + (p.y - e.y) * q); }
+    ctx.lineTo(p.x, p.y); ctx.stroke();
+    ctx.font = FK(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText(`교란 ${u.jam.toFixed(1)}`, b.x + b.w / 2, b.y + b.h - 12, '#eaff8a', 3);
+  }
   drawUnitFrames(true);
   drawZoneMarks();
   S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.9, uSize(u) > 2 ? 0.26 : uSize(u) === 2 ? 0.34 : 0.58); });

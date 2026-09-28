@@ -9,6 +9,13 @@ function bestOf(cands) {
 }
 function pickCells(kind) {
   const all = [];
+  if (kind === 'barrage' || kind === 'jam') {   // 포격: 기체가 있는 칸 2~3곳, 교란: 아직 안 묶인 기체 한 칸 (앞줄일수록 잘 노림)
+    const bag = [];
+    for (let i = 0; i < COLS * ROWS; i++) if (occupied(i) && !(kind === 'jam' && S.slots[i].jam > 0)) { const r = Math.floor(i / COLS); for (let k = 0; k < openRows() - r; k++) bag.push(i); }
+    const out = [], n = kind === 'jam' ? 1 : 2 + (Math.random() < 0.5 ? 1 : 0);
+    for (let g = 0; g < 30 && out.length < n && bag.length; g++) { const c = bag[Math.floor(Math.random() * bag.length)]; if (!out.includes(c)) out.push(c); }
+    return out.length ? out : null;
+  }
   if (kind === 'snipe') {
     const bag = [];
     for (let i = 0; i < COLS * ROWS; i++) if (occupied(i)) { const r = Math.floor(i / COLS); for (let k = 0; k < openRows() - r; k++) bag.push(i); }
@@ -34,7 +41,7 @@ function pickCells(kind) {
 function launchAttack(kind, src, dmg) {
   const cells = pickCells(kind);
   if (!cells) return false;
-  const warn = kind === 'meteor' || kind === 'freeze' ? 1.8 : kind === 'row' || kind === 'cross' ? 1.9 : 1.5;
+  const warn = kind === 'meteor' || kind === 'freeze' || kind === 'barrage' ? 1.8 : kind === 'row' || kind === 'cross' ? 1.9 : kind === 'jam' ? 1.3 : 1.5;
   S.attacks.push({ kind, cells, src, dmg, t: 0, warn });
   if (src && !src.boss) hintOnce('atkfocus', '공격하는 적을 누르면 먼저 격추');
   return true;
@@ -51,8 +58,13 @@ function resolveAttack(a) {
     sparks(cellsCenter(a.cells).x, cellsCenter(a.cells).y, '#dff8ff', 16, 260, 'shard'); play('shield_crack', 0.45, 1.3);
     return;
   }
+  if (a.kind === 'jam') {   // 교란: 피해 대신 그 칸 기체가 몇 초 동안 못 쏜다. 교란함을 격추하면 풀린다
+    const u = S.slots[a.cells[0]];
+    if (u && a.src && !a.src.dead) { u.jam = 5; u.jamBy = a.src; const p = unitPos(u); addText(p.x, p.y - 24, '교란!', '#e8ff6a', 18, 0.8); play('zapfx', 0.4, 0.7); }
+    return;
+  }
   // 방공포 요격
-  if (a.kind === 'snipe' || a.kind === 'diag' || a.kind === 'meteor') {
+  if (a.kind === 'snipe' || a.kind === 'diag' || a.kind === 'meteor' || a.kind === 'barrage') {
     for (const u of gridUnits()) if (((u.type === 'a' && u.lv >= 3) || (u.type === 'w' && u.lv >= 2)) && u.t2 <= 0 && a.cells.some(c => u.cells.some(uc => cellDist(uc, c) <= 1))) {
       u.t2 = u.type === 'w' ? (u.lv >= 4 ? 5 : 8) : 7;
       const m = cellsCenter(a.cells), p = unitPos(u);

@@ -69,6 +69,10 @@ function fitEnemySizes() {
 function buildTints() {
   const enemyImgs = [...new Set(Object.values(ENEMY).map(d => d.img).concat(['enemies/rock2']))];
   setTimeout(() => { for (const n of enemyImgs) makeTint(n, '#000000', n + '_sh', 1); }, 0);
+  // 새 적 임시 그림: 기존 그림에 색을 입힌다
+  makeTint('enemies/gunship', '#ff8a2a', 'enemies/artillery', 0.42);
+  makeTint('enemies/heal', '#e0ff3a', 'enemies/jammer', 0.5);
+  makeTint('enemies/boss1', '#3affc0', 'enemies/mother', 0.4);
   makeTint('u_b', '#4ab8ff', 'u_b2', 0.3, true);
   makeTint('u_c', '#6af0ff', 'u_c2', 0.45);
   makeTint('u_v', '#b86bff', 'u_v2', 0.45);
