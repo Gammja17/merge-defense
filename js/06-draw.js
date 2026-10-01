@@ -113,7 +113,7 @@ function drawPowerIcon(x, y, r) {
   ctx.lineTo(x - r * 0.3, y + r * 1.1); ctx.lineTo(x + r * 0.7, y - r * 0.15); ctx.lineTo(x + r * 0.05, y - r * 0.15); ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 function unitPower(u) {
-  return levelStat(u.type, u.lv).v * cellAtk(u) * cellSpd(u) * (1 + u.buffDmg) * (1 + u.buffSpd) * S.pk.dmg * S.pk.spd;
+  return levelStat(u.type, u.lv).v * cellAtk(u) * cellSpd(u) * (1 + u.buffDmg) * (1 + u.buffSpd) * pkDmg(u) * S.pk.spd;
 }
 const fleetPower = () => Math.round(gridUnits().reduce((a, u) => a + unitPower(u), 0));
 function drawCore(x, y, r, alpha = 1) {
@@ -608,6 +608,7 @@ function drawEnemy(e) {
     const p = 0.5 + 0.5 * Math.sin(S.time * 4);
     const bc = { boss1: '#ff3a2a', boss2: '#ff8a3a', boss3: '#4ab8ff', boss4: '#ff3a5a', boss5: '#6ad8ff', boss6: '#ffb84a' }[e.k];
     drawGlow(bc, e.x, e.y - 20, 160, 0.22 + 0.1 * p);
+    if (e.rage) drawGlow('#ff2a3a', e.x, e.y, e.r * 2.3, 0.28 + 0.16 * Math.sin(S.time * 9));   // 격노
     if (e.k === 'boss1' || e.k === 'boss4') for (const ox of [-58, 58]) drawGlow('#ff6a3a', e.x + ox, e.y - e.h * 0.45, 26, 0.6 + 0.3 * p, 1.4);
   } else if (ENGINE_COL[e.k] && !(e.frozen > 0) && !(e.hacked > 0)) {
     drawGlow(ENGINE_COL[e.k], e.x, e.y - e.h / 2 + 6, 14 + e.w * 0.12, 0.5 + 0.25 * Math.sin(S.time * 20 + e.x), 1.3);

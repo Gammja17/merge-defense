@@ -226,7 +226,8 @@ function drawHud() {
     ctx.fillStyle = 'rgba(20,0,6,.85)'; chamfer(28, 68, bw + 4, 18, 6); ctx.fill();
     ctx.strokeStyle = 'rgba(255,90,90,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
     const bg = ctx.createLinearGradient(30, 0, 30 + bw, 0);
-    bg.addColorStop(0, '#ff2a4a'); bg.addColorStop(1, '#ff8a3a');
+    if (b.rage) { const q = 0.5 + 0.5 * Math.sin(S.time * 9); bg.addColorStop(0, '#ff1a3a'); bg.addColorStop(1, `rgb(255,${Math.round(40 + 60 * q)},${Math.round(60 + 40 * q)})`); }   // 격노: 붉게 맥박친다
+    else { bg.addColorStop(0, '#ff2a4a'); bg.addColorStop(1, '#ff8a3a'); }
     ctx.fillStyle = bg; ctx.fillRect(30, 70, bw * r, 14);
     ctx.fillStyle = 'rgba(0,0,0,.35)';
     for (let x = 30; x < 30 + bw; x += 8) ctx.fillRect(x, 70, 1, 14);
@@ -236,7 +237,7 @@ function drawHud() {
       if (sr > 0) drawGlow('#6ad0ff', 30 + bw * sr, 90, 10, 0.6);
     }
     ctx.font = FK(15); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    outlineText(ENEMY[b.k].name + (b.maxShield && b.shield <= 0 ? ', 보호막 해제!' : ''), 34, 104, '#ffd0d4', 3);
+    outlineText((b.mini ? '중간 보스 ' : '') + ENEMY[b.k].name + (b.rage ? ', 격노' : '') + (b.maxShield && b.shield <= 0 ? ', 보호막 해제!' : ''), 34, 104, b.rage ? '#ff6a7a' : '#ffd0d4', 3);
     ctx.textAlign = 'right'; ctx.font = FT(12);
     outlineText(Math.ceil(r * 100) + '%', W - 32, 104, '#ffd0d4', 3);
   }
@@ -1193,14 +1194,17 @@ function drawPerk() {
     const k = Math.max(0, Math.min(1, (e - i * 0.09) / 0.28)), ease = 1 - Math.pow(1 - k, 3);
     const x = 44 + (1 - ease) * 80, y = 284 + i * 140, w = W - 88, h = 124, [cn, cc] = PERK_CAT[pk.cat];
     ctx.globalAlpha = k;
-    ctx.fillStyle = 'rgba(8,20,50,.96)'; chamfer(x, y, w, h, 14); ctx.fill();
-    ctx.strokeStyle = pk.col; ctx.lineWidth = 2; ctx.stroke();
+    const tg = PERK_TIER[pk.tier];
+    if (pk.tier === 3) drawGlow(tg[1], x + w / 2, y + h / 2, w * 0.55, 0.22 + 0.1 * Math.sin(e * 5));   // 전설은 금빛으로 빛난다
+    ctx.fillStyle = pk.tier === 3 ? 'rgba(40,26,6,.97)' : 'rgba(8,20,50,.96)'; chamfer(x, y, w, h, 14); ctx.fill();
+    ctx.strokeStyle = tg ? tg[1] : pk.col; ctx.lineWidth = tg ? 3.5 : 2; ctx.stroke();
     drawGlow(pk.col, x + 62, y + h / 2, 50, 0.3 + 0.08 * Math.sin(e * 4 + i));
     ctx.fillStyle = 'rgba(4,12,30,.95)'; hexPath(x + 62, y + h / 2, 34); ctx.fill(); ctx.strokeStyle = pk.col; ctx.lineWidth = 2.5; ctx.stroke();
     perkIcon(pk.cat, x + 62, y + h / 2, pk.col);
     ctx.textAlign = 'left';
     ctx.font = FK(13); const tw = ctx.measureText(cn).width + 16;
     ctx.fillStyle = cc + '33'; chamfer(x + 116, y + 18, tw, 22, 6); ctx.fill(); ctx.fillStyle = cc; ctx.fillText(cn, x + 124, y + 30);
+    if (tg) { const tw2 = ctx.measureText(tg[0]).width + 16; ctx.fillStyle = tg[1]; chamfer(x + 122 + tw, y + 18, tw2, 22, 6); ctx.fill(); ctx.fillStyle = '#10131f'; ctx.fillText(tg[0], x + 130 + tw, y + 30); }
     ctx.font = FK(24); outlineText(pk.name, x + 116, y + 62, '#fff', 4);
     ctx.font = FK(15); ctx.fillStyle = 'rgba(220,235,255,.9)';
     wrapLines(pk.desc, w - 140).slice(0, 2).forEach((l, j) => ctx.fillText(l, x + 116, y + 92 + j * 20));

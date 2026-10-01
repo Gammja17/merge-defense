@@ -260,9 +260,18 @@ function layMines(u, base) {
   }
   return n > 0;
 }
+// 기체 하나의 화력 배율 (강화): 화력, 외톨이 에이스(주변 8칸이 비면), 고철 화력(가진 부품)
+function pkDmg(u) {
+  let m = S.pk.dmg;
+  if (S.pk.lonely && u.cells && !neighborsOf(u).size) m *= 1 + S.pk.lonely;
+  if (S.pk.scrap) m *= 1 + S.pk.scrap * Math.floor(S.gear / 10);
+  return m;
+}
+// 공격 속도 배율 (강화): 냉각, 합체 열기, 과충전
+const pkSpd = () => S.pk.spd * (S.heatT > 0 ? 1 + S.pk.heat : 1) * (S.ocT > 0 ? 2 : 1);
 function fireUnit(u) {
   const p = unitPos(u), L = Math.min(u.lv, 5), def = UNIT[u.type];
-  const base = def.dmg * LV_MUL[u.lv - 1] * cellAtk(u) * (1 + u.buffDmg) * mkMul(u.type) * S.pk.dmg;
+  const base = def.dmg * LV_MUL[u.lv - 1] * cellAtk(u) * (1 + u.buffDmg) * mkMul(u.type) * pkDmg(u);
   let ok = null;
   switch (u.type) {
     case 'f': {
@@ -407,7 +416,7 @@ function densest(r = 110) {
   return best;
 }
 function unitSkill(u) {
-  const p = unitPos(u), base = UNIT[u.type].dmg * LV_MUL[u.lv - 1] * (1 + u.buffDmg) * mkMul(u.type) * S.pk.dmg;
+  const p = unitPos(u), base = UNIT[u.type].dmg * LV_MUL[u.lv - 1] * (1 + u.buffDmg) * mkMul(u.type) * pkDmg(u);
   switch (u.type) {
     case 'f': {
       const tgt = pickTarget();
@@ -500,6 +509,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   if (e.guarded) dmg *= 0.7;
   if (e.boss && e.weak > 0) dmg *= 2;
   if (S.pk.crit && Math.random() < S.pk.crit) dmg *= 2;
+  if (S.pk.hunt > 1 && (e.boss || BIG_FOE.includes(e.k))) dmg *= S.pk.hunt;
   if (S.scan) dmg *= 1.15;
   if (e.shield > 0) {
     const m = src === 'laser' || src === 'fire' ? 0.25 : src === 'beam' ? 0.5 : src === 'emp3' ? 3 : 1;
@@ -516,6 +526,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   }
   if (DMG_BY && S.dmgBy) S.dmgBy[DMG_BY] = (S.dmgBy[DMG_BY] || 0) + Math.min(dmg, Math.max(0, e.hp));
   e.hp -= dmg;
+  if (S.pk.fin && !e.boss && e.hp > 0 && e.hp < e.maxHp * S.pk.fin) { e.hp = 0; if (!quiet) addText(e.x, e.y - e.r, '마무리', '#ff5a5a', 15, 0.6); }
   if (!quiet) {
     e.flash = 0.1; e.jit = 0.12;
     const heavy = dmg / e.maxHp;
@@ -533,6 +544,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   }
   if (e.hp <= 0) killEnemy(e);
 }
+const BIG_FOE = ['elite', 'artillery', 'mother'];   // 거함 격파 강화가 더 아프게 때리는 큰 적
 function shieldBreak(e) {
   play('shield_crack', 0.5); play('shield_break', 0.25);
   S.fx.push({ kind: 'ring', x: e.x, y: e.y, t: 0, life: 0.5, color: '#7fd4ff', r0: e.r });
@@ -567,6 +579,7 @@ function useCmd(k, x, y) {
     for (const e of S.enemies) if (!e.dead) { if (e.boss) { e.slow = Math.max(e.slow, 0.5); e.slowT = Math.max(e.slowT, 4); } else e.frozen = Math.max(e.frozen, 4); }
     S.iceT = 1; addText(W / 2, 300, '전체 빙결', '#bff4ff', 30); play('capbreak', 0.7, 0.8); play('zapfx', 0.5, 0.6);
   }
+  if (S.pk.oc) { S.ocT = 6; addText(W / 2, 360, '과충전!', '#ffe24a', 28, 1.2); play('up_fx', 0.5, 1.2); }
 }
 function killEnemy(e) {
   e.dead = true;
@@ -624,6 +637,7 @@ function killEnemy(e) {
     addText(e.x, e.y - 60, '고급 보급 캡슐!', '#ffd24a', 22); shake(0.6);
   }
   if (e.boss) {
+    S.legendNext = true;   // 보스를 잡으면 다음 강화 첫 칸은 전설
     S.shake = 1.2; S.whiteFlash = 1; S.glitch = 0.8; S.slowmo = 1.3; S.bossDown = { t: 0 };
     const g = S;
     setTimeout(() => { if (S === g) { boom(e.x, e.y, 3.2, '#fff0c0'); shockwave(e.x, e.y, 620); blastFx(e.x, e.y, 3); play('boom_big', 0.8, 0.8); play('kaboom', 0.8, 0.7); S.whiteFlash = 0.7; shake(1); } }, 1150);
@@ -701,6 +715,10 @@ function claimCap(c) {
     if (UNIT[rw.type].shape !== 1) hintOnce('big', '대형 기체는 여러 칸을 차지해요');
     checkMergeHint();
   }
+  if (S.pk.capBomb && S.mode === 'play') {   // 캡슐 폭탄 강화
+    DMG_BY = null; boom(c.x, c.y, 1.6, '#ffd84a'); shockwave(c.x, c.y, 260);
+    blast(c.x, c.y, 140, ENEMY.grunt.hp * hpMul() * 4 * S.pk.capBomb, null);
+  }
   if (c.pair && !c.pair.dead) {
     c.pair.dead = true;
     boom(c.pair.x, c.pair.y, 0.7, '#999');
@@ -720,6 +738,8 @@ function mergeInto(t, from) {
   if (S.tut) S.tut.merged = true;
   if (from) unplace(from);
   t.lv += 1; t.pop = 0.5; t.cd = 0.2; t.sk = 1.5;
+  if (S.pk.twin && t.lv < MAX_LV && Math.random() < S.pk.twin) { t.lv += 1; addText(W / 2, 430, '쌍둥이 합체!', '#9affd8', 26, 1.1); }
+  if (S.pk.heat) S.heatT = 4;
   t.maxHp = unitMaxHp(t.type, t.lv); t.hp = t.maxHp;
   const [name, desc] = t.lv > 5 ? [TRANSCEND[t.lv - 6], transDesc(t.type)] : SKILLS[t.type][t.lv - 1];
   const sa = levelStat(t.type, t.lv - 1), sb = levelStat(t.type, t.lv);

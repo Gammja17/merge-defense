@@ -288,6 +288,8 @@ const TWIST_TEXT = {
   supply:  ['SUPPLY RUN', '보급 캡슐이 쏟아져요. 욕심낼 때와 버틸 때를 가리세요'],
 };
 const twistOf = st => st.twist || TWISTS[(st.n - 1) % TWISTS.length];
+const midWave = st => Math.ceil(st.waves / 2);   // 5웨이브는 3, 7웨이브는 4, 3웨이브는 2
+let MID_HP = [0.3, 0.32, 0.34, 0.36, 0.38];   // 중간 보스 체력 = 이 구역 보스의 몇 배 (구역 안 몇 번째 스테이지인지에 따라)
 function buildWave(st, w) {
   const ev = [], kind = st.kind || 'base';
   const last = w === st.waves, lw = Math.round(wavePw(st, w)), bossWave = st.boss && last;
@@ -317,9 +319,15 @@ function buildWave(st, w) {
     }
   }
   if (twist === 'elite') ev.push({ t: 4, k: 'elite' });
-  if (kind === 'base' && st.s >= 3 && !bossWave && w === 3 && (st.i === 0 || R() < 0.4)) ev.push({ t: 7, k: 'artillery' });   // 적 본성부터: 중간 보스 포격 순양함
-  if (kind === 'siege' && (w === 3 || last)) ev.push({ t: 5, k: 'artillery' });
-  if (kind === 'brush' && !bossWave && w >= 2) {   // 보스 러시: 웨이브마다 중간 보스
+  // 중간 보스: 스테이지 3부터 판 한가운데 웨이브에 지금까지 만난 보스 하나가 체력을 줄여 나온다. 잡으면 전설 강화
+  const midBoss = st.n >= 3 && !st.endless && w === midWave(st);
+  if (midBoss) {
+    const bs = SECTORS.slice(0, st.s + 1).map(x => x.boss), k = bs[Math.floor(R() * bs.length)];
+    ev.push({ t: 4, k, mini: MID_HP[st.i] * ENEMY[st.sector.boss].hp / ENEMY[k].hp });
+  }
+  if (kind === 'base' && st.s >= 3 && !bossWave && w === 3 && !midBoss && (st.i === 0 || R() < 0.4)) ev.push({ t: 7, k: 'artillery' });   // 적 본성부터: 중간 보스 포격 순양함
+  if (kind === 'siege' && ((w === 3 && !midBoss) || last)) ev.push({ t: 5, k: 'artillery' });
+  if (kind === 'brush' && !bossWave && w >= 2 && !midBoss) {   // 보스 러시: 웨이브마다 중간 보스
     if (w !== 3) ev.push({ t: 4, k: 'elite' });
     if (w >= 3) ev.push({ t: w === 3 ? 4 : 12, k: 'artillery' });
   }
@@ -347,7 +355,7 @@ function buildWave(st, w) {
   return ev.sort((a, b) => a.t - b.t);
 }
 
-// 무한 방어선: 10웨이브가 한 주기. 1~3 평이, 4 반전, 5 강화 선택, 6 새 변이, 9 위기, 10 보스(30웨이브부터 둘), 다음 주기 첫 판은 보급
+// 무한 방어선: 10웨이브가 한 주기. 1~3 평이, 4 반전, 5 중간 보스, 6 새 변이, 9 위기, 10 보스(20웨이브부터 둘, 격노), 다음 주기 첫 판은 보급. 강화는 2웨이브마다와 보스 뒤
 const MUTATORS = [
   { id: 'fast', name: '추진기 과부하', desc: '적 이동 속도 +20%' },
   { id: 'shield', name: '보호막 장착', desc: '모든 적이 보호막을 달고 와요' },
@@ -373,9 +381,9 @@ function buildEndlessWave(w) {
   S.stage.s = bossW ? bs : tier; S.stage.sector = SECTORS[S.stage.s];
   const st = { n: Math.min(20, 3 + w), s: tier, i: Math.min(3, Math.floor(w / 5)), sector: SECTORS[S.stage.s], boss: bossW, waves: 5, twist: supply ? 'supply' : TWISTS[1 + cyc % 2] };
   const ev = buildWave(st, bossW ? 5 : supply ? 4 : [2, 3, 4, 4, 5, 2, 3, 4, 5][ci - 1]);
-  if (ci === 5) {   // 미니보스: 4주기부터는 예전 보스가 이 자리에 (체력을 줄여서)
-    if (cyc >= 3) ev.push({ t: 3, k: SECTORS[Math.floor(R() * SECTORS.length)].boss, mini: true });
-    else { ev.push({ t: 4, k: 'elite' }); if (cyc >= 2) ev.push({ t: 12, k: 'elite' }); }
+  if (ci === 5) {   // 5웨이브째도 보스 (체력을 줄여서). 2주기부터는 엘리트 호위도
+    ev.push({ t: 3, k: SECTORS[Math.floor(R() * SECTORS.length)].boss, mini: 0.4 + 0.1 * Math.min(3, cyc) });
+    if (cyc >= 1) ev.push({ t: 12, k: 'elite' });
   }
   if (LULL(ci) && !supply) for (const t of [5, 13]) ev.push({ t, k: 'cap', r: rollReward(st.n, 3) });   // 숨 돌리는 웨이브엔 캡슐을 더
   const atk = st.sector.atk, add = (k, t, x) => ev.push({ t, k, x });
@@ -390,7 +398,8 @@ function buildEndlessWave(w) {
     if (cyc >= 2) { add('artillery', 8 + R() * 6); for (let k = 0; k < Math.min(2, cyc - 1); k++) add('jammer', 4 + k * 8 + R() * 4); }
   }
   if (mutOn('swarm')) { const gs = ev.filter(e => e.k === 'grunt'); for (let k = 0; k < Math.round(gs.length * 0.6); k++) add('grunt', gs[k].t + 0.5); }
-  if (bossW && w >= 30) {
+  if (bossW && w >= 20) ev.find(e => ENEMY[e.k] && ENEMY[e.k].boss).rage = true;   // 3주기부터 10웨이브 보스는 처음부터 격노
+  if (bossW && w >= 20) {
     const b1 = ev.find(e => ENEMY[e.k] && ENEMY[e.k].boss);
     let k2; do { k2 = SECTORS[Math.floor(R() * SECTORS.length)].boss; } while (k2 === b1.k);
     b1.x = 160; add(k2, 4, W - 160);
@@ -398,30 +407,53 @@ function buildEndlessWave(w) {
   return ev.sort((a, b) => a.t - b.t);
 }
 const PERKS = [
-  { id: 'dmg', cat: 'atk', name: '화력 증폭', desc: '모든 기체 화력 +15%', col: '#ff8a4a', apply: () => { S.pk.dmg *= 1.15; } },
-  { id: 'spd', cat: 'atk', name: '냉각 개선', desc: '모든 기체 공격 속도 +12%', col: '#48c8ff', apply: () => { S.pk.spd *= 1.12; } },
-  { id: 'shield', cat: 'def', name: '방어선 보강', desc: '기지 보호막 최대치 +3, 즉시 +3', col: '#5affc8', apply: () => { S.maxHp += 3; S.hp += 3; } },
-  { id: 'armor', cat: 'def', name: '장갑 강화', desc: '모든 기체 최대 체력 +2', col: '#6ad0ff', apply: () => { S.pk.hp += 2; for (const u of allUnits()) { u.maxHp += 2; u.hp += 2; } } },
-  { id: 'cap', cat: 'sup', name: '보급 효율', desc: '캡슐을 까는 데 필요한 타수 -20%', col: '#ffd84a', apply: () => { S.pk.cap *= 0.8; } },
-  { id: 'front', cat: 'atk', name: '화력 정비', desc: '정비소 공격 칸 효과 +50%', col: '#ffb347', apply: () => { S.pk.front += 0.5; } },
-  { id: 'slow', cat: 'def', name: '중력 교란', desc: '모든 적 이동 속도 -10%', col: '#b86bff', apply: () => { S.pk.enemySpd *= 0.9; } },
-  { id: 'repair', cat: 'def', name: '자동 수리', desc: '웨이브를 넘길 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.regen += 1; } },
-  { id: 'gift', cat: 'sup', name: '긴급 증원', desc: '편성 기체 중 하나를 Lv3으로 지급', col: '#ffe24a', apply: () => {
+  { tier: 1, id: 'dmg', cat: 'atk', name: '화력 증폭', desc: '모든 기체 화력 +15%', col: '#ff8a4a', apply: () => { S.pk.dmg *= 1.15; } },
+  { tier: 1, id: 'spd', cat: 'atk', name: '냉각 개선', desc: '모든 기체 공격 속도 +12%', col: '#48c8ff', apply: () => { S.pk.spd *= 1.12; } },
+  { tier: 1, id: 'shield', cat: 'def', name: '방어선 보강', desc: '기지 보호막 최대치 +3, 즉시 +3', col: '#5affc8', apply: () => { S.maxHp += 3; S.hp += 3; } },
+  { tier: 1, id: 'armor', cat: 'def', name: '장갑 강화', desc: '모든 기체 최대 체력 +2', col: '#6ad0ff', apply: () => { S.pk.hp += 2; for (const u of allUnits()) { u.maxHp += 2; u.hp += 2; } } },
+  { tier: 1, id: 'cap', cat: 'sup', name: '보급 효율', desc: '캡슐을 까는 데 필요한 타수 -20%', col: '#ffd84a', apply: () => { S.pk.cap *= 0.8; } },
+  { tier: 1, id: 'front', cat: 'atk', name: '화력 정비', desc: '정비소 공격 칸 효과 +50%', col: '#ffb347', apply: () => { S.pk.front += 0.5; } },
+  { tier: 1, id: 'slow', cat: 'def', name: '중력 교란', desc: '모든 적 이동 속도 -10%', col: '#b86bff', apply: () => { S.pk.enemySpd *= 0.9; } },
+  { tier: 1, id: 'repair', cat: 'def', name: '자동 수리', desc: '웨이브를 넘길 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.regen += 1; } },
+  { tier: 1, id: 'gift', cat: 'sup', name: '긴급 증원', desc: '편성 기체 중 하나를 Lv3으로 지급', col: '#ffe24a', apply: () => {
       const pool = battleDeck().filter(t => UNIT[t].shape === 1); giveUnit(pool[Math.floor(Math.random() * pool.length)] || 'f', 3, W / 2, 420, '#ffe24a'); } },
-  { id: 'crit', cat: 'atk', name: '약점 분석', desc: '모든 공격이 15% 확률로 2배 피해', col: '#ff5a8a', apply: () => { S.pk.crit += 0.15; } },
-  { id: 'salvage', cat: 'sup', name: '부품 회수', desc: '격추한 적이 부품을 두 배 자주 떨궈요', col: '#ffc86a', apply: () => { S.pk.gear *= 2; } },
-  { id: 'summon', cat: 'sup', name: '소환 할인', desc: '소환에 드는 부품 -2', col: '#ffe08a', apply: () => { S.pk.summonOff += 2; } },
-  { id: 'elite', cat: 'sup', name: '정예 소환', desc: '소환하면 나오는 기체 레벨 +1', col: '#ffc24a', ok: () => summonLv() < 5, apply: () => { S.pk.summonLv += 1; } },
-  { id: 'cmdup', cat: 'sp', name: '지휘 통신', desc: '사령관 게이지가 60% 더 빨리 차요', col: '#ffd24a', ok: () => cmdOpen(), apply: () => { S.pk.cmd *= 1.6; } },
-  { id: 'chain', cat: 'sp', name: '연쇄 폭발', desc: '격추한 적이 터지며 주변 적에게 피해를 줘요', col: '#ff6a3a', apply: () => { S.pk.chain += 0.35; } },
-  { id: 'arc', cat: 'sp', name: '합체 방전', desc: '합체할 때마다 가까운 적 셋에게 번개가 떨어져요', col: '#9ad8ff', apply: () => { S.pk.arc += 1; } },
+  { tier: 1, id: 'crit', cat: 'atk', name: '약점 분석', desc: '모든 공격이 15% 확률로 2배 피해', col: '#ff5a8a', apply: () => { S.pk.crit += 0.15; } },
+  { tier: 1, id: 'salvage', cat: 'sup', name: '부품 회수', desc: '격추한 적이 부품을 두 배 자주 떨궈요', col: '#ffc86a', apply: () => { S.pk.gear *= 2; } },
+  { tier: 1, id: 'summon', cat: 'sup', name: '소환 할인', desc: '소환에 드는 부품 -2', col: '#ffe08a', apply: () => { S.pk.summonOff += 2; } },
+  { tier: 1, id: 'elite', cat: 'sup', name: '정예 소환', desc: '소환하면 나오는 기체 레벨 +1', col: '#ffc24a', ok: () => summonLv() < 5, apply: () => { S.pk.summonLv += 1; } },
+  { tier: 1, id: 'cmdup', cat: 'sp', name: '지휘 통신', desc: '사령관 게이지가 60% 더 빨리 차요', col: '#ffd24a', ok: () => cmdOpen(), apply: () => { S.pk.cmd *= 1.6; } },
+  { tier: 1, id: 'chain', cat: 'sp', name: '연쇄 폭발', desc: '격추한 적이 터지며 주변 적에게 피해를 줘요', col: '#ff6a3a', apply: () => { S.pk.chain += 0.35; } },
+  { tier: 1, id: 'arc', cat: 'sp', name: '합체 방전', desc: '합체할 때마다 가까운 적 셋에게 번개가 떨어져요', col: '#9ad8ff', apply: () => { S.pk.arc += 1; } },
+  // 고급: 판 흐름을 바꾸는 강화
+  { tier: 2, id: 'twin', cat: 'sp', name: '쌍둥이 합체', desc: '합체할 때 20% 확률로 한 단계 더 올라요', col: '#9affd8', apply: () => { S.pk.twin += 0.2; } },
+  { tier: 2, id: 'lonely', cat: 'atk', name: '고독한 에이스', desc: '주변 8칸이 빈 기체는 화력 2배', col: '#ff9a5a', apply: () => { S.pk.lonely += 1; } },
+  { tier: 2, id: 'fin', cat: 'atk', name: '마무리 사격', desc: '체력이 12% 아래로 떨어진 적은 바로 격추 (보스 빼고)', col: '#ff5a5a', apply: () => { S.pk.fin += S.pk.fin ? 0.06 : 0.12; } },
+  { tier: 2, id: 'hunt', cat: 'atk', name: '거함 격파', desc: '보스, 엘리트, 순양함, 모함에게 주는 피해 +50%', col: '#ffb84a', apply: () => { S.pk.hunt += 0.5; } },
+  { tier: 2, id: 'capbomb', cat: 'sup', name: '캡슐 폭탄', desc: '캡슐을 까면 그 자리에서 크게 터져 주변 적을 쓸어요', col: '#ffd84a', apply: () => { S.pk.capBomb += 1; } },
+  { tier: 2, id: 'heat', cat: 'sp', name: '합체 열기', desc: '합체하면 4초 동안 모든 기체 공격 속도 +40%', col: '#ff7ae0', apply: () => { S.pk.heat += 0.4; } },
+  // 전설: 보스를 잡으면 하나는 꼭 나온다
+  { tier: 3, id: 'glass', once: true, cat: 'atk', name: '유리 대포', desc: '화력 2배, 대신 기지 보호막 최대치가 절반', col: '#ff3a5a', apply: () => { S.pk.dmg *= 2; S.maxHp = Math.max(1, Math.ceil(S.maxHp / 2)); S.hp = Math.min(S.hp, S.maxHp); } },
+  { tier: 3, id: 'oc', once: true, cat: 'sp', name: '과충전', desc: '사령관 스킬을 쓰면 6초 동안 모든 기체 공격 속도 2배', col: '#ffe24a', ok: () => cmdOpen(), apply: () => { S.pk.oc = 1; } },
+  { tier: 3, id: 'scrap', cat: 'atk', name: '고철 화력', desc: '가진 부품 10개마다 화력 +6%. 모아 둘수록 세져요', col: '#ffc86a', apply: () => { S.pk.scrap += 0.06; } },
+  { tier: 3, id: 'revive', once: true, cat: 'def', name: '최후의 방벽', desc: '기지 보호막이 처음 0이 되면 5로 버티고 적이 3초 멈춰요', col: '#5affc8', apply: () => { S.pk.revive = 1; } },
 ];
+
 const PERK_CAT = { atk: ['공격', '#ff8a4a'], def: ['방어', '#5affc8'], sup: ['보급', '#ffd84a'], sp: ['특수', '#b88aff'] };
+// 등급: 일반(1), 희귀(2), 전설(3). 보스를 잡은 뒤 첫 선택은 첫 칸이 전설
+const PERK_TIER = { 2: ['고급', '#5ab8ff'], 3: ['전설', '#ffb020'] };
 function rollPerks() {
-  const bag = PERKS.filter(p => !p.ok || p.ok()), out = [];
-  for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
-  for (const p of bag) if (out.length < 3 && !out.some(q => q.cat === p.cat)) out.push(p);
-  for (const p of bag) if (out.length < 3 && !out.includes(p)) out.push(p);
+  const can = p => (!p.ok || p.ok()) && !(p.once && S.perks.includes(p.id));
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    const r = R(), want = i === 0 && S.legendNext ? 3 : r < 0.07 ? 3 : r < 0.37 ? 2 : 1;
+    for (let tier = want; tier >= 1 && out.length === i; tier--) {
+      const bag = PERKS.filter(p => p.tier === tier && can(p) && !out.includes(p));
+      const fresh = bag.filter(p => !out.some(q => q.cat === p.cat));
+      const pick = fresh.length ? fresh : bag;
+      if (pick.length) out.push(pick[Math.floor(R() * pick.length)]);
+    }
+  }
+  S.legendNext = false;
   S.perkT0 = performance.now() / 1000;
   return out;
 }
@@ -446,14 +478,14 @@ function startStage(n, endless = false, daily = false) {
     shake: 0, time: 0, glitch: 0, lost: 0,
     parts: [], shieldHits: [], banner: null, warning: 0, whiteFlash: 0, skillPop: null,
     score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0, dmgBy: {}, used: {},
-    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0 }, chainQ: [],
+    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0, twin: 0, lonely: 0, fin: 0, hunt: 1, capBomb: 0, heat: 0, oc: 0, scrap: 0, revive: 0 }, chainQ: [], heatT: 0, ocT: 0, legendNext: false,
     gear: 0, cellFx: new Array(COLS * ROWS).fill(null), rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0,
   };
   if (daily) { S.daily = { day: dayKey(), deck: dailyDeck(dayKey()) }; lbFetchDaily(true); }
   const types = battleDeck().filter(t => UNIT[t].shape === 1).sort((a, b) => UNIT[b].stat[0] * UNIT[b].stat[1] - UNIT[a].stat[0] * UNIT[a].stat[1]);
   START_LV[endless ? 1 : st.s].forEach((lv, j) => { const u = makeUnit(types[j % types.length] || 'f', lv); S.used[u.type] = (S.used[u.type] || 0) + Math.pow(2, lv - 1); const sp = findSpot(u); if (sp) place(u, sp); });
   hintOnce('info', '기체를 꾹 누르면 정보가 나와요');
-  if (endless) hintOnce('endless3', '5웨이브마다 강화, 10웨이브마다 보스');
+  if (endless) hintOnce('endless4', '2웨이브마다 강화, 5웨이브마다 보스');
   if (n === 1 && !endless && !PROG.tut && !PROG.stars[1] && !SHOT) S.tut = { step: 1, t: 0 };
   if (!SHOT && !PROG.seen.cmdTut && cmdOpen()) S.cmdTut = {};
   startWave(1);

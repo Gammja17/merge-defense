@@ -17,6 +17,14 @@ function distToRay(px, py, x, y, ang) {
   return Math.abs(-dx * s + dy * c);
 }
 
+// 보스 2단계(격노): 화면이 번쩍이고, 공격이 잦아지고, 부하를 더 빨리 부른다
+function bossRage(e) {
+  e.rage = true; e.atkT = Math.min(e.atkT, 1.5);
+  if (S.mode !== 'play' || SHOT) return;
+  S.whiteFlash = Math.max(S.whiteFlash, 0.6); S.glitch = Math.max(S.glitch, 0.5); shake(0.8);
+  addText(e.x, Math.max(170, e.y + e.h * 0.4), '격노!', '#ff3a4a', 34, 1.4);
+  play('vo_hostile', 0.7); play('drums', 0.5, 0.7);
+}
 function updateEnemy(e, dt) {
   e.t += dt;
   e.flash = Math.max(0, e.flash - dt);
@@ -72,8 +80,11 @@ function updateEnemy(e, dt) {
   }
   if (e.boss && d.atk && e.y > 60) {
     e.atkT -= dt;
-    if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) e.atkT = launchAttack(e.nextAtk || d.atk, e, d.atkDmg) ? d.atkCd * (mutOn('rapid') ? 0.7 : 1) * endlessAtkMul() : 1;
+    if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) e.atkT = launchAttack(e.nextAtk || d.atk, e, d.atkDmg) ? d.atkCd * (mutOn('rapid') ? 0.7 : 1) * endlessAtkMul() * (e.rage ? 0.65 : 1) : 1;
   }
+  // 2단계(격노): 진짜 보스는 체력이 절반 아래로 떨어지면 더 자주 쏘고 더 빨리 부하를 부른다
+  if (e.boss && !e.mini && !e.rage && e.hp < e.maxHp * 0.5) bossRage(e);
+  if (e.rage) e.spawnT += dt * 0.5;
   // 부서질수록 연기, 더 부서지면 불
   if (!e.boss && e.maxHp > 90 && e.k !== 'rock') {
     const r = e.hp / e.maxHp;
@@ -233,7 +244,7 @@ function updateAuras(dt) {
     const q = S.chainQ.splice(0, 6);
     for (const c of q) { S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.35, color: '#ff8a4a' }); blast(c.x, c.y, 80, c.d); }
   }
-  S.cmdGuardT = Math.max(0, (S.cmdGuardT || 0) - dt); S.iceT = Math.max(0, (S.iceT || 0) - dt * 1.5);
+  S.cmdGuardT = Math.max(0, (S.cmdGuardT || 0) - dt); S.heatT = Math.max(0, (S.heatT || 0) - dt); S.ocT = Math.max(0, (S.ocT || 0) - dt); S.iceT = Math.max(0, (S.iceT || 0) - dt * 1.5);
   for (const rb of S.rebuilds) {
     rb.t -= dt;
     if (rb.t <= 0 && !rb.done) { rb.done = true; if (giveUnit(rb.type, 1, rb.from.x, rb.from.y, '#6dff8a') !== 'lost') addText(rb.from.x, rb.from.y - 30, '재건 완료', '#6dff8a', 18); }
@@ -245,7 +256,7 @@ function updateDrones(u, dt) {
   const n = (u.type === 'y' ? [3, 4, 6, 6, 8] : [1, 2, 4, 4, 8])[lvIdx(u.lv)], p = unitPos(u);
   while (u.drones.length < n) u.drones.push({ x: p.x, y: p.y, cd: Math.random() * 0.4, a: Math.random() * 6, gone: 0 });
   u.drones.length = n;
-  const dmg = UNIT.d.dmg * LV_MUL[u.lv - 1] * [1, 0.8, 0.6, 0.6, 0.5][lvIdx(u.lv)] * (1 + u.buffDmg) * cellAtk(u) * mkMul('d') * S.pk.dmg;
+  const dmg = UNIT.d.dmg * LV_MUL[u.lv - 1] * [1, 0.8, 0.6, 0.6, 0.5][lvIdx(u.lv)] * (1 + u.buffDmg) * cellAtk(u) * mkMul('d') * pkDmg(u);
   // 적이 가까이 오지 않았을 때만 캡슐을 먼저 노린다
   let capT = null;
   const safe = !S.enemies.some(e => shootable(e) && e.y > LINE_Y - 260);
@@ -354,7 +365,7 @@ function update(dt) {
         continue;
       }
       const hitDmg = e.mini ? 5 : ENEMY[e.k].dmg;   // 미니보스로 나온 예전 보스는 방어막 -5
-      if (e.boss && !e.mini) S.hp = 0;
+      if (e.boss && !e.mini) { S.hp = 0; S.noRevive = true; }
       else S.hp -= hitDmg;
       shake(0.5);
       S.shieldHits.push({ x: e.x, t: 0 });
@@ -404,7 +415,7 @@ function update(dt) {
       else { u.jam -= dt; continue; }
     }
     RANGE_Y = FIRE_Y - cellRange(u);
-    u.cd -= dt * (1 + u.buffSpd) * S.pk.spd * cellSpd(u);
+    u.cd -= dt * (1 + u.buffSpd) * pkSpd() * cellSpd(u);
     if (u.cd <= 0) {
       const cd = u.type === 'k' ? [7, 6, 5, 4.5, 4][lvIdx(u.lv)] * Math.pow(0.75, tier(u)) : u.type === 'n' ? [2.5, 2.5, 2.2, 2, 1.8][lvIdx(u.lv)] : UNIT[u.type].cd;
       u.cd = fireUnit(u) ? cd : Math.min(0.1, cd);
@@ -531,14 +542,19 @@ function update(dt) {
   }
   S.beams = S.beams.filter(b => b.t < b.life && b.u.cells);
 
-  const bossDead = S.boss && S.boss.dead && S.boss.hp <= 0;
+  const bossDead = S.boss && S.boss.dead && S.boss.hp <= 0, midDead = bossDead && S.boss.mini;
   S.enemies = S.enemies.filter(e => !e.dead);
   S.caps = S.caps.filter(c => !c.dead);
   if (S.focus && (S.focus.dead || !(S.caps.includes(S.focus) || S.enemies.includes(S.focus)))) S.focus = null;
 
+  if (S.hp <= 0 && S.pk.revive && !S.noRevive) {   // 최후의 방벽 강화: 한 번 버틴다
+    S.pk.revive = 0; S.hp = Math.min(5, S.maxHp);
+    for (const e of S.enemies) if (!e.dead && !e.boss) e.frozen = Math.max(e.frozen, 3);
+    S.whiteFlash = 0.8; shake(0.8); addText(W / 2, LINE_Y - 90, '최후의 방벽!', '#5affc8', 30, 1.5); play('shieldUp', 0.7);
+  }
   if (S.hp <= 0) { S.hp = 0; endStage(false); return; }
   const st = S.stage;
-  if (bossDead) { S.boss = st.endless ? S.enemies.find(e => e.boss) || null : null; if (!st.endless) { beginClear(); return; } }
+  if (bossDead) { S.boss = S.enemies.find(e => e.boss) || null; if (!st.endless && !midDead) { beginClear(); return; } }   // 중간 보스를 잡으면 판은 이어진다
   const cleared = !S.events.length && !S.enemies.some(e => !(e.hacked > 0));
   if (S.mode === 'play' && !st.boss && S.wave === st.waves && cleared) { beginClear(); return; }
   if (S.mode === 'play' && S.wave < st.waves && cleared) {
@@ -551,8 +567,8 @@ function update(dt) {
     S.crisis = false;
     if (st.endless && S.wave >= 10) ach('endless_10');
     if (st.endless && S.wave >= 30) ach('endless_30');
-    if (!st.endless && (S.wave === (st.waves <= 3 ? 2 : 3) || (st.kind === 'long' && S.wave === 5)) && st.n >= 2 && !S.tut) { S.mode = 'perk'; S.perkChoices = rollPerks(); S.banner = null; }   // 중간 강화 (장기전은 한 번 더)
-    if (st.endless) { S.score += 100; if (S.wave % 5 === 0) { S.mode = 'perk'; if (S.daily) S.rng = mulberry(seedOf('perk' + S.daily.day + S.wave)); S.perkChoices = rollPerks(); S.rng = null; S.banner = null; } }
+    if (!st.endless && st.n >= 2 && !S.tut) { S.mode = 'perk'; S.perkChoices = rollPerks(); S.banner = null; }   // 웨이브마다 강화 (마지막 웨이브 빼고)
+    if (st.endless) { S.score += 100; if (S.wave % 2 === 0 || S.wave % 5 === 0) { S.mode = 'perk'; if (S.daily) S.rng = mulberry(seedOf('perk' + S.daily.day + S.wave)); S.perkChoices = rollPerks(); S.rng = null; S.banner = null; } }
   }
 }
 function impact(s, t) {

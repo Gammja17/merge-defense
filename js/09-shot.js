@@ -52,6 +52,16 @@ function setupShot(k) {
     PROG.deck = ['f', 't', 'e', 'b', 'c'];
     startStage(0, true); shotArmy(army); S.wave = 8; startWave(9); shotRun(60 * 12);
     S.mode = 'perk'; S.perkChoices = [PERKS[0], PERKS[3], PERKS[9]];
+  } else if (k === 'legend') {   // 강화 등급: 전설, 희귀, 일반 한 장씩
+    PROG.deck = ['f', 't', 'e', 'b', 'c'];
+    startStage(12); shotArmy(army); S.wave = 2; startWave(3); shotRun(60 * 6);
+    S.mode = 'perk'; S.perks = ['dmg', 'twin']; S.perkChoices = ['glass', 'lonely', 'spd'].map(id => PERKS.find(p => p.id === id)); S.perkT0 = 0;
+  } else if (k === 'rage') {   // 체력이 절반 아래로 떨어져 격노한 보스
+    PROG.deck = ['f', 't', 's', 'b', 'e'];
+    startStage(15); shotArmy([['f', 5, 2], ['f', 4, 3], ['t', 4, 8], ['s', 4, 0], ['b', 3, 13], ['e', 4, 5], ['t', 3, 10], ['f', 3, 15]]);
+    S.wave = 4; startWave(5); shotRun(60 * 9, 5);
+    if (S.boss) S.boss.hp = S.boss.maxHp * 0.49;
+    shotRun(40, 5); S.frozen = true;
   } else if (k === 'map') S = { mode: 'map' };
   if (SHOT_RAW && S.stage) {
     // 연출용 한 순간: 빔, 폭격, 폭발, 탄환을 동시에 띄우고 멈춘다
