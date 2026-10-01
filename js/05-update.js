@@ -245,7 +245,7 @@ function updateAuras(dt) {
     const q = S.chainQ.splice(0, 6);
     for (const c of q) { S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.35, color: '#ff8a4a' }); blast(c.x, c.y, 80, c.d); }
   }
-  S.cmdGuardT = Math.max(0, (S.cmdGuardT || 0) - dt); S.heatT = Math.max(0, (S.heatT || 0) - dt); S.ocT = Math.max(0, (S.ocT || 0) - dt); S.iceT = Math.max(0, (S.iceT || 0) - dt * 1.5);
+  S.heatT = Math.max(0, (S.heatT || 0) - dt); S.ocT = Math.max(0, (S.ocT || 0) - dt); S.iceT = Math.max(0, (S.iceT || 0) - dt * 1.5);
   for (const rb of S.rebuilds) {
     rb.t -= dt;
     if (rb.t <= 0 && !rb.done) { rb.done = true; if (giveUnit(rb.type, 1, rb.from.x, rb.from.y, '#6dff8a') !== 'lost') addText(rb.from.x, rb.from.y - 30, '재건 완료', '#6dff8a', 18); }
@@ -356,7 +356,6 @@ function update(dt) {
     if (!e.dead && e.y + (e.boss ? e.h * 0.35 : 0) >= LINE_Y) {
       e.dead = true;
       if (e.carry) e.carry.carrier = null;
-      if (!e.boss && S.cmdGuardT > 0) { boom(e.x, LINE_Y, 1.2, '#5affc8'); S.shieldHits.push({ x: e.x, t: 0 }); continue; }
       const guard = !e.boss && S.baseGuardT <= 0 && gridUnits().some(u => u.type === 'g' && u.lv >= 5);
       if (guard) {
         S.baseGuardT = 12;
@@ -567,7 +566,7 @@ function update(dt) {
     S.crisis = false;
     if (st.endless && S.wave >= 10) ach('endless_10');
     if (st.endless && S.wave >= 30) ach('endless_30');
-    if (!st.endless && st.n >= 2 && !S.tut) { S.mode = 'perk'; S.perkChoices = rollPerks(); S.banner = null; }   // 웨이브마다 강화 (마지막 웨이브 빼고)
+    if (!st.endless && st.n >= 2 && !S.tut && S.wave % 2 === 0) { S.mode = 'perk'; S.perkChoices = rollPerks(); S.banner = null; }   // 2웨이브마다 강화 (마지막 웨이브 빼고)
     if (st.endless) { S.score += 100; if (S.wave % 2 === 0 || S.wave % 5 === 0) { S.mode = 'perk'; if (S.daily) S.rng = mulberry(seedOf('perk' + S.daily.day + S.wave)); S.perkChoices = rollPerks(); S.rng = null; S.banner = null; } }
   }
 }

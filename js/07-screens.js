@@ -402,17 +402,11 @@ function drawBossDown() {
   ctx.restore();
 }
 function drawCmd() {
-  if (S.cmdGuardT > 0) {   // 비상 방어막: 방어선 위 초록 막
-    const a = Math.min(1, S.cmdGuardT) * (0.6 + 0.25 * Math.sin(S.time * 8));
-    const gg = ctx.createLinearGradient(0, LINE_Y - 70, 0, LINE_Y); gg.addColorStop(0, 'rgba(90,255,200,0)'); gg.addColorStop(1, `rgba(90,255,200,${0.35 * a})`);
-    ctx.fillStyle = gg; ctx.fillRect(0, LINE_Y - 70, W, 70);
-    ctx.fillStyle = `rgba(160,255,225,${a})`; ctx.fillRect(0, LINE_Y - 2, W, 3);
-  }
   if (S.iceT > 0) { ctx.fillStyle = `rgba(160,230,255,${0.3 * S.iceT})`; ctx.fillRect(0, 0, W, LINE_Y); }
   if (!cmdOpen() || !['play', 'break'].includes(S.mode)) return;
   const g = S.cmd || 0, x = 34, gy = 216, gh = 206;
   ctx.fillStyle = 'rgba(4,10,26,.75)'; ctx.fillRect(4, gy, 7, gh);
-  ctx.fillStyle = g >= 40 ? '#ffd24a' : 'rgba(255,210,74,.55)'; ctx.fillRect(4, gy + gh * (1 - g / 100), 7, gh * g / 100);
+  ctx.fillStyle = g >= CMD[0].cost ? '#ffd24a' : 'rgba(255,210,74,.55)'; ctx.fillRect(4, gy + gh * (1 - g / 100), 7, gh * g / 100);
   for (const c of CMD) { ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(2, gy + gh * (1 - c.cost / 100), 11, 1.5); }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FU(10); ctx.fillStyle = 'rgba(255,220,140,.85)'; ctx.fillText('CMD', 20, gy - 12);
   CMD.forEach((c, i) => {
@@ -423,10 +417,8 @@ function drawCmd() {
     ctx.save(); ctx.translate(x + 6, y); ctx.strokeStyle = ctx.fillStyle = ready ? c.col : 'rgba(150,170,200,.45)'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
     ctx.beginPath();
     if (c.k === 'orbit') { ctx.arc(0, 0, 9, 0, Math.PI * 2); for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { ctx.moveTo(dx * 6, dy * 6); ctx.lineTo(dx * 14, dy * 14); } }
-    else if (c.k === 'guard') { ctx.moveTo(0, -12); ctx.lineTo(10, -7); ctx.lineTo(9, 3); ctx.lineTo(0, 12); ctx.lineTo(-9, 3); ctx.lineTo(-10, -7); ctx.closePath(); }
     else for (let k = 0; k < 3; k++) { const an = k * Math.PI / 3; ctx.moveTo(Math.cos(an) * 12, Math.sin(an) * 12); ctx.lineTo(-Math.cos(an) * 12, -Math.sin(an) * 12); }
     ctx.stroke(); ctx.restore();
-    if (c.k === 'guard' && S.cmdGuardT > 0) { ctx.strokeStyle = c.col; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x + 6, y, 29, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * S.cmdGuardT / 10); ctx.stroke(); }
     ctx.font = FT(10, 900); ctx.fillStyle = ready ? '#fff' : 'rgba(170,190,220,.6)'; ctx.fillText(String(c.cost), x + 6, y + 33);
     BUTTONS.push({ x: x - 22, y: y - 28, w: 56, h: 56, act: 'cmd', k: c.k });
   });
