@@ -125,7 +125,7 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 
 // ── 스폰 ──────────────────────────────────────────────────
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s];
-let ENDLESS_GROWTH = 1.225;   // 강화가 2웨이브마다 나오는 만큼 체력 성장도 올림
+let ENDLESS_GROWTH = 1.31;   // 강화가 2웨이브마다 나오는 만큼 체력 성장도 크게. 봇 기준 30~34웨이브에서 무너진다
 const hpMul = () => S.stage.endless ? 0.9 * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();
 function spawnEnemy(k, x, y) {
   const d = ENEMY[k];

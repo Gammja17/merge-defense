@@ -370,7 +370,7 @@ const cyclePos = w => (w - 1) % 10 + 1;
 // 한 주기: 1 숨 돌리기, 2~4 오름, 5 미니보스, 6 숨 돌리기(변이), 7~8 오름, 9 위기, 10 보스
 const PACE = [0.75, 0.9, 1, 1.1, 1.35, 0.75, 0.95, 1.05, 1.15, 1];
 const LULL = ci => ci === 1 || ci === 6;
-const ENDLESS_CYCLE_TEXT = ['이제 엘리트 전함이 졸병처럼 섞여 나와요', '포격 순양함과 교란함이 섞여 나와요', '미니보스 자리에 예전 보스가 나와요'];
+const ENDLESS_CYCLE_TEXT = ['이제 엘리트 전함이 졸병처럼 섞여 나와요', '포격 순양함과 교란함이 섞여 나와요', '중간 보스가 더 단단해져요'];
 // 무한 방어선: 주기마다 적의 공격 간격이 8%씩 짧아진다
 const endlessAtkMul = () => S.stage && S.stage.endless ? Math.pow(0.92, Math.floor((S.wave - 1) / 10)) : 1;
 function buildEndlessWave(w) {
@@ -521,20 +521,21 @@ function startWave(n) {
     S.events = buildEndlessWave(n);
     S.rng = null;
     S.warnText = null;
-    if (ci === 10) { S.warning = 3; S.banner = null; play('drums', 0.7); if (n >= 30) S.warnText = '보스 두 척이 한꺼번에 접근하고 있어요'; }
+    if (ci === 10) { S.warning = 3; S.banner = null; play('drums', 0.7); if (n >= 20) S.warnText = '격노한 보스 두 척이 한꺼번에 접근하고 있어요'; }
     else if (mut) { S.banner = { text: 'MUTATION', sub: `${mut.name}: ${mut.desc}`, color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.55, 1.1); S.glitch = 0.5; }
     else if (ci === 9) { S.banner = { text: 'CRISIS', sub: '보스 전 총공세! 공격형 함선이 몰려와요', color: '#ff3a4a', t: 0, life: 2.8 }; play('drums', 0.7); shake(0.5); }
-    else if (ci === 5) { S.banner = { text: 'MINI BOSS', sub: n > 30 ? '예전 보스가 미니보스로 나타났어요. 넘기면 강화를 골라요' : '엘리트 전함이 나타났어요. 넘기면 강화를 고를 수 있어요', color: '#ffb347', t: 0, life: 2.8 }; play('drums', 0.6); }
+    else if (ci === 5) { S.banner = { text: 'MID BOSS', sub: '중간 보스가 나타났어요. 잡으면 전설 강화를 골라요', color: '#ffb347', t: 0, life: 2.8 }; play('drums', 0.6); }
     else if (ci === 1 && n > 10) { const cy = Math.floor((n - 1) / 10); S.banner = { text: `CYCLE ${cy + 1}`, sub: ENDLESS_CYCLE_TEXT[Math.min(cy, 3) - 1] + ', 적 공격도 더 잦아져요', color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.6, 0.9); }
     else if (LULL(ci) && !(ci === 1 && n > 10)) S.banner = { text: 'LULL', sub: '잠시 잠잠해요. 캡슐을 모으고 기체를 합칠 때예요', color: '#5affc8', t: 0, life: 2.6 };
     else if (ci === 4 || (ci === 1 && n > 10)) { const [tt, sub] = TWIST_TEXT[ci === 4 ? TWISTS[1 + Math.floor((n - 1) / 10) % 2] : 'supply']; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.6 }; }
-    else S.banner = { text: `WAVE ${n}`, sub: `${ci === 4 ? '다음은 미니보스예요. 대비하세요' : ci === 8 ? '다음은 위기, 그다음은 보스예요. 대비하세요' : '끝없는 방어선'}`, color: ci === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2 };
+    else S.banner = { text: `WAVE ${n}`, sub: `${ci === 4 ? '다음은 중간 보스예요. 대비하세요' : ci === 8 ? '다음은 위기, 그다음은 보스예요. 대비하세요' : '끝없는 방어선'}`, color: ci === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2 };
     return;
   }
   S.events = buildWave(st, n);
   const K = STAGE_KINDS[st.kind || 'base'], lastW = n === st.waves;
   if (st.boss && lastW) { S.warning = 3; S.banner = null; play('drums', 0.7); }
   else if (n === 1) S.banner = { text: `STAGE ${st.n}`, sub: K.name ? `${K.name}: ${K.sub}` : '정찰대가 방어선을 떠보고 있어요', color: K.col || st.sector.color, t: 0, life: 2.6 };
+  else if (st.n >= 3 && n === midWave(st)) { S.banner = { text: 'MID BOSS', sub: '중간 보스가 나타나요. 잡으면 전설 강화를 골라요', color: '#ff5a6a', t: 0, life: 2.6 }; play('drums', 0.6); }
   else if (n === twistWave(st)) { const [tt, sub] = TWIST_TEXT[twistOf(st)]; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.8 }; }
   else if (st.kind === 'brush') S.banner = { text: `WAVE ${n}`, sub: n === 3 ? '포격 순양함이 다가와요' : '엘리트 전함이 다가와요', color: '#ff5a6a', t: 0, life: 2.4 };
   else S.banner = { text: `WAVE ${n}`, sub: lastW ? '마지막 총공세! 버텨내세요' : n === 2 ? '적 본대가 도착했어요' : n === 3 ? (st.n >= 2 ? '공격형 함선이 합류했어요' : '적의 공세가 거세져요') : '적이 점점 거세져요', color: lastW ? '#ff5a6a' : '#ffd966', t: 0, life: 2.4 };
