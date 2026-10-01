@@ -493,19 +493,6 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
     if (u.lv >= 6) drawTex('p_ring', u.lv >= 8 ? RAINBOW[(Math.floor(t * 6) + 3) % 6] : rc, x, y + 14 * tall, 112 * s * wide, -t * 2.2, 0.4 * alpha, true, 0.36);
     drawTex('p_light', rc, x, y + 12 * tall, 70 * s * wide, -t, 0.3 * alpha, true, 0.4);
   }
-  if (u.type === 'g' && u.cells) {
-    // 방패 드론이 지키는 범위: 상하좌우 4칸
-    ctx.save(); ctx.globalAlpha = alpha * (0.22 + 0.1 * Math.sin(t * 3));
-    ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
-    const c0 = u.cells[0], r0 = Math.floor(c0 / COLS), k0 = c0 % COLS;
-    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      const nr = r0 + dr, nc = k0 + dc;
-      if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
-      const q = cellPos(nr * COLS + nc);
-      chamfer(q.x - CW / 2 + 9, q.y - CH / 2 + 9, CW - 18, CH - 18, 8); ctx.stroke();
-    }
-    ctx.restore();
-  }
   drawUnitArt(u.type, u.lv, x, y, s, alpha, u);
   if (u.hurt > 0) drawGlow('#ff2a3a', x, y, 40 * wide, u.hurt * 2 * alpha, 0.8);
   const bot = y + (tall > 1 ? CH * 0.95 : 26);
@@ -570,14 +557,19 @@ function drawCap(c) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = /[가-힣]/.test(look.label) ? FK(22) : FT(19, 900);
   outlineText(look.label, x, y - 58, look.gold ? '#ffd24a' : '#fff');
-  if (!rw.heal) { ctx.font = FK(13); outlineText(UNIT[rw.type].name, x, y - 76, UNIT[rw.type].col, 3); }
   ctx.fillStyle = 'rgba(4,8,22,.92)'; chamfer(x - 22, y + 31, 44, 20, 5); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.font = FT(12, 900); ctx.fillStyle = '#fff';
   ctx.fillText(String(Math.max(0, c.hits)), x, y + 42);
 }
 
+// 맞고 튕긴 만큼 위로 밀어 그린다 (실제 위치는 그대로)
 function drawEnemy(e) {
+  const o = e.kbOff || 0;
+  if (!o) return drawEnemyAt(e);
+  e.y -= o; drawEnemyAt(e); e.y += o;
+}
+function drawEnemyAt(e) {
   if (e.ph > 0 && !e.ghostDraw) { ctx.save(); ctx.globalAlpha *= 0.22; e.ghostDraw = true; drawEnemy(e); e.ghostDraw = false; ctx.restore(); return; }
   if ((e.k === 'grav' || e.k === 'boss6') && !(e.hacked > 0)) {
     drawGlow(e.boss ? '#ffb84a' : '#b86bff', e.x, e.y, e.boss ? 200 : 80, 0.18 + 0.08 * Math.sin(S.time * 4));
@@ -684,10 +676,9 @@ function drawEnemy(e) {
       if (sr > 0) drawGlow('#6ad0ff', bx + bw * sr, by - 6, 7, 0.6);
     }
   }
-  if (ENEMY[e.k].atk && !e.boss && !(e.hacked > 0)) {
-    ctx.font = FU(10); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = charging ? '#ff6a7a' : 'rgba(255,150,200,.7)';
-    ctx.fillText(charging ? '▲ LOCK' : ENEMY[e.k].name, e.x, e.y + e.h / 2 + 10);
+  if (charging && !e.boss && !(e.hacked > 0)) {   // 이름표는 빼고, 노릴 때만 표시
+    ctx.font = FU(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ff6a7a'; ctx.fillText('▲ LOCK', e.x, e.y + e.h / 2 + 10);
   }
 }
 
@@ -786,6 +777,16 @@ function drawShapeIcon(type, cx, cy, cell, col, label) {
   for (let r = 0; r < Math.max(hh, 2); r++) for (let c = 0; c < Math.max(ww, 2); c++) { ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(x0 + c * (cell + g), y0 + r * (cell + g), cell, cell); }
   for (const [r, c] of pts) { ctx.fillStyle = col; ctx.globalAlpha = 0.85; ctx.fillRect(x0 + c * (cell + g), y0 + r * (cell + g), cell, cell); ctx.globalAlpha = 1; }
   if (label) { ctx.font = FK(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(210,230,255,.8)'; ctx.fillText(label, cx, y0 - 14); }
+}
+// 합칠 수 있는 짝 표시: 흰 원에 서로 다가가는 두 화살표
+const MERGE_COL = '#ffffff';   // 흰색: 어느 기체 고유색과도 안 겹친다
+function mergeBadge(x, y, sc = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
+  ctx.fillStyle = MERGE_COL; ctx.strokeStyle = 'rgba(0,6,20,.85)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#06122a'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(-6, -3); ctx.lineTo(-1.5, 0); ctx.lineTo(-6, 3); ctx.moveTo(6, -3); ctx.lineTo(1.5, 0); ctx.lineTo(6, 3); ctx.stroke();
+  ctx.restore();
 }
 // 기체 고유색으로 칸 바닥 물들이기 (판, 격납고, 편성 칸, 카드가 같은 색을 쓴다)
 function unitTint(x, y, w, h, col, c = 9, k = 1) {
@@ -910,27 +911,58 @@ function auraArea(type, lv, cells) {
   }
   return set;
 }
+// 구역 바닥: 빈 칸만 기체 색으로 옅게 (기체가 앉은 칸은 외곽선으로 보여 준다)
 function drawAuras() {
-  const t = S.time;
+  const t = S.time, du = drag && drag.moved ? drag.unit : null;
   const paint = (u, cells, strong) => {
     const area = auraArea(u.type, u.lv, cells);
     if (!area) return;
-    const col = UNIT[u.type].col, src = cellsCenter(cells), wave = (t * 0.5 + u.cells0 * 0.13) % 1;
-    for (const i of area) {
-      const q = cellPos(i), x = q.x - CW / 2 + 5, y = q.y - CH / 2 + 5, w = CW - 10, h = CH - 10;
-      const d = Math.hypot(q.x - src.x, q.y - src.y) / (CW * 1.5), hit = Math.max(0, 1 - Math.abs(wave * 1.4 - d) * 4);
-      ctx.fillStyle = col; ctx.globalAlpha = strong ? 0.22 + 0.08 * Math.sin(t * 8) : 0.05 + 0.12 * hit; chamfer(x, y, w, h, 8); ctx.fill();
-      ctx.strokeStyle = col; ctx.globalAlpha = strong ? 0.9 : 0.35 + 0.4 * hit; ctx.lineWidth = strong ? 2 : 1.2;
-      ctx.setLineDash([5, 5]); ctx.lineDashOffset = -t * 20; ctx.stroke(); ctx.setLineDash([]);
-      for (const [cx, cy, sx, sy] of [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]]) { ctx.beginPath(); ctx.moveTo(cx + sx * 9, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy * 9); ctx.stroke(); }
+    const col = UNIT[u.type].col;
+    for (const i of area) if (!S.slots[i] || S.slots[i] === du) {
+      const q = cellPos(i);
+      ctx.fillStyle = col; ctx.globalAlpha = strong ? 0.3 + 0.08 * Math.sin(t * 8) : 0.16; chamfer(q.x - CW / 2 + 4, q.y - CH / 2 + 4, CW - 8, CH - 8, 9); ctx.fill();
     }
     ctx.globalAlpha = 1;
   };
-  const du = drag && drag.moved ? drag.unit : null;
-  for (const u of gridUnits()) if (u !== du) { u.cells0 = u.cells[0]; paint(u, u.cells, false); }
-  if (du && AURA[du.type]) { const c = cellAt(drag.x, drag.y); if (c >= 0) { du.cells0 = c; paint(du, cellsFor(du, c), true); } }
+  for (const u of gridUnits()) if (u !== du) paint(u, u.cells, false);
+  if (du && AURA[du.type]) { const c = cellAt(drag.x, drag.y); if (c >= 0) paint(du, cellsFor(du, c), true); }
 }
-// 구역 효과 표시: 수리 구역 안 기체 위로 초록 + 가 가끔 떠오르고, 방패 구역(방패 드론, 방벽 요새 엄호, 방공 돔)은 파란 방패, 레이더 강화는 위쪽 화살표
+// 구역 외곽선: 효과가 닿는 칸 전체를 칸 사이 틈에 굵게 빛나는 선으로 두른다 (기체 그림을 가리지 않는다)
+function zoneOutline(set, col, t, strong, k) {
+  const rows = openRows(), has = (r, c) => r >= 0 && r < rows && c >= 0 && c < COLS && set.has(r * COLS + c), inset = 1 + k * 3;
+  ctx.save(); ctx.strokeStyle = col; ctx.lineCap = 'round'; ctx.lineWidth = strong ? 5 : 4;
+  ctx.shadowColor = col; ctx.shadowBlur = strong ? 16 : 10; ctx.globalAlpha = strong ? 1 : 0.8 + 0.2 * Math.sin(t * 3);
+  ctx.beginPath();
+  for (const i of set) {
+    const r = Math.floor(i / COLS), c = i % COLS, x0 = GRID_X + c * CW + inset, y0 = GRID_Y + r * CH + inset, x1 = GRID_X + (c + 1) * CW - inset, y1 = GRID_Y + (r + 1) * CH - inset;
+    if (!has(r - 1, c)) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); }
+    if (!has(r + 1, c)) { ctx.moveTo(x0, y1); ctx.lineTo(x1, y1); }
+    if (!has(r, c - 1)) { ctx.moveTo(x0, y0); ctx.lineTo(x0, y1); }
+    if (!has(r, c + 1)) { ctx.moveTo(x1, y0); ctx.lineTo(x1, y1); }
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0; ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.5; ctx.setLineDash([10, 22]); ctx.lineDashOffset = -t * 40; ctx.stroke();   // 선을 따라 흐르는 빛
+  ctx.restore();
+}
+function drawZoneOutlines() {
+  const t = S.time, du = drag && drag.moved ? drag.unit : null;
+  let k = 0;
+  const one = (u, cells, strong) => {
+    const area = auraArea(u.type, u.lv, cells);
+    if (!area) return;
+    for (const c of cells) area.add(c);
+    const kk = strong ? 0 : k++ % 3;
+    zoneOutline(area, UNIT[u.type].col, t, strong, kk);
+    // 구역 종류 표시는 구역마다 하나만, 왼쪽 위 모서리에: 방패(방패 드론, 방벽 요새, 방공 돔), 화살표(레이더), + (수리)
+    const c0 = Math.min(...area), x = GRID_X + (c0 % COLS) * CW + 3 + kk * 3, y = GRID_Y + Math.floor(c0 / COLS) * CH + 3 + kk * 3;
+    if (u.type === 'm') plusMark(x + 2, y + 2, 8, 1);
+    else if (u.type === 'x') arrowMark(x + 2, y + 2, 8, UNIT.x.col, 1);
+    else shieldMark(x + 2, y + 2, 9, 1);
+  };
+  for (const u of gridUnits()) if (u !== du) one(u, u.cells, false);
+  if (du && AURA[du.type]) { const c = cellAt(drag.x, drag.y); if (c >= 0) one(du, cellsFor(du, c), true); }
+}
+// 구역 표시 그림: 방패(방패 드론, 방벽 요새 엄호, 방공 돔), 위쪽 화살표(레이더 강화), 초록 +(수리)
 const ZONE_BLUE = '#6ad0ff';
 function shieldMark(x, y, r, a) {
   ctx.save(); ctx.globalAlpha *= a; ctx.beginPath();
@@ -952,26 +984,6 @@ function plusMark(x, y, r, a) {
   ctx.fillStyle = 'rgba(0,0,0,.8)'; ctx.fillRect(x - r - 1.5, y - r * 0.36 - 1.5, r * 2 + 3, r * 0.72 + 3); ctx.fillRect(x - r * 0.36 - 1.5, y - r - 1.5, r * 0.72 + 3, r * 2 + 3);
   ctx.fillStyle = '#6dff8a'; ctx.fillRect(x - r, y - r * 0.36, r * 2, r * 0.72); ctx.fillRect(x - r * 0.36, y - r, r * 0.72, r * 2);
   ctx.restore();
-}
-function drawZoneMarks() {
-  const t = S.time, heal = new Set(), guard = new Set(), boost = new Set(), us = gridUnits();
-  for (const u of us) {
-    if (drag && drag.moved && drag.unit === u) continue;
-    if (u.type === 'm') for (const o of neighborsOf(u)) heal.add(o);
-    if (u.type === 'g' || (u.type === 'w' && u.lv >= 3)) for (const o of crossOf(u)) guard.add(o);
-    if (u.type === 'a' && u.lv >= 5) { guard.add(u); for (const o of neighborsOf(u)) guard.add(o); }
-    if (u.type === 'x') for (const o of neighborsOf(u)) if (o.type !== 'x') boost.add(o);
-  }
-  for (const u of us) {
-    if (!heal.has(u) && !guard.has(u) && !boost.has(u)) continue;
-    const b = unitBox(u), rx = b.x + b.w - 13, by = b.y + b.h - 15, seed = u.cells[0] * 0.37;   // 오른쪽 위는 계급장 자리라 아래 모서리에
-    if (guard.has(u)) shieldMark(rx, by, 9, 0.8 + 0.2 * Math.sin(t * 3 + seed));
-    if (boost.has(u)) { const k = (t * 0.9 + seed) % 1; arrowMark(guard.has(u) ? rx - 22 : rx, by + 2 - k * 8, 7, UNIT.x.col, Math.min(1, (1 - k) * 2.5)); }
-    if (heal.has(u)) {   // 가끔 떠오르는 초록 +
-      const k = (t * 0.55 + seed) % 1.6;
-      if (k < 1) plusMark(b.x + b.w / 2 + 10, b.y + b.h * 0.55 - k * 34, 7, Math.min(1, k * 5) * (1 - k));
-    }
-  }
 }
 function drawPads() {
   const t = S.time;
@@ -1154,8 +1166,19 @@ function drawFx() {
         ctx.globalAlpha = 1;
         break;
       }
+      case 'pop': {   // 격추 순간: 흰 원이 번쩍 부풀고 고리가 퍼진다
+        const a = 1 - p;
+        drawGlow('#ffffff', f.x, f.y, f.r * (1.2 + 1.6 * p), a * a);
+        ctx.strokeStyle = '#ffffff'; ctx.globalAlpha = a; ctx.lineWidth = 7 * a + 1;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.7 + 1.8 * p), 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+        break;
+      }
+      case 'heal': {   // 수리받은 기체 위로 초록 + 가 떠오른다
+        plusMark(f.x + 10, f.y - 6 - p * 30, 8, Math.min(1, p * 6) * (1 - p));
+        break;
+      }
       case 'hit': {
-        const c = f.color || '#7fe0ff', big = f.big || 1;
+        const c = f.color || '#7fe0ff', big = (f.big || 1) * 1.3;
         drawGlow(c, f.x, f.y, 26 * big, (1 - p) * 1.0);
         drawTex('p_star2', c, f.x, f.y, (34 + 40 * p) * big, p * 1.5, (1 - p) * 1.2);
         drawTex('p_flare', '#ffffff', f.x, f.y, (20 + 26 * p) * big, 0.6, (1 - p) * 1.2);

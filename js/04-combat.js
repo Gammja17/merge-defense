@@ -400,7 +400,7 @@ function fireUnit(u) {
     if (u.type === 'e') play('crackle', 0.16, 1.1);
     const t = ok.tgt || null;
     if (t && u.type !== 'h') u.ang = Math.atan2(t.y - p.y, t.x - p.x);
-    u.kick = 0.08; u.flash = 0.07;
+    u.kick = 0.12; u.flash = 0.09;   // 쏠 때 반동
   }
   return !!ok;
 }
@@ -527,9 +527,12 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   if (DMG_BY && S.dmgBy) S.dmgBy[DMG_BY] = (S.dmgBy[DMG_BY] || 0) + Math.min(dmg, Math.max(0, e.hp));
   e.hp -= dmg;
   if (S.pk.fin && !e.boss && e.hp > 0 && e.hp < e.maxHp * S.pk.fin) { e.hp = 0; if (!quiet) addText(e.x, e.y - e.r, '마무리', '#ff5a5a', 15, 0.6); }
+  if (quiet && S.time > (e.qf || 0)) { e.qf = S.time + 0.12; e.flash = Math.max(e.flash, 0.06); e.kbOff = Math.min(14, (e.kbOff || 0) + 1.5); }   // 빔, 드론, 불바다처럼 조용한 피해도 살짝 번쩍
   if (!quiet) {
-    e.flash = 0.1; e.jit = 0.12;
+    e.flash = 0.14; e.jit = 0.12;
     const heavy = dmg / e.maxHp;
+    e.kbOff = Math.min(e.boss ? 6 : 16, (e.kbOff || 0) + (e.boss ? 1.5 : 3.5) + heavy * 40);   // 맞은 쪽으로 튕겼다 돌아온다 (그리기만, 위치는 그대로)
+    if (heavy > 0.2 || (e.boss && dmg > 200)) S.hitStop = Math.max(S.hitStop || 0, 0.035);   // 센 한 방은 아주 잠깐 멈칫
     e.sq = Math.min(0.4, (e.sq || 0) + 0.1 + Math.min(0.25, heavy));
     e.tilt = (Math.random() - .5) * (e.boss ? 0.08 : 0.35);
     if (heavy > 0.12 || (e.boss && dmg > 60)) { sheetFx(1, e.x + (Math.random() - .5) * e.r, e.y + (Math.random() - .5) * e.r * 0.6, 60 + Math.min(60, heavy * 200), 0.35); play('hit', 0.18, 0.8); if (heavy > 0.3) shake(0.1); }
@@ -540,7 +543,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
     else if (heavy > 0.15 || dmg >= 150) play('imp_s', 0.14 + Math.min(0.18, heavy * 0.6), 1.05);
     if (heavy > 0.12 || (e.boss && dmg > 120)) { play('imp_p', 0.3 + Math.min(0.3, heavy), 0.85); MUS.duckT = 0.18; }
     if (e.boss) play('bosshit', 0.22, 1.35);
-    if (SET().nums && dmg >= 20 && S.texts.length < 45) addText(e.x + (Math.random() - .5) * 20, e.y - e.r * 0.6, String(Math.round(dmg)), dmg >= 200 ? '#ffd24a' : '#e6f4ff', dmg >= 200 ? 24 : 16, 0.55, true);
+    if (SET().nums && (heavy >= 0.2 || dmg >= 300) && S.texts.length < 25) addText(e.x + (Math.random() - .5) * 20, e.y - e.r * 0.6, String(Math.round(dmg)), dmg >= 300 ? '#ffd24a' : '#e6f4ff', dmg >= 300 ? 24 : 18, 0.5, true);   // 큰 한 방만 숫자로 (화면이 덜 어지럽게)
   }
   if (e.hp <= 0) killEnemy(e);
 }
@@ -605,6 +608,8 @@ function killEnemy(e) {
   const size = e.boss ? 3 : e.k === 'elite' ? 2.2 : e.k === 'tank' || e.k === 'shield' || e.k === 'gunship' ? 1.4 : e.k === 'split' ? 1.3 : e.k === 'rock' || e.k === 'splitS' ? 0.6 : 1;
   boom(e.x, e.y, size, e.k === 'healer' ? '#7dff9a' : '#ffb347');
   blastFx(e.x, e.y, size);
+  S.fx.push({ kind: 'pop', x: e.x, y: e.y, r: e.r * (size >= 2 ? 1.4 : 1), t: 0, life: size >= 2 ? 0.3 : 0.2 });   // 격추 순간 흰 섬광 고리
+  if (size >= 0.9 && size < 1.3) { S.hitStop = Math.max(S.hitStop || 0, 0.03); shake(0.1); }
   // 연속 격추 콤보
   S.combo = S.time - (S.comboT || -9) < 1.3 ? (S.combo || 0) + 1 : 1; S.comboT = S.time;
   if (S.combo >= 3) S.comboPop = 0.25;
@@ -622,7 +627,7 @@ function killEnemy(e) {
   if (im && im.width && e.k !== 'rock' && e.k !== 'splitS') {
     const pcs = [];
     for (let k = 0; k < 4; k++) {
-      const qx = k % 2, qy = k >> 1, a = Math.atan2(qy - 0.5, qx - 0.5) + (Math.random() - .5) * 0.8, v = 190 + Math.random() * 240;
+      const qx = k % 2, qy = k >> 1, a = Math.atan2(qy - 0.5, qx - 0.5) + (Math.random() - .5) * 0.8, v = 260 + Math.random() * 320;
       pcs.push({ sx: qx * im.width / 2, sy: qy * im.height / 2, ox: (qx - 0.5) * e.w / 2, oy: (qy - 0.5) * e.h / 2, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 100, vr: (Math.random() - .5) * 16 });
     }
     S.fx.push({ kind: 'debris', img: e.img, x: e.x, y: e.y, w: e.w, h: e.h, rot: e.rot, pcs, t: 0, life: 0.75 });

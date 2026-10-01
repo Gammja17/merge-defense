@@ -61,19 +61,19 @@ function draw(dt) {
     ctx.font = FK(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText(`교란 ${u.jam.toFixed(1)}`, b.x + b.w / 2, b.y + b.h - 12, '#eaff8a', 3);
   }
   drawUnitFrames(true);
-  drawZoneMarks();
+  drawZoneOutlines();
   S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.9, uSize(u) > 2 ? 0.26 : uSize(u) === 2 ? 0.34 : 0.58); });
-  if (!(drag && drag.moved) && (S.mode === 'play' || S.mode === 'break')) {   // 합칠 수 있는 짝: 칸 모서리에 초록 꺾쇠가 천천히 깜빡
+  if (!(drag && drag.moved) && (S.mode === 'play' || S.mode === 'break')) {   // 합칠 수 있는 짝: 빛나는 흰 테두리가 맥박치고, 위쪽 가운데에 합체 배지
     const groups = {};
     for (const u of allUnits()) if (u.lv < MAX_LV) (groups[u.type + u.lv] = groups[u.type + u.lv] || []).push(u);
-    const a = 0.6 + 0.35 * Math.sin(S.time * 2.6);
-    ctx.strokeStyle = `rgba(160,255,170,${a})`; ctx.lineWidth = 3.5;
+    const p = 0.5 + 0.5 * Math.sin(S.time * 5);
     for (const g of Object.values(groups)) if (g.length >= 2) for (const u of g) {
       let bx, by, bw, bh;
       if (u.res != null) { const q = resPos(u.res); bx = q.x - RES_W / 2; by = q.y - RES_W / 2; bw = bh = RES_W; }
       else { const b = unitBox(u); bx = b.x; by = b.y; bw = b.w; bh = b.h; }
-      const k = Math.min(14, bw / 4); bx -= 2; by -= 2; bw += 4; bh += 4;
-      for (const [cx, cy, sx, sy] of [[bx, by, 1, 1], [bx + bw, by, -1, 1], [bx, by + bh, 1, -1], [bx + bw, by + bh, -1, -1]]) { ctx.beginPath(); ctx.moveTo(cx + sx * k, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy * k); ctx.stroke(); }
+      ctx.save(); ctx.shadowColor = MERGE_COL; ctx.shadowBlur = 8 + 10 * p; ctx.strokeStyle = MERGE_COL; ctx.globalAlpha = 0.65 + 0.35 * p; ctx.lineWidth = 3;
+      chamfer(bx - 3, by - 3, bw + 6, bh + 6, 10); ctx.stroke(); ctx.restore();
+      mergeBadge(bx + bw / 2, by + (u.res != null ? -2 : 2) - 2 * p, u.res != null ? 0.75 : 1);
     }
   }
   drawDrones();
@@ -278,12 +278,12 @@ function drawHud() {
     for (const d of S.powerDeltas) { const q = (S.time - d.t) / 1.2; ctx.globalAlpha = 1 - q; ctx.font = FT(13, 900); outlineText(`${d.v > 0 ? '+' : ''}${fmt(d.v)}`, px + 58, py - 24 - q * 20, d.v > 0 ? '#5affc8' : '#ff6a7a', 3); ctx.globalAlpha = 1; }
   }
   // 콤보
-  if ((S.combo || 0) >= 3 && S.time - S.comboT < 1.3) {
+  if ((S.combo || 0) >= 5 && S.time - S.comboT < 1.3) {   // 콤보는 5부터, 작게 오른쪽 가장자리에
     S.comboPop = Math.max(0, (S.comboPop || 0) - 1 / 60);
-    const a = Math.min(1, (1.3 - (S.time - S.comboT)) * 3), sc = 1 + S.comboPop * 2;
-    ctx.save(); ctx.globalAlpha = a; ctx.translate(W - 70, 300); ctx.scale(sc, sc); ctx.textAlign = 'center';
-    ctx.font = FU(11); ctx.fillStyle = '#ffb347'; ctx.fillText('COMBO', 0, -16);
-    ctx.font = FT(28, 900); glitchText('×' + S.combo, 0, 8, S.combo >= 20 ? '#ff5a8a' : S.combo >= 10 ? '#ffd24a' : '#fff', 5, S.comboPop * 20);
+    const a = Math.min(1, (1.3 - (S.time - S.comboT)) * 3) * 0.85, sc = 1 + S.comboPop * 1.2;
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(W - 48, 300); ctx.scale(sc, sc); ctx.textAlign = 'center';
+    ctx.font = FU(9); ctx.fillStyle = '#ffb347'; ctx.fillText('COMBO', 0, -13);
+    ctx.font = FT(20, 900); glitchText('×' + S.combo, 0, 8, S.combo >= 20 ? '#ff5a8a' : S.combo >= 10 ? '#ffd24a' : '#fff', 5, S.comboPop * 20);
     ctx.restore();
   }
   { const cy = S.boss ? 124 : 76, sc = 1 + S.corePulse;

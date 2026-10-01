@@ -31,6 +31,7 @@ function updateEnemy(e, dt) {
   e.jit = Math.max(0, (e.jit || 0) - dt);
   e.sq = Math.max(0, (e.sq || 0) - dt * 3); e.tilt = (e.tilt || 0) * Math.pow(0.01, dt);
   e.sflash = Math.max(0, (e.sflash || 0) - dt);
+  if (e.kbOff) e.kbOff = e.kbOff < 0.2 ? 0 : e.kbOff * Math.pow(0.0006, dt);   // 맞고 튕긴 자리에서 빠르게 돌아온다
   const d = ENEMY[e.k];
   // 해킹된 적: 멈춰서 주변 적을 쏜다
   if (e.trail) { for (const g of e.trail) g.a -= dt * 1.6; e.trail = e.trail.filter(g => g.a > 0); }
@@ -224,7 +225,7 @@ function updateAuras(dt) {
   if (global) for (const u of us) { u.buffSpd += 0.15; u.buffDmg += 0.15; }
   for (const u of us) {
     u.t1 += dt; u.t2 = Math.max(0, u.t2 - dt); u.t3 = Math.max(0, u.t3 - dt);
-    if (u.type === 'g' && u.lv >= 2 && u.t1 >= 4) { u.t1 = 0; if (u.hp < u.maxHp) { u.hp++; const p = unitPos(u); addText(p.x, p.y - 26, '+1', '#6ad0ff', 14, 0.6, true); } }
+    if (u.type === 'g' && u.lv >= 2 && u.t1 >= 4) { u.t1 = 0; if (u.hp < u.maxHp) u.hp++; }
     if (u.type === 'm') {
       if (u.t1 >= 3 * Math.pow(0.75, tier(u))) {
         u.t1 = 0;
@@ -232,7 +233,7 @@ function updateAuras(dt) {
         const hurt = [...neighborsOf(u)].filter(o => o.hp < o.maxHp).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
         const targets = u.lv >= 2 ? hurt : hurt.slice(0, 1);
         const p = unitPos(u);
-        for (const o of targets) { o.hp = Math.min(o.maxHp, o.hp + 1); const q = unitPos(o); S.fx.push({ kind: 'bolt', pts: [p, q], t: 0, life: 0.3, col: '#6dff8a' }); addText(q.x, q.y - 26, '+1', '#6dff8a', 14, 0.6, true); }
+        for (const o of targets) { o.hp = Math.min(o.maxHp, o.hp + 1); const q = unitPos(o); S.fx.push({ kind: 'bolt', pts: [p, q], t: 0, life: 0.3, col: '#6dff8a' }); S.fx.push({ kind: 'heal', x: q.x, y: q.y, t: 0, life: 0.6 }); }
       }
       if (u.lv >= 3) { u.baseT = (u.baseT || 0) + dt; if (u.baseT >= 15) { u.baseT = 0; if (S.hp < S.maxHp) { S.hp++; addText(W / 2, LINE_Y - 30, '기지 수리 +1', '#6dff8a', 18); } } }
     }
@@ -435,7 +436,6 @@ function update(dt) {
       for (const e of S.enemies) if (shootable(e) && !s.hitSet.has(e) && Math.hypot(e.x - s.x, e.y - s.y) < e.r + 8) {
         s.hitSet.add(e);
         hitEnemy(e, s.dmg, 'laser', !s.crit);
-        if (s.crit) addText(e.x, e.y - e.r, 'CRIT', '#ffd24a', 14, 0.6, true);
         if (s.exec && !e.dead && !e.boss && e.hp < e.maxHp * 0.25) { killEnemy(e); addText(e.x, e.y - e.r, '처형', '#7dff7a', 16, 0.8); }
         S.fx.push({ kind: 'hit', x: s.x, y: s.y, t: 0, life: 0.2, color: s.col, big: 1.4 });
         impactSparks(s.x, s.y, s.vx, s.vy, s.col, 6);
@@ -608,7 +608,6 @@ function impact(s, t) {
     }
     case 's': {
       hitEnemy(t, s.dmg, 'laser', !s.crit);
-      if (s.crit) addText(t.x, t.y - t.r, 'CRIT ' + Math.round(s.dmg), '#ffd24a', 16, 0.7, true);
       S.fx.push({ kind: 'hit', x: s.x, y: s.y, t: 0, life: 0.2, color: '#7dff7a' });
       break;
     }

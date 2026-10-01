@@ -90,7 +90,7 @@ const fxLabel = f => { const d = CELL_FX[f.k], v = d.v[f.lv - 1]; return d.key +
 function addGear(n, x, y) {
   S.gear += n;
   S.fx.push({ kind: 'parts', x, y, tx: SHOP_BX + 53, ty: LINE_Y - 30, n, t: 0, life: 0.6 });
-  addText(x, y - 30, `부품 +${n}`, '#ffb347', 18);
+  if (n >= 2) addText(x, y - 30, `부품 +${n}`, '#ffb347', 18);   // 1개는 날아가는 부품만
 }
 function neighborsOf(u) {
   const set = new Set();
