@@ -154,6 +154,11 @@ cv.addEventListener('pointerdown', ev => {
   loadSfx();
   if (S.mode === 'title') { goMap(); return; }
   const b = hitButton(p);
+  if (b && b.act === 'prepToggle') {   // 출격 준비 칸: 짧게 누르면 넣고 빼기, 꾹 누르면 기체 정보
+    const hold = UI.hold = { b, id: ev.pointerId };
+    setTimeout(() => { if (UI.hold === hold) { UI.hold = null; doAction({ act: 'card', type: b.type }); } }, 450);
+    return;
+  }
   if (UI.reveal || UI.enemyIntro || UI.settings || UI.card || UI.shop || S.paused || ['map', 'hangar', 'records', 'win', 'lose', 'perk'].includes(S.mode)) { if (b) { if (b.act !== 'slider') play(b.act === 'closecard' || b.act === 'closesettings' || b.act === 'closeshop' ? 'close' : 'click', 0.35); doAction(b); } return; }
   if (b) { play('click', 0.35); doAction(b); return; }
   if (UI.aim) { if (p.y < LINE_Y && S.mode === 'play') useCmd('orbit', p.x, p.y); else UI.aim = null; return; }
@@ -274,8 +279,12 @@ function endDrag(ev) {
   const p = toLocal(ev);
   dropUnit(d.unit, p.x, p.y);
 }
-cv.addEventListener('pointerup', ev => { UI.sliding = null; endDrag(ev); });
-cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('pointerup', ev => {
+  UI.sliding = null;
+  if (UI.hold && UI.hold.id === ev.pointerId) { const h = UI.hold; UI.hold = null; play('click', 0.35); doAction(h.b); }
+  endDrag(ev);
+});
+cv.addEventListener('pointercancel', ev => { UI.hold = null; endDrag(ev); });
 
 // ── 루프 ──────────────────────────────────────────────────
 let last = performance.now();

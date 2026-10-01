@@ -1359,7 +1359,7 @@ function drawPrep() {
     } else { ctx.font = FK(13); ctx.fillStyle = 'rgba(160,210,255,.5)'; ctx.fillText('빈 칸', sx + sw / 2, sy + 38); }
   }
   ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)';
-  ctx.fillText('// 격납고: 누르면 넣고 빼요', x + 22, y + 238);
+  ctx.fillText('// 격납고: 누르면 넣고 빼요, 꾹 누르면 정보', x + 22, y + 238);
   const tw = 86, tg = 6, tx0 = W / 2 - (5 * (tw + tg) - tg) / 2;
   UNIT_ORDER.forEach((t2, i) => {
     const def = UNIT[t2], own = isOwned(t2), inDeck = PROG.deck.includes(t2), tx = tx0 + (i % 5) * (tw + tg), ty = y + 252 + Math.floor(i / 5) * (tw + tg);
