@@ -524,7 +524,7 @@ function drawEarned(rx, y) {
   if (q < 1) drawGlow('#5ae8ff', rx - 30, y, 40, 0.4);
   coreLabel(rx, y, '+' + fmt(v), 17, 'right', '#bff6ff');
   ctx.font = FK(12); ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(170,220,255,.75)';
-  ctx.fillText(`보상 ${fmt(S.baseEarned)} + 전투 수집 ${fmt(S.cores)}`, rx, y + 18);
+  ctx.fillText(`보상 ${fmt(S.baseEarned)} + 전투 수집 ${fmt(S.cores)}${S.dailyBonus ? ' (오늘 첫 판 ×2)' : ''}`, rx, y + 18);
 }
 function drawEndlessEnd() {
   const col = '#ffd24a';

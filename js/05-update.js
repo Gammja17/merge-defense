@@ -626,7 +626,9 @@ function endStage(win) {
   if (drag) drag = null;
   if (S.stage.endless) {
     const score = S.score;
-    S.baseEarned = 20 + S.wave * 12; S.earned = S.baseEarned + S.cores; S.endT = performance.now() / 1000;
+    S.baseEarned = 20 + S.wave * 20 + Math.floor(S.wave / 10) * 100;   // 웨이브마다 20, 10웨이브마다 도달 보너스 100
+    if (S.daily && PROG.dailyPaid !== S.daily.day) { S.baseEarned *= 2; PROG.dailyPaid = S.daily.day; S.dailyBonus = true; }   // 오늘의 도전: 그날 첫 판은 2배
+    S.earned = S.baseEarned + S.cores; S.endT = performance.now() / 1000;
     PROG.credits += S.earned;
     S.lastBoard = gridUnits().sort((a, b) => b.lv - a.lv).map(u => u.type + Math.min(u.lv, 8)).join(','); UI.lbMsg = '';
     if (S.daily) {
