@@ -63,7 +63,7 @@ function draw(dt) {
   drawUnitFrames(true);
   drawZoneOutlines();
   S.reserve.forEach((u, k) => { if (!u) return; const p = resPos(k); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 0.9, uSize(u) > 2 ? 0.26 : uSize(u) === 2 ? 0.34 : 0.58); });
-  if (!(drag && drag.moved) && (S.mode === 'play' || S.mode === 'break')) {   // 합칠 수 있는 짝: 빛나는 흰 테두리가 맥박치고, 위쪽 가운데에 합체 배지
+  if (!(drag && drag.moved) && (S.mode === 'play' || S.mode === 'break')) {   // 합칠 수 있는 짝: 빛나는 흰 테두리가 맥박친다
     const groups = {};
     for (const u of allUnits()) if (u.lv < MAX_LV) (groups[u.type + u.lv] = groups[u.type + u.lv] || []).push(u);
     const p = 0.5 + 0.5 * Math.sin(S.time * 5);
@@ -73,7 +73,6 @@ function draw(dt) {
       else { const b = unitBox(u); bx = b.x; by = b.y; bw = b.w; bh = b.h; }
       ctx.save(); ctx.shadowColor = MERGE_COL; ctx.shadowBlur = 8 + 10 * p; ctx.strokeStyle = MERGE_COL; ctx.globalAlpha = 0.65 + 0.35 * p; ctx.lineWidth = 3;
       chamfer(bx - 3, by - 3, bw + 6, bh + 6, 10); ctx.stroke(); ctx.restore();
-      mergeBadge(bx + bw / 2, by + (u.res != null ? -2 : 2) - 2 * p, u.res != null ? 0.75 : 1);
     }
   }
   drawDrones();

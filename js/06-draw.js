@@ -787,16 +787,8 @@ function drawShapeIcon(type, cx, cy, cell, col, label) {
   for (const [r, c] of pts) { ctx.fillStyle = col; ctx.globalAlpha = 0.85; ctx.fillRect(x0 + c * (cell + g), y0 + r * (cell + g), cell, cell); ctx.globalAlpha = 1; }
   if (label) { ctx.font = FK(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(210,230,255,.8)'; ctx.fillText(label, cx, y0 - 14); }
 }
-// 합칠 수 있는 짝 표시: 흰 원에 서로 다가가는 두 화살표
+// 합칠 수 있는 짝 표시: 흰 테두리
 const MERGE_COL = '#ffffff';   // 흰색: 어느 기체 고유색과도 안 겹친다
-function mergeBadge(x, y, sc = 1) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
-  ctx.fillStyle = MERGE_COL; ctx.strokeStyle = 'rgba(0,6,20,.85)'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = '#06122a'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.beginPath(); ctx.moveTo(-6, -3); ctx.lineTo(-1.5, 0); ctx.lineTo(-6, 3); ctx.moveTo(6, -3); ctx.lineTo(1.5, 0); ctx.lineTo(6, 3); ctx.stroke();
-  ctx.restore();
-}
 // 기체 고유색으로 칸 바닥 물들이기 (판, 격납고, 편성 칸, 카드가 같은 색을 쓴다)
 function unitTint(x, y, w, h, col, c = 9, k = 1) {
   const g = ctx.createLinearGradient(0, y, 0, y + h);

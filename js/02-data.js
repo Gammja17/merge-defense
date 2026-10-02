@@ -82,7 +82,7 @@ const UNIT = {
        desc: '두 칸을 차지하지만 튼튼하고 공격력이 강해요.', unlock: { stage: 12 } },
   r: { name: '요새포', role: '대형, 세로 2칸', img: 'u_r', iw: 76, ih: 150, hp: 8, dmg: 120, cd: 2.6, sp: 430, turn: 3, splash: 90, shape: 'v2', cost: 34, col: '#ff90bd', stat: [5, 1, 5],
        desc: '사거리 밖의 적까지 포격하는 초장거리 포대예요.', unlock: { stage: 15 } },
-  h: { name: '화염방사기', role: '근거리 화력', img: 'u_h', iw: 48, ih: 48, rot: true, hp: 5, dmg: 55, cd: 0.1, shape: 1, cost: 16, col: '#ff8000', stat: [5, 5, 3],
+  h: { name: '화염방사기', role: '근거리 공격', img: 'u_h', iw: 48, ih: 48, rot: true, hp: 5, dmg: 55, cd: 0.1, shape: 1, cost: 16, col: '#ff8000', stat: [5, 5, 3],
        desc: '가까이 온 적을 불길로 녹여요. 사거리가 짧아요.', unlock: { shop: 300 } },
   n: { name: '기뢰 부설기', role: '함정', img: 'u_n', iw: 60, ih: 38, hp: 4, dmg: 75, cd: 2.5, shape: 1, cost: 16, col: '#ed0e90', stat: [4, 1, 2],
        desc: '전장에 기뢰를 깔아 지나가는 적을 터뜨려요.', unlock: { shop: 400 } },
@@ -129,7 +129,7 @@ const SKILLS = {
   r: [['초장거리 포격', '사거리 밖에서 다가오는 적까지 먼저 포격해요.'], ['2연발', '포탄 두 발을 쏴요.'], ['충격파', '폭발에 맞은 적이 잠깐 멈춰요.'], ['집속탄', '폭발하며 작은 폭탄 여섯 개를 흩뿌려요.'], ['전술핵', '9초마다 적이 가장 많은 곳에 핵 포격을 떨어뜨려요.']],
   h: [['화염 분사', '가까운 적에게 불길을 계속 뿜어요.'], ['넓은 불길', '불길이 더 넓게 퍼져요.'], ['화상', '불이 붙은 적은 3초 동안 계속 타요.'], ['불벽', '6초마다 방어선 앞에 불벽을 세워요.'], ['플라즈마 분사', '푸른 플라즈마로 바뀌어 사거리와 공격력이 크게 늘어요.']],
   n: [['기뢰', '적이 지나갈 길목에 기뢰를 깔아요.'], ['기뢰 2개', '한 번에 기뢰 2개를 깔아요.'], ['연쇄 기뢰', '폭발이 근처 기뢰를 함께 터뜨려요.'], ['중력 기뢰', '터지기 전에 주변 적을 끌어당겨요.'], ['블랙홀', '9초마다 적이 몰린 곳에 블랙홀을 열어요.']],
-  x: [['신호 증폭', '주변 8칸 기체의 공격 속도 +20%.'], ['화력 보정', '주변 기체의 공격력도 +15%.'], ['정밀 유도', '주변 기체 공격 속도 +30%, 공격력 +25%.'], ['약점 스캔', '모든 적이 받는 피해 +15%.'], ['전군 강화', '모든 기체의 공격 속도와 공격력 +15%.']],
+  x: [['신호 증폭', '주변 8칸 기체의 공격 속도 +20%.'], ['공격 보정', '주변 기체의 공격력도 +15%.'], ['정밀 유도', '주변 기체 공격 속도 +30%, 공격력 +25%.'], ['약점 스캔', '모든 적이 받는 피해 +15%.'], ['전군 강화', '모든 기체의 공격 속도와 공격력 +15%.']],
   v: [['중력장', '맞은 자리에 적을 끌어당기고 느리게 하는 중력장을 만들어요.'], ['넓은 중력장', '중력장이 더 넓어져요.'], ['압착', '중력장 안의 적이 계속 피해를 받아요.'], ['쌍중력장', '중력탄 두 발을 쏴요.'], ['특이점', '중력장이 끝날 때 안쪽으로 붕괴하며 큰 피해를 줘요.']],
   w: [['방벽', '받는 피해가 절반이고, 산탄으로 적을 쏴요.'], ['요격', '8초에 한 번, 주변 칸을 노린 저격, 폭격, 운석을 쏴서 막아요.'], ['엄호', '상하좌우로 붙은 기체가 받는 피해 -25%.'], ['빠른 요격', '요격 간격이 5초로 짧아져요.'], ['방어선 복구', '15초마다 기지 방어막을 1 회복해요.']],
   l: [['레일탄', '적을 꿰뚫는 레일탄을 쏴요.'], ['쌍열 레일', '레일탄 두 발을 나란히 쏴요.'], ['삼열 레일', '레일탄 세 발을 부채꼴로 쏴요.'], ['과충전', '레일탄이 30% 확률로 2.5배 피해를 줘요.'], ['궤도 관통포', '6초마다 화면을 가르는 거대 레일로 한 줄의 적에게 막대한 피해를 줘요.']],
@@ -434,12 +434,12 @@ function buildEndlessWave(w) {
   return ev.sort((a, b) => a.t - b.t);
 }
 const PERKS = [
-  { tier: 1, id: 'dmg', cat: 'atk', name: '화력 증폭', desc: '모든 기체 공격력 +15%', col: '#ff8a4a', apply: () => { S.pk.dmg *= 1.15; } },
+  { tier: 1, id: 'dmg', cat: 'atk', name: '공격력 증폭', desc: '모든 기체 공격력 +15%', col: '#ff8a4a', apply: () => { S.pk.dmg *= 1.15; } },
   { tier: 1, id: 'spd', cat: 'atk', name: '냉각 개선', desc: '모든 기체 공격 속도 +12%', col: '#48c8ff', apply: () => { S.pk.spd *= 1.12; } },
   { tier: 1, id: 'shield', cat: 'def', name: '방어선 보강', desc: '기지 보호막 최대치 +3, 즉시 +3', col: '#5affc8', apply: () => { S.maxHp += 3; S.hp += 3; } },
   { tier: 1, id: 'armor', cat: 'def', name: '장갑 강화', desc: '모든 기체 최대 체력 +2', col: '#6ad0ff', apply: () => { S.pk.hp += 2; for (const u of allUnits()) { u.maxHp += 2; u.hp += 2; } } },
   { tier: 1, id: 'cap', cat: 'sup', name: '보급 효율', desc: '캡슐을 까는 데 필요한 타수 -20%', col: '#ffd84a', apply: () => { S.pk.cap *= 0.8; } },
-  { tier: 1, id: 'front', cat: 'atk', name: '화력 정비', desc: '정비소 공격 칸 효과 +50%', col: '#ffb347', apply: () => { S.pk.front += 0.5; } },
+  { tier: 1, id: 'front', cat: 'atk', name: '공격 칸 정비', desc: '정비소 공격 칸 효과 +50%', col: '#ffb347', apply: () => { S.pk.front += 0.5; } },
   { tier: 1, id: 'slow', cat: 'def', name: '중력 교란', desc: '모든 적 이동 속도 -10%', col: '#b86bff', apply: () => { S.pk.enemySpd *= 0.9; } },
   { tier: 1, id: 'repair', cat: 'def', name: '자동 수리', desc: '웨이브를 넘길 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.regen += 1; } },
   { tier: 1, id: 'gift', cat: 'sup', name: '긴급 증원', desc: '가장 높은 기체보다 한 단계 아래 기체를 지급 (Lv3 이상)', col: '#ffe24a', apply: () => {   // 후반에도 쓸모 있게: 판의 최고 레벨 -1 (Lv3~6)
@@ -468,7 +468,7 @@ const PERKS = [
   { tier: 2, id: 'few', cat: 'atk', name: '소수 정예', desc: '판에 기체가 6기 이하면 공격력 +60%', col: '#ff6a8a', apply: () => { S.pk.few = (S.pk.few || 0) + 0.6; } },
   { tier: 2, id: 'many', cat: 'atk', name: '물량전', desc: '판의 기체 하나마다 공격력 +4% (최대 +60%)', col: '#ffa04a', apply: () => { S.pk.many = (S.pk.many || 0) + 0.04; } },
   { tier: 2, id: 'vamp', cat: 'def', name: '흡수 방벽', desc: '적을 25기 격추할 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.vamp = (S.pk.vamp || 0) + 1; } },
-  { tier: 2, id: 'overkill', cat: 'atk', name: '과잉 화력', desc: '격추하고 남은 피해가 주변 적에게 터져요', col: '#ff5a3a', apply: () => { S.pk.overkill = (S.pk.overkill || 0) + 0.7; } },
+  { tier: 2, id: 'overkill', cat: 'atk', name: '넘치는 피해', desc: '격추하고 남은 피해가 주변 적에게 터져요', col: '#ff5a3a', apply: () => { S.pk.overkill = (S.pk.overkill || 0) + 0.7; } },
   { tier: 2, id: 'interest', cat: 'sup', name: '부품 이자', desc: '웨이브를 넘길 때 가진 부품 10개마다 +1 (최대 +5)', col: '#ffe08a', apply: () => { S.pk.interest = (S.pk.interest || 0) + 1; } },
   { tier: 2, id: 'twin', cat: 'sp', name: '쌍둥이 합체', desc: '합체할 때 20% 확률로 한 단계 더 올라요', col: '#9affd8', apply: () => { S.pk.twin += 0.2; } },
   { tier: 2, id: 'lonely', cat: 'atk', name: '고독한 에이스', desc: '주변 8칸이 빈 기체는 공격력 2배', col: '#ff9a5a', apply: () => { S.pk.lonely += 1; } },
@@ -485,7 +485,7 @@ const PERKS = [
   { tier: 3, id: 'goldcap', cat: 'sup', name: '황금 손', desc: '캡슐의 12%가 Lv3 황금 캡슐로 바뀌어요', col: '#ffd24a', apply: () => { S.pk.goldCap = (S.pk.goldCap || 0) + 0.12; } },
   { tier: 3, id: 'bulwark', cat: 'def', name: '철옹성', desc: '기지 보호막 최대치 +10, 즉시 +10. 대신 공격력 -20%', col: '#5affc8', apply: () => { S.maxHp += 10; S.hp += 10; S.pk.dmg *= 0.8; } },
   { tier: 3, id: 'laststand', cat: 'sup', name: '배수진', desc: '기지 보호막이 3 이하면 모든 캡슐이 Lv3 황금 캡슐', col: '#ff4a7a', apply: () => { S.pk.lastStand = 1; } },
-  { tier: 3, id: 'scrap', need: 3, cat: 'atk', name: '고철 화력', desc: '가진 부품 10개마다 공격력 +4%. 모아 둘수록 세져요', col: '#ffc86a', apply: () => { S.pk.scrap += 0.04; } },
+  { tier: 3, id: 'scrap', need: 3, cat: 'atk', name: '고철 무장', desc: '가진 부품 10개마다 공격력 +4%. 모아 둘수록 세져요', col: '#ffc86a', apply: () => { S.pk.scrap += 0.04; } },
   { tier: 3, id: 'revive', need: 6, once: true, cat: 'def', name: '최후의 방벽', desc: '기지 보호막이 처음 0이 되면 5로 버티고 적이 3초 멈춰요', col: '#5affc8', apply: () => { S.pk.revive = 1; } },
 ];
 

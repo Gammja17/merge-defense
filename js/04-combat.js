@@ -271,7 +271,7 @@ function layMines(u, base) {
   }
   return n > 0;
 }
-// 기체 하나의 화력 배율 (강화): 화력, 외톨이 에이스(주변 8칸이 비면), 고철 화력(가진 부품)
+// 기체 하나의 화력 배율 (강화): 화력, 외톨이 에이스(주변 8칸이 비면), 고철 무장(가진 부품)
 function pkDmg(u) {
   let m = S.pk.dmg;
   if (u.fuse) m *= 1.6;   // 특수 합체 기체
@@ -546,7 +546,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   if (DMG_BY && S.dmgBy) S.dmgBy[DMG_BY] = (S.dmgBy[DMG_BY] || 0) + Math.min(dmg, Math.max(0, e.hp));
   e.hp -= dmg;
   if (crit && S.pk.execBoom && e.hp <= 0 && !e.dead && src !== 'blast' && S.chainQ.length < 12) S.chainQ.push({ x: e.x, y: e.y, d: e.maxHp * 0.6 * S.pk.execBoom, r: 90, col: '#ff6a4a' });   // 처형 폭발
-  if (S.pk.overkill && e.hp < 0 && src !== 'blast' && S.chainQ.length < 12 && !e.dead) S.chainQ.push({ x: e.x, y: e.y, d: -e.hp * S.pk.overkill, r: 70, col: '#ff5a3a' });   // 과잉 화력
+  if (S.pk.overkill && e.hp < 0 && src !== 'blast' && S.chainQ.length < 12 && !e.dead) S.chainQ.push({ x: e.x, y: e.y, d: -e.hp * S.pk.overkill, r: 70, col: '#ff5a3a' });   // 넘치는 피해
   if (S.pk.fin && !e.boss && e.hp > 0 && e.hp < e.maxHp * S.pk.fin) { e.hp = 0; if (!quiet) addText(e.x, e.y - e.r, '마무리', '#ff5a5a', 15, 0.6); if (S.pk.execBoom && S.chainQ.length < 12) S.chainQ.push({ x: e.x, y: e.y, d: e.maxHp * 0.6 * S.pk.execBoom, r: 90, col: '#ff6a4a' }); }
   if (quiet && S.time > (e.qf || 0)) { e.qf = S.time + 0.12; e.flash = Math.max(e.flash, 0.06); e.kbOff = Math.min(14, (e.kbOff || 0) + 1.5); }   // 빔, 드론, 불바다처럼 조용한 피해도 살짝 번쩍
   if (!quiet) {
