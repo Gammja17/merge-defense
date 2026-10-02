@@ -535,6 +535,7 @@ function drawPairHints() {
     drawUnitArt(ot, 1, hx, hy, Math.min(20 / od.iw, 18 / od.ih), 1, null);
   }
   ctx.restore();
+  for (const u of gridUnits()) if (!(drag && drag.moved && drag.unit === u)) lvCorner(u);   // 레벨 꼬리표는 기체 그림 위에 (계급장 대신)
   if (drag && drag.moved) return;
   const cnt = {};
   for (const u of us) if (!u.fuse && u.lv < MAX_LV) { const k = u.type + u.lv; cnt[k] = (cnt[k] || 0) + 1; }
@@ -1033,7 +1034,7 @@ function drawCard() {
   const cmpL = Math.min(showLv, 4), two = st8[cmpL - 1].v * 2, one = st8[cmpL].v, cells = SHAPES[def.shape].length, nextT = TRANSCEND[showLv - 5];
   ctx.font = FK(14); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(220,235,255,.9)';
   const cmpTxt = showLv < 5 ? `Lv${cmpL} 두 대 ${fmt(two)} (${cells * 2}칸)  →  Lv${cmpL + 1} 한 대 ${fmt(one)} (${cells}칸) + 새 스킬`
-    : nextT ? `Lv${showLv} 두 대를 합치면 ${nextT}: 화력 ×2.3, 스킬 더 자주` : '최고 단계 초월 III';
+    : nextT ? `Lv${showLv} 두 대를 합치면 ${nextT}: 공격력 ×2.3, 스킬 더 자주` : '최고 단계 초월 III';
   ctx.fillText(cmpTxt, W / 2, y + 494);
   // 스킬 목록 (Lv1~5) + 초월 한 줄 (Lv6~8)
   const rowsK = SKILLS[t2].map(([nm, ds], i) => [`LV${i + 1}`, nm, ds, i + 1 === Math.min(showLv, 5) && showLv <= 5, def.col]);
@@ -1138,10 +1139,10 @@ function drawResearch(t2, px, py, pw, ph, cardY) {
   }
   ctx.textAlign = 'left'; ctx.font = FK(14);
   const pct = n => `+${n * 8}%`, hp = n => Math.floor(n / 3);
-  if (max) { ctx.fillStyle = '#ffe9a8'; ctx.fillText(`화력 ${pct(mk)}, 체력 +${hp(mk)}, 연구 완료`, sx, py + 64); }
+  if (max) { ctx.fillStyle = '#ffe9a8'; ctx.fillText(`공격력 ${pct(mk)}, 체력 +${hp(mk)}, 연구 완료`, sx, py + 64); }
   else {
-    ctx.fillStyle = 'rgba(230,240,255,.85)'; ctx.fillText(`화력 ${pct(mk)}`, sx, py + 64);
-    const w1 = ctx.measureText(`화력 ${pct(mk)} `).width;
+    ctx.fillStyle = 'rgba(230,240,255,.85)'; ctx.fillText(`공격력 ${pct(mk)}`, sx, py + 64);
+    const w1 = ctx.measureText(`공격력 ${pct(mk)} `).width;
     ctx.fillStyle = '#5affc8'; ctx.fillText(`→ ${pct(mk + 1)}${(mk + 1) % 3 === 0 ? `  체력 +${hp(mk + 1)}` : ''}`, sx + w1, py + 64);
   }
   // 강화 버튼
@@ -1209,7 +1210,7 @@ function drawUpgradeFx(t2, ax, ay, cx, cy, dt) {
     ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, ay + 54 - q * 20); ctx.scale(sc, sc);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = FT(30, 900); glitchText(f.max ? 'RESEARCH COMPLETE' : `MK.${f.mk}`, 0, -14, f.max ? '#ffffff' : col, 6, q < 0.3 ? (0.3 - q) * 30 : 0);
-    ctx.font = FK(22); outlineText(f.max ? '연구 완료! 화력 +80%, 체력 +3' : `강화 성공! 화력 +8%${f.milestone ? ', 체력 +1' : ''}`, 0, 20, '#5affc8', 5);
+    ctx.font = FK(22); outlineText(f.max ? '연구 완료! 공격력 +80%, 체력 +3' : `강화 성공! 공격력 +8%${f.milestone ? ', 체력 +1' : ''}`, 0, 20, '#5affc8', 5);
     ctx.restore();
   }
   ctx.save(); ctx.globalCompositeOperation = 'lighter';

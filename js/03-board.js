@@ -83,7 +83,7 @@ function findSpot(u) {
 }
 // ── 칸 강화: 정비소에서 칸마다 효과 하나를 골라 3단계까지. 기체는 올라선 칸들의 효과를 더해 받는다 (이번 전투에서만) ──
 const CELL_FX = {
-  atk: { name: '화력', key: 'ATK', col: '#ffb347', v: [0.15, 0.28, 0.45], txt: v => `화력 +${Math.round(v * 100)}%` },
+  atk: { name: '공격력', key: 'ATK', col: '#ffb347', v: [0.15, 0.28, 0.45], txt: v => `공격력 +${Math.round(v * 100)}%` },
   spd: { name: '공속', key: 'SPD', col: '#48ffd8', v: [0.1, 0.2, 0.32], txt: v => `공격 속도 +${Math.round(v * 100)}%` },
   def: { name: '방어', key: 'DEF', col: '#6ad0ff', v: [0.15, 0.25, 0.35], txt: v => `받는 피해 -${Math.round(v * 100)}%` },
   rng: { name: '사거리', key: 'RNG', col: '#c89bff', v: [50, 90, 130], txt: v => `사거리 +${v}` },
@@ -167,11 +167,11 @@ const GIMMICK = {
   purge:    { name: '대기함 비우기', lethal: true, run: b => { const rs = S.reserve.filter(Boolean); if (!rs.length) return false; for (const u of rs) destroyUnit(u, '소각!'); } },
   shatter:  { name: '분해', lethal: true, run: b => { const us = gridUnits(); if (us.length < 2) return false; const u = us[Math.floor(Math.random() * us.length)]; S.fx.push({ kind: 'bolt', pts: [{ x: b.x, y: b.y + 40 }, unitPos(u)], t: 0, life: 0.4, col: '#ff3a4a' }); destroyUnit(u, '분해!'); } },
   nogear:   { name: '부품 차단 60초', run: () => { S.debuff.nogear = 60; } },
-  weak:     { name: '화력 -30% 20초', run: () => { S.debuff.weak = 20; } },
+  weak:     { name: '공격력 -30% 20초', run: () => { S.debuff.weak = 20; } },
   hardcap:  { name: '단단한 캡슐 30초', run: () => { S.debuff.hardcap = 30; } },
   drain:    { name: '사령관 게이지 절반', run: () => { if (!cmdOpen() || !S.cmd) return false; S.cmd = Math.floor(S.cmd / 2); } },
 };
-const DEBUFF_NAME = { nogear: '부품 차단', weak: '화력 -30%', hardcap: '단단한 캡슐' };
+const DEBUFF_NAME = { nogear: '부품 차단', weak: '공격력 -30%', hardcap: '단단한 캡슐' };
 function bossGimmick(b, when) {
   S.debuff = S.debuff || {};
   const keys = Object.keys(GIMMICK).filter(k => k !== 'shatter'), lethal = keys.filter(k => GIMMICK[k].lethal), annoy = keys.filter(k => !GIMMICK[k].lethal);

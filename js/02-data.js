@@ -79,7 +79,7 @@ const UNIT = {
   a: { name: '방공포', role: '산탄, 요격', img: 'u_a', iw: 52, ih: 53, rot: true, hp: 4, dmg: 4, cd: 0.75, sp: 1000, turn: 10, shape: 1, cost: 14, col: '#9aa0ac', stat: [2, 3, 3],
        desc: '산탄을 뿌리고, 레벨이 오르면 날아오는 공격을 요격해요.', unlock: { stage: 10 } },
   b: { name: '전함', role: '대형, 가로 2칸', img: 'u_b2', iw: 130, ih: 80, air: true, hp: 9, dmg: 34, cd: 1.0, sp: 680, turn: 4, splash: 62, shape: 'h2', cost: 36, col: '#4050ff', stat: [4, 3, 5],
-       desc: '두 칸을 차지하지만 튼튼하고 화력이 강해요.', unlock: { stage: 12 } },
+       desc: '두 칸을 차지하지만 튼튼하고 공격력이 강해요.', unlock: { stage: 12 } },
   r: { name: '요새포', role: '대형, 세로 2칸', img: 'u_r', iw: 76, ih: 150, hp: 8, dmg: 120, cd: 2.6, sp: 430, turn: 3, splash: 90, shape: 'v2', cost: 34, col: '#ff90bd', stat: [5, 1, 5],
        desc: '사거리 밖의 적까지 포격하는 초장거리 포대예요.', unlock: { stage: 15 } },
   h: { name: '화염방사기', role: '근거리 화력', img: 'u_h', iw: 48, ih: 48, rot: true, hp: 5, dmg: 55, cd: 0.1, shape: 1, cost: 16, col: '#ff8000', stat: [5, 5, 3],
@@ -87,7 +87,7 @@ const UNIT = {
   n: { name: '기뢰 부설기', role: '함정', img: 'u_n', iw: 60, ih: 38, hp: 4, dmg: 75, cd: 2.5, shape: 1, cost: 16, col: '#ed0e90', stat: [4, 1, 2],
        desc: '전장에 기뢰를 깔아 지나가는 적을 터뜨려요.', unlock: { shop: 400 } },
   x: { name: '레이더 기지', role: '지원', img: 'u_x', iw: 42, ih: 70, hp: 4, dmg: 0, cd: 1, shape: 1, cost: 16, col: '#0aa982', stat: [0, 0, 2],
-       desc: '주변 8칸 기체의 공격 속도와 화력을 올려요. 직접 쏘지는 않아요.', unlock: { shop: 500 } },
+       desc: '주변 8칸 기체의 공격 속도와 공격력을 올려요. 직접 쏘지는 않아요.', unlock: { shop: 500 } },
   v: { name: '중력포', role: '끌어모으기', img: 'u_v2', iw: 64, ih: 28, hp: 4, dmg: 40, cd: 2.2, sp: 360, turn: 3, shape: 1, cost: 16, col: '#f45bef', stat: [2, 1, 2],
        desc: '중력장으로 적을 한데 모으고 느리게 해요. 미사일과 잘 어울려요.', unlock: { shop: 600 } },
   w: { name: '방벽 요새', role: '대형, ㄱ자 3칸', img: 'u_a', iw: 130, ih: 130, hp: 14, dmg: 5, cd: 0.8, sp: 1000, turn: 10, shape: 'L', cost: 30, col: '#ab7042', stat: [1, 3, 5],
@@ -114,7 +114,7 @@ const lvIdx = lv => Math.min(lv, 5) - 1;   // 레벨별 표(5칸)는 초월해�
 const tier = u => Math.max(0, u.lv - 5);
 const TRANSCEND = ['초월 I', '초월 II', '초월 III'];
 const TRANS_EXTRA = { w: '받는 피해가 더 줄어요.', g: '대신 받는 피해도 줄어요.', m: '수리 주기도 짧아져요.', x: '버프 효과도 커져요.', k: '해킹 간격도 짧아져요.', d: '드론도 더 빨리 쏴요.' };
-const transDesc = t => '화력 ×2.3, 체력도 늘어요. ' + (SKILL_CD[t] ? 'Lv5 주기 스킬이 25% 더 자주 터져요.' : TRANS_EXTRA[t] || '');
+const transDesc = t => '공격력 ×2.3, 체력도 늘어요. ' + (SKILL_CD[t] ? 'Lv5 주기 스킬이 25% 더 자주 터져요.' : TRANS_EXTRA[t] || '');
 const SKILLS = {
   f: [['단발 레이저', '레이저를 한 줄씩 빠르게 쏴요.'], ['쌍발 레이저', '레이저 두 줄을 나란히 쏴요.'], ['확산 레이저', '세 갈래로 퍼져서 여러 적을 한꺼번에 노려요.'], ['관통 레이저', '적을 뚫고 지나가며 한 줄에 선 적을 모두 맞혀요.'], ['대형 빔', '4초마다 금색 빔으로 한 줄을 통째로 녹여요.']],
   t: [['미사일', '폭발하는 미사일을 쏴요.'], ['2연장 미사일', '포신 두 개로 미사일을 동시에 쏴요.'], ['화염 지대', '터진 자리에 불바다가 남아 계속 피해를 줘요.'], ['분열탄', '폭발하면 작은 폭탄 네 개가 사방으로 튀어요.'], ['궤도 폭격', '6초마다 적이 가장 많은 곳에 거대한 폭격을 떨어뜨려요.']],
@@ -127,9 +127,9 @@ const SKILLS = {
   a: [['산탄', '탄 3발을 부채꼴로 뿌려요.'], ['넓은 산탄', '탄이 5발로 늘어요.'], ['요격', '7초에 한 번, 주변 칸을 노린 저격, 폭격, 운석을 쏴서 막아요.'], ['공격자 추적', '경고를 띄운 적을 먼저 노려요.'], ['방공 돔', '주변 3×3 칸은 적의 공격을 받지 않아요.']],
   b: [['주포', '무거운 포탄을 쏴요.'], ['주포 2문', '주포 두 문이 동시에 불을 뿜어요.'], ['부포대', '양옆 부포대가 레이저로 잔챙이를 정리해요.'], ['일제사격', '주포와 부포대가 한꺼번에 쏟아부어요.'], ['과충전 주포', '5초마다 거대한 플라즈마탄으로 넓은 범위를 날려버려요.']],
   r: [['초장거리 포격', '사거리 밖에서 다가오는 적까지 먼저 포격해요.'], ['2연발', '포탄 두 발을 쏴요.'], ['충격파', '폭발에 맞은 적이 잠깐 멈춰요.'], ['집속탄', '폭발하며 작은 폭탄 여섯 개를 흩뿌려요.'], ['전술핵', '9초마다 적이 가장 많은 곳에 핵 포격을 떨어뜨려요.']],
-  h: [['화염 분사', '가까운 적에게 불길을 계속 뿜어요.'], ['넓은 불길', '불길이 더 넓게 퍼져요.'], ['화상', '불이 붙은 적은 3초 동안 계속 타요.'], ['불벽', '6초마다 방어선 앞에 불벽을 세워요.'], ['플라즈마 분사', '푸른 플라즈마로 바뀌어 사거리와 화력이 크게 늘어요.']],
+  h: [['화염 분사', '가까운 적에게 불길을 계속 뿜어요.'], ['넓은 불길', '불길이 더 넓게 퍼져요.'], ['화상', '불이 붙은 적은 3초 동안 계속 타요.'], ['불벽', '6초마다 방어선 앞에 불벽을 세워요.'], ['플라즈마 분사', '푸른 플라즈마로 바뀌어 사거리와 공격력이 크게 늘어요.']],
   n: [['기뢰', '적이 지나갈 길목에 기뢰를 깔아요.'], ['기뢰 2개', '한 번에 기뢰 2개를 깔아요.'], ['연쇄 기뢰', '폭발이 근처 기뢰를 함께 터뜨려요.'], ['중력 기뢰', '터지기 전에 주변 적을 끌어당겨요.'], ['블랙홀', '9초마다 적이 몰린 곳에 블랙홀을 열어요.']],
-  x: [['신호 증폭', '주변 8칸 기체의 공격 속도 +20%.'], ['화력 보정', '주변 기체의 화력도 +15%.'], ['정밀 유도', '주변 기체 공격 속도 +30%, 화력 +25%.'], ['약점 스캔', '모든 적이 받는 피해 +15%.'], ['전군 강화', '모든 기체의 공격 속도와 화력 +15%.']],
+  x: [['신호 증폭', '주변 8칸 기체의 공격 속도 +20%.'], ['화력 보정', '주변 기체의 공격력도 +15%.'], ['정밀 유도', '주변 기체 공격 속도 +30%, 공격력 +25%.'], ['약점 스캔', '모든 적이 받는 피해 +15%.'], ['전군 강화', '모든 기체의 공격 속도와 공격력 +15%.']],
   v: [['중력장', '맞은 자리에 적을 끌어당기고 느리게 하는 중력장을 만들어요.'], ['넓은 중력장', '중력장이 더 넓어져요.'], ['압착', '중력장 안의 적이 계속 피해를 받아요.'], ['쌍중력장', '중력탄 두 발을 쏴요.'], ['특이점', '중력장이 끝날 때 안쪽으로 붕괴하며 큰 피해를 줘요.']],
   w: [['방벽', '받는 피해가 절반이고, 산탄으로 적을 쏴요.'], ['요격', '8초에 한 번, 주변 칸을 노린 저격, 폭격, 운석을 쏴서 막아요.'], ['엄호', '상하좌우로 붙은 기체가 받는 피해 -25%.'], ['빠른 요격', '요격 간격이 5초로 짧아져요.'], ['방어선 복구', '15초마다 기지 방어막을 1 회복해요.']],
   l: [['레일탄', '적을 꿰뚫는 레일탄을 쏴요.'], ['쌍열 레일', '레일탄 두 발을 나란히 쏴요.'], ['삼열 레일', '레일탄 세 발을 부채꼴로 쏴요.'], ['과충전', '레일탄이 30% 확률로 2.5배 피해를 줘요.'], ['궤도 관통포', '6초마다 화면을 가르는 거대 레일로 한 줄의 적에게 막대한 피해를 줘요.']],
@@ -198,7 +198,7 @@ const ENEMY = {
 // ── 특수 합체: 짝꿍 두 기체가 둘 다 최종 단계(Lv8)면 하나를 다른 하나에 겹쳐 합친다 ──
 // col: 짝마다 다른 색 (편성 화면의 테두리, 짝꿍 표시, 판 위 연결선). keep: 합친 뒤 남는 기체 종류 (그 기체의 공격을 그대로 쓰고, 특수 능력이 붙는다). 화력 ×1.6, 체력 ×1.5
 const FUSE = [
-  { id: 'aegis', short: '주변 기체 보호와 강화', a: 'g', b: 'x', keep: 'g', name: '이지스 지휘함', col: '#3ad8ff', desc: '주변 8칸 기체가 받는 피해 절반, 화력과 공격 속도 크게 증가. 10초마다 기지 보호막 +1' },
+  { id: 'aegis', short: '주변 기체 보호와 강화', a: 'g', b: 'x', keep: 'g', name: '이지스 지휘함', col: '#3ad8ff', desc: '주변 8칸 기체가 받는 피해 절반, 공격력과 공격 속도 크게 증가. 10초마다 기지 보호막 +1' },
   { id: 'bolt', short: '레이저 + 연쇄 번개',  a: 'f', b: 'e', keep: 'f', name: '번개 요격기',   col: '#ffe03a', desc: '레이저가 맞힌 적에서 번개가 튀어요' },
   { id: 'sing', short: '끌어모아 대폭발',  a: 't', b: 'v', keep: 't', name: '특이점 포대',   col: '#b86bff', desc: '6초마다 적을 한데 끌어모은 뒤 그 자리에 큰 폭발' },
   { id: 'zero', short: '저격 + 빙결',  a: 's', b: 'c', keep: 's', name: '절대영도 저격기', col: '#ff5ab4', desc: '저격탄이 적을 얼리고, 언 적은 2배 피해' },
@@ -434,7 +434,7 @@ function buildEndlessWave(w) {
   return ev.sort((a, b) => a.t - b.t);
 }
 const PERKS = [
-  { tier: 1, id: 'dmg', cat: 'atk', name: '화력 증폭', desc: '모든 기체 화력 +15%', col: '#ff8a4a', apply: () => { S.pk.dmg *= 1.15; } },
+  { tier: 1, id: 'dmg', cat: 'atk', name: '화력 증폭', desc: '모든 기체 공격력 +15%', col: '#ff8a4a', apply: () => { S.pk.dmg *= 1.15; } },
   { tier: 1, id: 'spd', cat: 'atk', name: '냉각 개선', desc: '모든 기체 공격 속도 +12%', col: '#48c8ff', apply: () => { S.pk.spd *= 1.12; } },
   { tier: 1, id: 'shield', cat: 'def', name: '방어선 보강', desc: '기지 보호막 최대치 +3, 즉시 +3', col: '#5affc8', apply: () => { S.maxHp += 3; S.hp += 3; } },
   { tier: 1, id: 'armor', cat: 'def', name: '장갑 강화', desc: '모든 기체 최대 체력 +2', col: '#6ad0ff', apply: () => { S.pk.hp += 2; for (const u of allUnits()) { u.maxHp += 2; u.hp += 2; } } },
@@ -453,39 +453,39 @@ const PERKS = [
   { tier: 1, id: 'chain', cat: 'sp', name: '연쇄 폭발', desc: '격추한 적이 터지며 주변 적에게 피해를 줘요', col: '#ff6a3a', apply: () => { S.pk.chain += 0.35; } },
   { tier: 1, id: 'arc', cat: 'sp', name: '합체 방전', desc: '합체할 때마다 가까운 적 셋에게 번개가 떨어져요', col: '#9ad8ff', apply: () => { S.pk.arc += 1; } },
   { tier: 1, id: 'killrush', cat: 'atk', name: '전투 열기', desc: '적을 격추하면 2초 동안 공격 속도 +15%', col: '#ff7a5a', apply: () => { S.pk.killRush = (S.pk.killRush || 0) + 0.15; } },
-  { tier: 1, id: 'vanguard', cat: 'atk', name: '선봉대', desc: '맨 앞줄 기체 화력 +25%', col: '#ff9a4a', apply: () => { S.pk.vanguard = (S.pk.vanguard || 0) + 0.25; } },
+  { tier: 1, id: 'vanguard', cat: 'atk', name: '선봉대', desc: '맨 앞줄 기체 공격력 +25%', col: '#ff9a4a', apply: () => { S.pk.vanguard = (S.pk.vanguard || 0) + 0.25; } },
   { tier: 1, id: 'capslow', cat: 'def', name: '냉각 캡슐', desc: '캡슐을 까면 주변 적이 3초 동안 느려져요', col: '#7fd4ff', apply: () => { S.pk.capSlow = (S.pk.capSlow || 0) + 1; } },
   { tier: 1, id: 'wavegear', cat: 'sup', name: '보급선', desc: '웨이브마다 부품 +2, 5웨이브마다 1씩 더 늘어요', col: '#ffd84a', apply: () => { S.pk.waveGear = (S.pk.waveGear || 0) + 1; } },
   { tier: 1, id: 'refund', cat: 'sup', name: '분해 전문가', desc: '기체를 해체하면 부품을 2배로 받아요', col: '#ffc24a', apply: () => { S.pk.refund = (S.pk.refund || 0) + 1; } },
-  { tier: 1, id: 'caprush', cat: 'atk', name: '보급 열기', desc: '캡슐을 까면 3초 동안 화력 +20%', col: '#7fe0ff', apply: () => { S.pk.capRush = (S.pk.capRush || 0) + 0.2; } },
-  { tier: 1, id: 'emptyslot', cat: 'atk', name: '빈자리 활용', desc: '판의 빈 칸 하나마다 화력 +3%', col: '#5affc8', apply: () => { S.pk.empty = (S.pk.empty || 0) + 0.03; } },
+  { tier: 1, id: 'caprush', cat: 'atk', name: '보급 열기', desc: '캡슐을 까면 3초 동안 공격력 +20%', col: '#7fe0ff', apply: () => { S.pk.capRush = (S.pk.capRush || 0) + 0.2; } },
+  { tier: 1, id: 'emptyslot', cat: 'atk', name: '빈자리 활용', desc: '판의 빈 칸 하나마다 공격력 +3%', col: '#5affc8', apply: () => { S.pk.empty = (S.pk.empty || 0) + 0.03; } },
   // 고급: 판 흐름을 바꾸는 강화
   { tier: 2, id: 'recycle', cat: 'sup', name: '재활용 합체', desc: '합체할 때마다 부품 +1', col: '#ffc24a', apply: () => { S.pk.recycle = (S.pk.recycle || 0) + 1; } },
   { tier: 2, id: 'mergeheal', cat: 'def', name: '합체 수리', desc: '합체하면 기지 보호막 +1 (5초에 한 번)', col: '#b88aff', apply: () => { S.pk.mergeHeal = 1; } },
   { tier: 2, id: 'execboom', cat: 'atk', name: '처형 폭발', desc: '마무리 사격이나 치명타로 격추한 적이 크게 터져요', col: '#ff6a4a', apply: () => { S.pk.execBoom = (S.pk.execBoom || 0) + 1; } },
   { tier: 2, id: 'adversity', cat: 'def', name: '역경', desc: '기지 보호막이 3 이하면 공격 속도 +50%', col: '#ff4a7a', apply: () => { S.pk.adversity = (S.pk.adversity || 0) + 0.5; } },
   { tier: 2, id: 'gamble', cat: 'sup', name: '도박사', desc: '캡슐이 30% 확률로 한 단계 높게, 20% 확률로 꽝', col: '#ffb020', apply: () => { S.pk.gamble = 1; } },
-  { tier: 2, id: 'few', cat: 'atk', name: '소수 정예', desc: '판에 기체가 6기 이하면 화력 +60%', col: '#ff6a8a', apply: () => { S.pk.few = (S.pk.few || 0) + 0.6; } },
-  { tier: 2, id: 'many', cat: 'atk', name: '물량전', desc: '판의 기체 하나마다 화력 +4% (최대 +60%)', col: '#ffa04a', apply: () => { S.pk.many = (S.pk.many || 0) + 0.04; } },
+  { tier: 2, id: 'few', cat: 'atk', name: '소수 정예', desc: '판에 기체가 6기 이하면 공격력 +60%', col: '#ff6a8a', apply: () => { S.pk.few = (S.pk.few || 0) + 0.6; } },
+  { tier: 2, id: 'many', cat: 'atk', name: '물량전', desc: '판의 기체 하나마다 공격력 +4% (최대 +60%)', col: '#ffa04a', apply: () => { S.pk.many = (S.pk.many || 0) + 0.04; } },
   { tier: 2, id: 'vamp', cat: 'def', name: '흡수 방벽', desc: '적을 25기 격추할 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.vamp = (S.pk.vamp || 0) + 1; } },
   { tier: 2, id: 'overkill', cat: 'atk', name: '과잉 화력', desc: '격추하고 남은 피해가 주변 적에게 터져요', col: '#ff5a3a', apply: () => { S.pk.overkill = (S.pk.overkill || 0) + 0.7; } },
   { tier: 2, id: 'interest', cat: 'sup', name: '부품 이자', desc: '웨이브를 넘길 때 가진 부품 10개마다 +1 (최대 +5)', col: '#ffe08a', apply: () => { S.pk.interest = (S.pk.interest || 0) + 1; } },
   { tier: 2, id: 'twin', cat: 'sp', name: '쌍둥이 합체', desc: '합체할 때 20% 확률로 한 단계 더 올라요', col: '#9affd8', apply: () => { S.pk.twin += 0.2; } },
-  { tier: 2, id: 'lonely', cat: 'atk', name: '고독한 에이스', desc: '주변 8칸이 빈 기체는 화력 2배', col: '#ff9a5a', apply: () => { S.pk.lonely += 1; } },
+  { tier: 2, id: 'lonely', cat: 'atk', name: '고독한 에이스', desc: '주변 8칸이 빈 기체는 공격력 2배', col: '#ff9a5a', apply: () => { S.pk.lonely += 1; } },
   { tier: 2, id: 'fin', cat: 'atk', name: '마무리 사격', desc: '체력이 12% 아래로 떨어진 적은 바로 격추 (보스 빼고)', col: '#ff5a5a', apply: () => { S.pk.fin += S.pk.fin ? 0.06 : 0.12; } },
   { tier: 2, id: 'hunt', cat: 'atk', name: '거함 격파', desc: '보스, 엘리트, 순양함, 모함에게 주는 피해 +50%', col: '#ffb84a', apply: () => { S.pk.hunt += 0.5; } },
   { tier: 2, id: 'capbomb', cat: 'sup', name: '캡슐 폭탄', desc: '캡슐을 까면 그 자리에서 크게 터져 주변 적을 쓸어요', col: '#ffd84a', apply: () => { S.pk.capBomb += 1; } },
   { tier: 2, id: 'fixall', cat: 'def', name: '긴급 복구', desc: '봉쇄된 칸을 모두 되살려요', col: '#ff8a8a', ok: () => S.broken.some(b => b.seal), apply: () => { S.broken = S.broken.filter(b => !b.seal); addText(W / 2, LINE_Y - 60, '칸 복구!', '#8dff9a', 26, 1.2); } },
   { tier: 2, id: 'heat', cat: 'sp', name: '합체 열기', desc: '합체하면 4초 동안 모든 기체 공격 속도 +40%', col: '#ff7ae0', apply: () => { S.pk.heat += 0.4; } },
   // 전설: 보스를 잡으면 하나는 꼭 나온다
-  { tier: 3, id: 'glass', once: true, cat: 'atk', name: '유리 대포', desc: '화력 2배, 대신 기지 보호막 최대치가 절반', col: '#ff3a5a', apply: () => { S.pk.dmg *= 2; S.maxHp = Math.max(1, Math.ceil(S.maxHp / 2)); S.hp = Math.min(S.hp, S.maxHp); } },
+  { tier: 3, id: 'glass', once: true, cat: 'atk', name: '유리 대포', desc: '공격력 2배, 대신 기지 보호막 최대치가 절반', col: '#ff3a5a', apply: () => { S.pk.dmg *= 2; S.maxHp = Math.max(1, Math.ceil(S.maxHp / 2)); S.hp = Math.min(S.hp, S.maxHp); } },
   { tier: 3, id: 'oc', once: true, cat: 'sp', name: '과충전', desc: '사령관 스킬을 쓰면 6초 동안 모든 기체 공격 속도 2배', col: '#ffe24a', ok: () => cmdOpen(), apply: () => { S.pk.oc = 1; } },
-  { tier: 3, id: 'berserk', cat: 'atk', name: '광전사', desc: '기지 보호막을 1칸 잃을 때마다 화력 +15%', col: '#ff3a3a', apply: () => { S.pk.berserk = (S.pk.berserk || 0) + 0.15; } },
+  { tier: 3, id: 'berserk', cat: 'atk', name: '광전사', desc: '기지 보호막을 1칸 잃을 때마다 공격력 +15%', col: '#ff3a3a', apply: () => { S.pk.berserk = (S.pk.berserk || 0) + 0.15; } },
   { tier: 3, id: 'warp', cat: 'sp', name: '시간 왜곡', desc: '정지장을 웨이브마다 2번, 8초 동안 써요', col: '#7fd4ff', apply: () => { S.pk.warp = 1; S.holdLeft = Math.max(S.holdLeft || 0, 2); } },
   { tier: 3, id: 'goldcap', cat: 'sup', name: '황금 손', desc: '캡슐의 12%가 Lv3 황금 캡슐로 바뀌어요', col: '#ffd24a', apply: () => { S.pk.goldCap = (S.pk.goldCap || 0) + 0.12; } },
-  { tier: 3, id: 'bulwark', cat: 'def', name: '철옹성', desc: '기지 보호막 최대치 +10, 즉시 +10. 대신 화력 -20%', col: '#5affc8', apply: () => { S.maxHp += 10; S.hp += 10; S.pk.dmg *= 0.8; } },
+  { tier: 3, id: 'bulwark', cat: 'def', name: '철옹성', desc: '기지 보호막 최대치 +10, 즉시 +10. 대신 공격력 -20%', col: '#5affc8', apply: () => { S.maxHp += 10; S.hp += 10; S.pk.dmg *= 0.8; } },
   { tier: 3, id: 'laststand', cat: 'sup', name: '배수진', desc: '기지 보호막이 3 이하면 모든 캡슐이 Lv3 황금 캡슐', col: '#ff4a7a', apply: () => { S.pk.lastStand = 1; } },
-  { tier: 3, id: 'scrap', need: 3, cat: 'atk', name: '고철 화력', desc: '가진 부품 10개마다 화력 +4%. 모아 둘수록 세져요', col: '#ffc86a', apply: () => { S.pk.scrap += 0.04; } },
+  { tier: 3, id: 'scrap', need: 3, cat: 'atk', name: '고철 화력', desc: '가진 부품 10개마다 공격력 +4%. 모아 둘수록 세져요', col: '#ffc86a', apply: () => { S.pk.scrap += 0.04; } },
   { tier: 3, id: 'revive', need: 6, once: true, cat: 'def', name: '최후의 방벽', desc: '기지 보호막이 처음 0이 되면 5로 버티고 적이 3초 멈춰요', col: '#5affc8', apply: () => { S.pk.revive = 1; } },
 ];
 
@@ -533,16 +533,16 @@ const ownBuilds = () => { const s = new Set(); for (const id of S.perks) for (co
 // 같은 강화를 여러 번 고르면 쌓이는 효과 (n개일 때). 강화 카드에 "2개: +32% → +52%"처럼 보여 준다
 const pct = v => `${Math.round(v * 100)}%`;
 const PERK_SUM = {
-  dmg: n => `화력 +${pct(Math.pow(1.15, n) - 1)}`, spd: n => `공격 속도 +${pct(Math.pow(1.12, n) - 1)}`,
+  dmg: n => `공격력 +${pct(Math.pow(1.15, n) - 1)}`, spd: n => `공격 속도 +${pct(Math.pow(1.12, n) - 1)}`,
   shield: n => `보호막 최대치 +${3 * n}`, armor: n => `기체 체력 +${2 * n}`, cap: n => `캡슐 타수 -${pct(1 - Math.pow(0.8, n))}`,
   front: n => `공격 칸 효과 +${50 * n}%`, slow: n => `적 속도 -${pct(1 - Math.pow(0.9, n))}`, repair: n => `웨이브마다 보호막 +${n}`,
   crit: n => `치명타 확률 ${15 * n}%`, salvage: n => `부품 ×${Math.pow(2, n)}`, summon: n => `소환 비용 -${pct(1 - Math.pow(0.75, n))}`,
   elite: n => `소환 레벨 +${n}`, cmdup: n => `게이지 속도 +${pct(Math.pow(1.6, n) - 1)}`, chain: n => `폭발 피해 ${35 * n}%`, arc: n => `번개 피해 ×${n}`,
-  killrush: n => `공격 속도 +${15 * n}%`, vanguard: n => `앞줄 화력 +${25 * n}%`, wavegear: n => `웨이브마다 부품 +${2 * n}부터`,
-  few: n => `화력 +${60 * n}%`, many: n => `기체마다 +${4 * n}% (최대 60%)`, vamp: n => `${Math.ceil(25 / n)}기마다 보호막 +1`, overkill: n => `남은 피해 ${70 * n}%`,
-  interest: n => `10개마다 +${n} (최대 ${5 * n})`, twin: n => `확률 ${20 * n}%`, lonely: n => `화력 ×${1 + n}`, fin: n => `${12 + 6 * (n - 1)}% 아래 격추`,
+  killrush: n => `공격 속도 +${15 * n}%`, vanguard: n => `앞줄 공격력 +${25 * n}%`, wavegear: n => `웨이브마다 부품 +${2 * n}부터`,
+  few: n => `공격력 +${60 * n}%`, many: n => `기체마다 +${4 * n}% (최대 60%)`, vamp: n => `${Math.ceil(25 / n)}기마다 보호막 +1`, overkill: n => `남은 피해 ${70 * n}%`,
+  interest: n => `10개마다 +${n} (최대 ${5 * n})`, twin: n => `확률 ${20 * n}%`, lonely: n => `공격력 ×${1 + n}`, fin: n => `${12 + 6 * (n - 1)}% 아래 격추`,
   hunt: n => `큰 적 피해 +${50 * n}%`, capbomb: n => `폭발 ×${n}`, heat: n => `공격 속도 +${40 * n}%`, berserk: n => `한 칸마다 +${15 * n}%`,
-  goldcap: n => `황금 캡슐 ${12 * n}%`, refund: n => `해체 부품 ×${1 + n}`, caprush: n => `캡슐 뒤 화력 +${20 * n}%`, emptyslot: n => `빈 칸마다 +${3 * n}%`, recycle: n => `합체마다 부품 +${n}`, execboom: n => `폭발 ×${n}`, adversity: n => `공격 속도 +${50 * n}%`, bulwark: n => `보호막 +${10 * n}, 화력 -${pct(1 - Math.pow(0.8, n))}`, scrap: n => `10개마다 +${4 * n}%`,
+  goldcap: n => `황금 캡슐 ${12 * n}%`, refund: n => `해체 부품 ×${1 + n}`, caprush: n => `캡슐 뒤 공격력 +${20 * n}%`, emptyslot: n => `빈 칸마다 +${3 * n}%`, recycle: n => `합체마다 부품 +${n}`, execboom: n => `폭발 ×${n}`, adversity: n => `공격 속도 +${50 * n}%`, bulwark: n => `보호막 +${10 * n}, 공격력 -${pct(1 - Math.pow(0.8, n))}`, scrap: n => `10개마다 +${4 * n}%`,
 };
 // 등급마다 확실히 다르게: 테두리 색과 굵기, 바탕, 별 개수 (일반 ★, 고급 ★★, 전설 ★★★)
 const PERK_TIER = {

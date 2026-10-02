@@ -857,17 +857,17 @@ function rankCorner(u, col) {
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.save(); ctx.translate(rx - tw / 2, ty + th / 2); ctx.scale(s, s); rankIcons(lv); ctx.restore();
 }
-// 왼쪽 위 모서리: 레벨 숫자 육각. 평소엔 어두운 바탕에 레벨 색 테두리, 같은 종류 같은 레벨 짝이 있으면 레벨 색으로 꽉 차고 빛난다
+// 왼쪽 위 레벨 꼬리표 'Lv2' (계급장 대신). 레벨마다 색이 다르고, 같은 종류 같은 레벨 짝이 있을 때만 ▲가 붙고 빛난다
 function lvCorner(u) {
   const top = Math.min(...u.cells.map(c => Math.floor(c / COLS))), c0 = Math.min(...u.cells.filter(c => Math.floor(c / COLS) === top).map(c => c % COLS));
-  const cx = GRID_X + c0 * CW + 15, cy = GRID_Y + top * CH + 15, lv = u.lv, t = performance.now() / 1000;
-  const lc = lv >= 8 ? RAINBOW[Math.floor(t * 6) % 6] : PAIR_COL[lv - 1];
+  const lv = u.lv, t = performance.now() / 1000, lc = lv >= 8 ? RAINBOW[Math.floor(t * 6) % 6] : PAIR_COL[lv - 1];
   const pair = !u.fuse && lv < MAX_LV && allUnits().some(o => o !== u && !o.fuse && o.type === u.type && o.lv === lv);
-  if (pair) drawGlow(lc, cx, cy, 22, 0.45 + 0.25 * Math.sin(t * 5));
-  ctx.fillStyle = pair ? lc : 'rgba(4,10,24,.88)'; hexPath(cx, cy, 10); ctx.fill();
-  ctx.strokeStyle = pair ? '#ffffff' : lc; ctx.lineWidth = pair ? 1.5 : 1.8; ctx.stroke();
-  ctx.font = FT(12, 900); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = pair ? '#071018' : lc; ctx.fillText(String(lv), cx, cy + 1);
+  const txt = `Lv${lv}`; ctx.font = FT(11, 900); const tw = ctx.measureText(txt).width + (pair ? 20 : 10), x0 = GRID_X + c0 * CW + 2, y0 = GRID_Y + top * CH - 4 + (pair ? Math.sin(t * 6 + x0 * 0.05) * 1.5 : 0);
+  if (pair) drawGlow(lc, x0 + tw / 2, y0 + 8, 22, 0.45);
+  ctx.fillStyle = lc; chamfer(x0, y0, tw, 17, 5); ctx.fill();
+  ctx.fillStyle = '#071018'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x0 + 5, y0 + 9);
+  if (pair) { ctx.beginPath(); ctx.moveTo(x0 + tw - 9, y0 + 4); ctx.lineTo(x0 + tw - 4, y0 + 12); ctx.lineTo(x0 + tw - 14, y0 + 12); ctx.closePath(); ctx.fill(); }
+  ctx.textAlign = 'center';
 }
 function rankIcons(lv) {
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -945,7 +945,6 @@ function drawUnitFrames(top) {
         if (r < 1 && r <= 0.25) drawGlow('#ff4a5a', gx + 2, gy + gh / 2, 16, 0.4 + 0.3 * Math.sin(t * 8));
         ctx.globalAlpha = drag && drag.unit === u && drag.moved ? 0.3 : 1;
       }
-      rankCorner(u, col); lvCorner(u);
     }
     ctx.globalAlpha = 1;
   }
