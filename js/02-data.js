@@ -464,6 +464,16 @@ if (PROG.xp == null) {
   for (let l = 2; l <= PROG.lvl; l++) payLevel(l);
 }
 
+// 강화 시너지: 같은 갈래 강화를 3번 고르면 켜진다 (같은 강화를 두 번 골라도 2로 센다)
+const SYN_N = 3;
+const SYN = {
+  atk: { name: '연쇄 치명', desc: '치명타 확률 +10%, 치명타가 터지면 작은 폭발' },
+  def: { name: '철벽', desc: '웨이브마다 기지 보호막 +1, 기체 체력 전부 회복' },
+  sup: { name: '덤 보급', desc: '캡슐을 깔 때 10% 확률로 기체 하나 더' },
+  sp: { name: '지휘 우선', desc: '사령관 게이지 +50', on: () => { if (cmdOpen()) S.cmd = Math.min(100, (S.cmd || 0) + 50); } },
+};
+const catCount = cat => S.perks.filter(id => { const p = PERKS.find(q => q.id === id); return p && p.cat === cat; }).length;
+
 const PERK_CAT = { atk: ['공격', '#ff8a4a'], def: ['방어', '#5affc8'], sup: ['보급', '#ffd84a'], sp: ['특수', '#b88aff'] };
 // 등급: 일반(1), 희귀(2), 전설(3). 보스를 잡은 뒤 첫 선택은 첫 칸이 전설
 const PERK_TIER = { 2: ['고급', '#5ab8ff'], 3: ['전설', '#ffb020'] };
@@ -504,7 +514,7 @@ function startStage(n, endless = false, daily = false) {
     shake: 0, time: 0, glitch: 0, lost: 0,
     parts: [], shieldHits: [], banner: null, warning: 0, whiteFlash: 0, skillPop: null,
     score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0, dmgBy: {}, used: {},
-    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0, twin: 0, lonely: 0, fin: 0, hunt: 1, capBomb: 0, heat: 0, oc: 0, scrap: 0, revive: 0 }, chainQ: [], heatT: 0, ocT: 0, legendNext: false,
+    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0, twin: 0, lonely: 0, fin: 0, hunt: 1, capBomb: 0, heat: 0, oc: 0, scrap: 0, revive: 0 }, syn: {}, chainQ: [], heatT: 0, ocT: 0, legendNext: false,
     gear: 0, cellFx: new Array(COLS * ROWS).fill(null), rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0,
   };
   if (daily) { S.daily = { day: dayKey(), deck: dailyDeck(dayKey()) }; lbFetchDaily(true); }

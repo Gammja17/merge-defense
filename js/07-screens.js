@@ -708,11 +708,20 @@ function drawMap() {
   });
   ctx.lineWidth = 2.5; ctx.setLineDash([6, 8]); ctx.lineDashOffset = -t * 20;
   for (let n = 1; n < STAGE_COUNT; n++) {
+    if (n % 5 === 0) continue;   // 구역 사이는 띠를 가로지르지 않고 아래 화살표로
     const a = mapNodePos(n), b = mapNodePos(n + 1);
     ctx.strokeStyle = PROG.stars[n] ? 'rgba(90,255,200,.6)' : 'rgba(255,255,255,.15)';
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
   ctx.setLineDash([]);
+  for (let s = 1; s < SECTORS.length; s++) {   // 구역 끝 → 다음 구역: 띠 사이 (4, 5번 칸 사이)에 아래로 꺾쇠 두 개
+    const ax = 420, y = 108 + s * MAP_BAND - 3, on = PROG.stars[s * 5], c = on ? '#5affc8' : 'rgba(255,255,255,.3)';
+    ctx.strokeStyle = 'rgba(4,8,24,.9)'; ctx.lineWidth = 6; ctx.lineCap = ctx.lineJoin = 'round';
+    for (const k of [0, 1]) { ctx.beginPath(); ctx.moveTo(ax - 12, y - 8 + k * 7); ctx.lineTo(ax, y + k * 7); ctx.lineTo(ax + 12, y - 8 + k * 7); ctx.stroke(); }
+    ctx.strokeStyle = c; ctx.lineWidth = 2.5;
+    for (const k of [0, 1]) { ctx.globalAlpha = on ? 0.6 + 0.4 * Math.sin(t * 4 - k) : 1; ctx.beginPath(); ctx.moveTo(ax - 12, y - 8 + k * 7); ctx.lineTo(ax, y + k * 7); ctx.lineTo(ax + 12, y - 8 + k * 7); ctx.stroke(); }
+    ctx.globalAlpha = 1; ctx.lineCap = ctx.lineJoin = 'miter';
+  }
   let next = 1;
   while (next < STAGE_COUNT && PROG.stars[next]) next++;
   for (let n = 1; n <= STAGE_COUNT; n++) {
@@ -1067,7 +1076,52 @@ function drawUpgradeFx(t2, ax, ay, cx, cy, dt) {
 }
 
 // 설정창과 일시정지
+// 만든 이와 에셋 출처 (README의 에셋 목록과 같게)
+const CREDITS = [
+  ['기체, 적, 보스 그림', '이 게임을 위해 VARCO (gpt-image-2.5)로 만들었어요'],
+  ['스프라이트, 효과음', 'Kenney: Space Shooter, Sci-Fi Sounds, Impact Sounds, Interface Sounds, UI Audio, Digital Audio (CC0)'],
+  ['무기, 명중, 함선 음성', 'Lentikula: Sci-Fi Weapon Shots, Spell Impacts, Sci-Fi Ship Voices (CC0)'],
+  ['캡슐, 버튼, 위기 소리', 'OpenGameArt: rubberduck 60 CC0 Sci-Fi SFX, Owlish Media Sound Effects Pack (CC0)'],
+  ['폭발 애니메이션', 'Sinestesia: 2D Explosion Animations (CC0)'],
+  ['음악', 'OpenGameArt: MintoDog, wipics, Deva (CC0)'],
+  ['폰트', 'Orbitron, Chakra Petch, Do Hyeon, IBM Plex Sans KR (SIL OFL)'],
+];
+function drawCredits() {
+  BUTTONS = [];
+  ctx.fillStyle = 'rgba(2,3,12,.86)'; ctx.fillRect(0, 0, W, H);
+  const x = 30, y = 110, w = W - 60, h = 740;
+  panel(x, y, w, h, '#48c8ff');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = FT(22, 900); glitchText('CREDITS', W / 2, y + 40, '#d8f6ff', 4, 0);
+  let yy = y + 90;
+  for (const [k, v] of CREDITS) {
+    ctx.textAlign = 'left'; ctx.font = FK(15); ctx.fillStyle = '#7fe0ff'; ctx.fillText(k, x + 30, yy);
+    ctx.font = FK(14); ctx.fillStyle = 'rgba(220,235,255,.88)';
+    const ls = wrapLines(v, w - 60); ls.forEach((l, i) => ctx.fillText(l, x + 30, yy + 24 + i * 20));
+    yy += 36 + ls.length * 20;
+  }
+  ctx.textAlign = 'center';
+  button(W / 2 - 100, y + h - 74, 200, 50, '닫기', 'closecredits', 'primary');
+}
+// 저장 코드: 진행(PROG)을 글자 한 줄로 바꿔 복사하고, 다른 기기에서 붙여 넣어 이어 하기
+function drawSaveCode() {
+  BUTTONS = [];
+  ctx.fillStyle = 'rgba(2,3,12,.86)'; ctx.fillRect(0, 0, W, H);
+  const x = 40, y = 230, w = W - 80, h = 470;
+  panel(x, y, w, h, '#ffd24a');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = FT(22, 900); glitchText('SAVE CODE', W / 2, y + 40, '#ffe9a8', 4, 0);
+  ctx.font = FK(15); ctx.fillStyle = 'rgba(220,235,255,.88)';
+  ['저장 코드를 복사해 두면', '다른 기기나 브라우저에서 이어서 할 수 있어요'].forEach((l, i) => ctx.fillText(l, W / 2, y + 86 + i * 22));
+  button(x + 30, y + 150, w - 60, 52, '저장 코드 복사', 'savecopy', 'gold');
+  button(x + 30, y + 218, w - 60, 52, '저장 코드 붙여넣기', 'savepaste', 'ghost');
+  if (UI.saveMsg) { ctx.font = FK(16); ctx.fillStyle = UI.saveMsg.ok ? '#5affc8' : '#ffb0b0'; ctx.fillText(UI.saveMsg.t, W / 2, y + 302); }
+  ctx.font = FK(13); ctx.fillStyle = 'rgba(190,210,240,.7)'; ctx.fillText('붙여 넣으면 지금 진행은 그 코드로 바뀌어요', W / 2, y + 336);
+  button(W / 2 - 100, y + h - 74, 200, 50, '닫기', 'closesave', 'primary');
+}
 function drawSettings() {
+  if (UI.credits) return drawCredits();
+  if (UI.saveCode) return drawSaveCode();
   BUTTONS = [];
   ctx.fillStyle = 'rgba(2,3,12,.8)'; ctx.fillRect(0, 0, W, H);
   const x = 40, y = 120, w = W - 80, h = 700;
@@ -1113,10 +1167,9 @@ function drawSettings() {
   const armed = UI.resetArm > performance.now() / 1000;
   button(x + 30, y + 476, w - 60, 44, armed ? '한 번 더 누르면 진행이 모두 지워져요' : '진행 초기화', 'reset', 'danger');
   ctx.font = FK(13); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(190,210,240,.7)';
-  ctx.fillText('그래픽, 효과음: Kenney (CC0)', W / 2, y + 546);
-  ctx.fillText('음악: MintoDog, wipics, Deva (OpenGameArt, CC0)', W / 2, y + 566);
-  ctx.fillText('폰트: Orbitron, Chakra Petch, 도현 (SIL OFL)', W / 2, y + 586);
-  ctx.fillText('진행 상황은 이 기기의 브라우저에만 저장돼요', W / 2, y + 606);
+  ctx.fillText('진행 상황은 이 기기의 브라우저에만 저장돼요', W / 2, y + 546);
+  button(x + 30, y + 566, w / 2 - 36, 40, '출처 보기', 'credits', 'ghost');
+  button(x + w / 2 + 6, y + 566, w / 2 - 36, 40, '저장 코드', 'savecode', 'ghost');
   button(W / 2 - 100, y + h - 76, 200, 50, '닫기', 'closesettings', 'primary');
 }
 function drawPause() {
@@ -1233,37 +1286,47 @@ function drawPerk() {
     const k = Math.max(0, Math.min(1, (e - i * 0.09) / 0.28)), ease = 1 - Math.pow(1 - k, 3);
     const x = 44 + (1 - ease) * 80, y = 284 + i * 140, w = W - 88, h = 124, [cn, cc] = PERK_CAT[pk.cat];
     ctx.globalAlpha = k;
-    const tg = PERK_TIER[pk.tier];
+    const tg = PERK_TIER[pk.tier], have = catCount(pk.cat), synNext = !S.syn[pk.cat] && have + 1 >= SYN_N;
+    if (synNext) drawGlow(cc, x + w / 2, y + h / 2, w * 0.5, 0.18 + 0.12 * Math.sin(e * 7));   // 이걸 고르면 시너지가 켜진다
     if (pk.tier === 3) drawGlow(tg[1], x + w / 2, y + h / 2, w * 0.55, 0.22 + 0.1 * Math.sin(e * 5));   // 전설은 금빛으로 빛난다
     ctx.fillStyle = pk.tier === 3 ? 'rgba(40,26,6,.97)' : 'rgba(8,20,50,.96)'; chamfer(x, y, w, h, 14); ctx.fill();
     ctx.strokeStyle = tg ? tg[1] : pk.col; ctx.lineWidth = tg ? 3.5 : 2; ctx.stroke();
+    if (synNext) { ctx.strokeStyle = cc; ctx.globalAlpha = k * (0.5 + 0.5 * Math.sin(e * 7)); ctx.lineWidth = 3; chamfer(x - 5, y - 5, w + 10, h + 10, 17); ctx.stroke(); ctx.globalAlpha = k; }
     drawGlow(pk.col, x + 62, y + h / 2, 50, 0.3 + 0.08 * Math.sin(e * 4 + i));
     ctx.fillStyle = 'rgba(4,12,30,.95)'; hexPath(x + 62, y + h / 2, 34); ctx.fill(); ctx.strokeStyle = pk.col; ctx.lineWidth = 2.5; ctx.stroke();
     perkIcon(pk.cat, x + 62, y + h / 2, pk.col);
     ctx.textAlign = 'left';
-    ctx.font = FK(13); const tw = ctx.measureText(cn).width + 16;
-    ctx.fillStyle = cc + '33'; chamfer(x + 116, y + 18, tw, 22, 6); ctx.fill(); ctx.fillStyle = cc; ctx.fillText(cn, x + 124, y + 30);
+    ctx.font = FK(13); const cn2 = S.syn[pk.cat] ? `${cn} ★` : `${cn} ${Math.min(have, SYN_N)}/${SYN_N}`, tw = ctx.measureText(cn2).width + 16;   // 갈래와 시너지 진행도
+    ctx.fillStyle = cc + '33'; chamfer(x + 116, y + 18, tw, 22, 6); ctx.fill(); ctx.fillStyle = cc; ctx.fillText(cn2, x + 124, y + 30);
     if (tg) { const tw2 = ctx.measureText(tg[0]).width + 16; ctx.fillStyle = tg[1]; chamfer(x + 122 + tw, y + 18, tw2, 22, 6); ctx.fill(); ctx.fillStyle = '#10131f'; ctx.fillText(tg[0], x + 130 + tw, y + 30); }
     ctx.font = FK(24); outlineText(pk.name, x + 116, y + 62, '#fff', 4);
     ctx.font = FK(15); ctx.fillStyle = 'rgba(220,235,255,.9)';
     wrapLines(pk.desc, w - 140).slice(0, 2).forEach((l, j) => ctx.fillText(l, x + 116, y + 92 + j * 20));
     const cnt = S.perks.filter(q => q === pk.id).length;
-    if (cnt) { ctx.textAlign = 'right'; ctx.font = FK(13); ctx.fillStyle = pk.col; ctx.fillText(`가진 것 ${cnt}개`, x + w - 16, y + 30); }
+    ctx.textAlign = 'right'; ctx.font = FK(13);
+    if (synNext) { ctx.fillStyle = cc; ctx.fillText(`시너지! ${SYN[pk.cat].name}`, x + w - 16, y + 30); }
+    else if (cnt) { ctx.fillStyle = pk.col; ctx.fillText(`가진 것 ${cnt}개`, x + w - 16, y + 30); }
     ctx.globalAlpha = 1; ctx.textAlign = 'center';
     if (k >= 1) BUTTONS.push({ x, y, w, h, act: 'perk', i });
   });
-  if (S.perks.length) {   // 지금 가진 강화
+  if (S.perks.length) {   // 지금 가진 강화: 갈래마다 한 줄 (앞에 갈래와 개수, 시너지면 ★), 넘치면 +N
     ctx.font = FK(13); ctx.fillStyle = 'rgba(180,205,240,.75)'; ctx.fillText('지금 가진 강화', W / 2, 718);
     const cnt = {}; for (const id of S.perks) cnt[id] = (cnt[id] || 0) + 1;
-    const chips = Object.keys(cnt).map(id => PERKS.find(p => p.id === id)).filter(Boolean);
-    ctx.font = FK(13);
-    const ws = chips.map(p => ctx.measureText(p.name + (cnt[p.id] > 1 ? ` ×${cnt[p.id]}` : '')).width + 20);
-    let row = 0, cx = 0; const rows = [[]];
-    ws.forEach((w2, j) => { if (cx + w2 > W - 60 && rows[row].length) { rows[++row] = []; cx = 0; } rows[row].push(j); cx += w2 + 8; });
-    rows.forEach((r, ri) => {
-      let x = W / 2 - (r.reduce((a, j) => a + ws[j] + 8, 0) - 8) / 2;
-      for (const j of r) { const p = chips[j]; ctx.fillStyle = p.col + '26'; chamfer(x, 732 + ri * 30, ws[j], 24, 6); ctx.fill(); ctx.fillStyle = p.col; ctx.textAlign = 'left'; ctx.fillText(p.name + (cnt[p.id] > 1 ? ` ×${cnt[p.id]}` : ''), x + 10, 744 + ri * 30); x += ws[j] + 8; }
-    });
+    let ri = 0;
+    for (const cat of Object.keys(PERK_CAT)) {
+      const chips = Object.keys(cnt).map(id => PERKS.find(p => p.id === id)).filter(p => p && p.cat === cat);
+      if (!chips.length) continue;
+      const [cn, cc] = PERK_CAT[cat], y = 732 + ri * 30; ri++;
+      const head = `${S.syn[cat] ? '★' : ''}${cn} ${catCount(cat)}`;
+      ctx.textAlign = 'left'; ctx.font = FK(13); ctx.fillStyle = cc; ctx.fillText(head, 34, y + 12);
+      let x = 34 + 68;
+      chips.forEach((p, j) => {
+        const lab = p.name + (cnt[p.id] > 1 ? ` ×${cnt[p.id]}` : ''), wj = ctx.measureText(lab).width + 20;
+        if (x < 0) return;
+        if (x + wj > W - 34 - (j < chips.length - 1 ? 40 : 0)) { ctx.fillStyle = 'rgba(200,215,240,.7)'; ctx.fillText(`+${chips.length - j}`, x + 4, y + 12); x = -1; return; }
+        ctx.fillStyle = p.col + '26'; chamfer(x, y, wj, 24, 6); ctx.fill(); ctx.fillStyle = p.col; ctx.fillText(lab, x + 10, y + 12); x += wj + 6;
+      });
+    }
     ctx.textAlign = 'center';
   }
 }
@@ -1550,7 +1613,7 @@ function drawTitle() {
   ctx.font = FK(22); ctx.fillStyle = '#9fdcff'; ctx.fillText('SF 머지 디펜스', W / 2, 408);
   ctx.restore();
   ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.7)';
-  ctx.fillText('// ORBITAL DEFENSE PROGRAM v0.5', W / 2, 442);
+  ctx.fillText('// ORBITAL DEFENSE PROGRAM v0.9', W / 2, 442);
   const cyc = (t % 2.4) / 2.4, cy = 580;
   if (cyc < 0.55) {
     const k = cyc / 0.55, gap = 70 * (1 - k * k);

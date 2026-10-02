@@ -134,14 +134,42 @@ function doAction(b) {
       S.fx.push({ kind: 'ring', x: W / 2, y: 420, t: 0, life: 0.6, color: pk.col }); play('up_fx', 0.5);
       S.banner = { text: pk.name, sub: pk.desc, color: pk.col, t: 0, life: 1.8 };
       play('shieldUp', 0.4);
+      if (!S.syn[pk.cat] && catCount(pk.cat) >= SYN_N) {   // 시너지 켜짐
+        const sy = SYN[pk.cat], cc = PERK_CAT[pk.cat][1];
+        S.syn[pk.cat] = true; if (sy.on) sy.on();
+        S.banner = { text: '시너지! ' + sy.name, sub: sy.desc, color: cc, t: 0, life: 2.4 };
+        S.fx.push({ kind: 'ring', x: W / 2, y: 420, t: 0, life: 0.9, color: cc }); play('levelup', 0.5);
+      }
       return;
     }
     case 'pause': S.paused = true; return;
     case 'resume': S.paused = false; return;
     case 'floor': { const own = floorsOwned(); PROG.floor = own[(own.indexOf(PROG.floor || '') + 1) % own.length]; save(); return; }
     case 'speed': PROG.settings.speed = SET().speed === 2 ? 1 : 2; save(); return;
-    case 'settings': UI.settings = true; UI.resetArm = 0; return;
+    case 'settings': UI.settings = true; UI.resetArm = 0; UI.credits = UI.saveCode = false; return;
     case 'closesettings': UI.settings = false; return;
+    case 'credits': UI.credits = true; return;
+    case 'closecredits': UI.credits = false; return;
+    case 'savecode': UI.saveCode = true; UI.saveMsg = null; return;
+    case 'closesave': UI.saveCode = false; return;
+    case 'savecopy': {
+      const code = btoa(unescape(encodeURIComponent(JSON.stringify(PROG))));
+      const done = () => { UI.saveMsg = { ok: true, t: '복사했어요. 메모장 같은 곳에 붙여 두세요' }; };
+      const fall = () => { prompt('아래 저장 코드를 복사해 두세요', code); done(); };
+      try { navigator.clipboard.writeText(code).then(done, fall); } catch (e) { fall(); }
+      return;
+    }
+    case 'savepaste': {
+      const s = prompt('저장 코드를 붙여 넣어 주세요');
+      if (!s) return;
+      try {
+        const d = JSON.parse(decodeURIComponent(escape(atob(s.trim()))));
+        if (!d || !d.stars) throw 0;
+        if (!confirm('지금 진행이 이 저장 코드로 바뀌어요. 계속할까요?')) return;
+        localStorage.setItem(SAVE_KEY, JSON.stringify(d)); location.reload();
+      } catch (e) { UI.saveMsg = { ok: false, t: '저장 코드가 올바르지 않아요' }; }
+      return;
+    }
     case 'toggle': PROG.settings[b.key] = !PROG.settings[b.key]; save(); return;
     case 'slider': UI.sliding = b; setSlider(b, UI.lastP.x); return;
     case 'reset':

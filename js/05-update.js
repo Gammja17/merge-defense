@@ -243,7 +243,7 @@ function updateAuras(dt) {
   S.baseGuardT = Math.max(0, S.baseGuardT - dt);
   if (S.chainQ && S.chainQ.length) {
     const q = S.chainQ.splice(0, 6);
-    for (const c of q) { S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.35, color: '#ff8a4a' }); blast(c.x, c.y, 80, c.d); }
+    for (const c of q) { S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.35, color: c.col || '#ff8a4a' }); blast(c.x, c.y, c.r || 80, c.d); }
   }
   S.heatT = Math.max(0, (S.heatT || 0) - dt); S.ocT = Math.max(0, (S.ocT || 0) - dt); S.iceT = Math.max(0, (S.iceT || 0) - dt * 1.5);
   for (const rb of S.rebuilds) {
@@ -560,6 +560,7 @@ function update(dt) {
     S.mode = 'break'; S.breakT = 3;
     S.attacks = [];
     S.hp = Math.min(S.maxHp, S.hp + S.pk.regen);
+    if (S.syn.def) { S.hp = Math.min(S.maxHp, S.hp + 1); for (const u of allUnits()) u.hp = u.maxHp; }   // 시너지 철벽
     const gg = S.crisis ? 3 : 2;
     addGear(gg, W / 2, LINE_Y - 80);
     S.banner = { text: 'CLEAR', sub: `웨이브 ${S.wave} 방어 성공, 부품 +${gg}`, color: '#8dff9a', t: 0, life: 2 };

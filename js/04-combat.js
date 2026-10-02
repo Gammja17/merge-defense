@@ -508,7 +508,11 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   if (e.frozen > 0 && S.shatter) dmg *= 2;
   if (e.guarded) dmg *= 0.7;
   if (e.boss && e.weak > 0) dmg *= 2;
-  if (S.pk.crit && Math.random() < S.pk.crit) dmg *= 2;
+  const crit = S.pk.crit + (S.syn.atk ? 0.1 : 0);
+  if (crit && Math.random() < crit) {
+    dmg *= 2;
+    if (S.syn.atk && src !== 'blast' && S.time > (S.synBoomT || 0) && S.chainQ.length < 12) { S.synBoomT = S.time + 0.15; S.chainQ.push({ x: e.x, y: e.y, d: dmg * 0.5, r: 60, col: '#ff5a8a' }); }   // 시너지 연쇄 치명: 작은 폭발 (0.15초에 한 번)
+  }
   if (S.pk.hunt > 1 && (e.boss || BIG_FOE.includes(e.k))) dmg *= S.pk.hunt;
   if (S.scan) dmg *= 1.15;
   if (e.shield > 0) {
@@ -703,7 +707,8 @@ function claimCap(c) {
     play('shieldUp', 0.35);
   } else {
     let placed = 0, reserved = 0, lost = 0;
-    for (let k = 0; k < rw.n; k++) {
+    const extra = S.syn.sup && Math.random() < 0.1 ? 1 : 0;   // 시너지 덤 보급
+    for (let k = 0; k < rw.n + extra; k++) {
       const r = giveUnit(rw.type, rw.lv, c.x, c.y, col);
       if (r === 'placed') placed++; else if (r === 'reserve') reserved++; else lost++;
     }
