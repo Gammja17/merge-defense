@@ -451,7 +451,17 @@ const PERKS = [
   { tier: 1, id: 'cmdup', cat: 'sp', name: '지휘 통신', desc: '사령관 게이지가 60% 더 빨리 차요', col: '#ffd24a', ok: () => cmdOpen(), apply: () => { S.pk.cmd *= 1.6; } },
   { tier: 1, id: 'chain', cat: 'sp', name: '연쇄 폭발', desc: '격추한 적이 터지며 주변 적에게 피해를 줘요', col: '#ff6a3a', apply: () => { S.pk.chain += 0.35; } },
   { tier: 1, id: 'arc', cat: 'sp', name: '합체 방전', desc: '합체할 때마다 가까운 적 셋에게 번개가 떨어져요', col: '#9ad8ff', apply: () => { S.pk.arc += 1; } },
+  { tier: 1, id: 'killrush', cat: 'atk', name: '전투 열기', desc: '적을 격추하면 2초 동안 공격 속도 +15%', col: '#ff7a5a', apply: () => { S.pk.killRush = (S.pk.killRush || 0) + 0.15; } },
+  { tier: 1, id: 'vanguard', cat: 'atk', name: '선봉대', desc: '맨 앞줄 기체 화력 +25%', col: '#ff9a4a', apply: () => { S.pk.vanguard = (S.pk.vanguard || 0) + 0.25; } },
+  { tier: 1, id: 'capslow', cat: 'def', name: '냉각 캡슐', desc: '캡슐을 까면 주변 적이 3초 동안 느려져요', col: '#7fd4ff', apply: () => { S.pk.capSlow = (S.pk.capSlow || 0) + 1; } },
+  { tier: 1, id: 'wavegear', cat: 'sup', name: '보급선', desc: '웨이브가 시작될 때마다 부품 +2', col: '#ffd84a', apply: () => { S.pk.waveGear = (S.pk.waveGear || 0) + 2; } },
   // 고급: 판 흐름을 바꾸는 강화
+  { tier: 2, id: 'gamble', cat: 'sup', name: '도박사', desc: '캡슐이 30% 확률로 한 단계 높게, 20% 확률로 꽝', col: '#ffb020', apply: () => { S.pk.gamble = 1; } },
+  { tier: 2, id: 'few', cat: 'atk', name: '소수 정예', desc: '판에 기체가 6기 이하면 화력 +60%', col: '#ff6a8a', apply: () => { S.pk.few = (S.pk.few || 0) + 0.6; } },
+  { tier: 2, id: 'many', cat: 'atk', name: '물량전', desc: '판의 기체 하나마다 화력 +4% (최대 +60%)', col: '#ffa04a', apply: () => { S.pk.many = (S.pk.many || 0) + 0.04; } },
+  { tier: 2, id: 'vamp', cat: 'def', name: '흡수 방벽', desc: '적을 25기 격추할 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.vamp = (S.pk.vamp || 0) + 1; } },
+  { tier: 2, id: 'overkill', cat: 'atk', name: '과잉 화력', desc: '격추하고 남은 피해가 주변 적에게 터져요', col: '#ff5a3a', apply: () => { S.pk.overkill = (S.pk.overkill || 0) + 0.7; } },
+  { tier: 2, id: 'interest', cat: 'sup', name: '부품 이자', desc: '웨이브를 넘길 때 가진 부품 10개마다 +1 (최대 +5)', col: '#ffe08a', apply: () => { S.pk.interest = (S.pk.interest || 0) + 1; } },
   { tier: 2, id: 'twin', cat: 'sp', name: '쌍둥이 합체', desc: '합체할 때 20% 확률로 한 단계 더 올라요', col: '#9affd8', apply: () => { S.pk.twin += 0.2; } },
   { tier: 2, id: 'lonely', cat: 'atk', name: '고독한 에이스', desc: '주변 8칸이 빈 기체는 화력 2배', col: '#ff9a5a', apply: () => { S.pk.lonely += 1; } },
   { tier: 2, id: 'fin', cat: 'atk', name: '마무리 사격', desc: '체력이 12% 아래로 떨어진 적은 바로 격추 (보스 빼고)', col: '#ff5a5a', apply: () => { S.pk.fin += S.pk.fin ? 0.06 : 0.12; } },
@@ -462,7 +472,11 @@ const PERKS = [
   // 전설: 보스를 잡으면 하나는 꼭 나온다
   { tier: 3, id: 'glass', once: true, cat: 'atk', name: '유리 대포', desc: '화력 2배, 대신 기지 보호막 최대치가 절반', col: '#ff3a5a', apply: () => { S.pk.dmg *= 2; S.maxHp = Math.max(1, Math.ceil(S.maxHp / 2)); S.hp = Math.min(S.hp, S.maxHp); } },
   { tier: 3, id: 'oc', once: true, cat: 'sp', name: '과충전', desc: '사령관 스킬을 쓰면 6초 동안 모든 기체 공격 속도 2배', col: '#ffe24a', ok: () => cmdOpen(), apply: () => { S.pk.oc = 1; } },
-  { tier: 3, id: 'scrap', need: 3, cat: 'atk', name: '고철 화력', desc: '가진 부품 10개마다 화력 +6%. 모아 둘수록 세져요', col: '#ffc86a', apply: () => { S.pk.scrap += 0.06; } },
+  { tier: 3, id: 'berserk', cat: 'atk', name: '광전사', desc: '기지 보호막을 1칸 잃을 때마다 화력 +15%', col: '#ff3a3a', apply: () => { S.pk.berserk = (S.pk.berserk || 0) + 0.15; } },
+  { tier: 3, id: 'warp', cat: 'sp', name: '시간 왜곡', desc: '정지장을 웨이브마다 2번, 8초 동안 써요', col: '#7fd4ff', apply: () => { S.pk.warp = 1; S.holdLeft = Math.max(S.holdLeft || 0, 2); } },
+  { tier: 3, id: 'goldcap', cat: 'sup', name: '황금 손', desc: '캡슐의 12%가 Lv3 황금 캡슐로 바뀌어요', col: '#ffd24a', apply: () => { S.pk.goldCap = (S.pk.goldCap || 0) + 0.12; } },
+  { tier: 3, id: 'bulwark', cat: 'def', name: '철옹성', desc: '기지 보호막 최대치 +10, 즉시 +10. 대신 화력 -20%', col: '#5affc8', apply: () => { S.maxHp += 10; S.hp += 10; S.pk.dmg *= 0.8; } },
+  { tier: 3, id: 'scrap', need: 3, cat: 'atk', name: '고철 화력', desc: '가진 부품 10개마다 화력 +4%. 모아 둘수록 세져요', col: '#ffc86a', apply: () => { S.pk.scrap += 0.04; } },
   { tier: 3, id: 'revive', need: 6, once: true, cat: 'def', name: '최후의 방벽', desc: '기지 보호막이 처음 0이 되면 5로 버티고 적이 3초 멈춰요', col: '#5affc8', apply: () => { S.pk.revive = 1; } },
 ];
 
@@ -506,7 +520,12 @@ function rollPerks() {
       const bag = PERKS.filter(p => p.tier === tier && can(p) && !out.includes(p));
       const fresh = bag.filter(p => !out.some(q => q.cat === p.cat));
       const pick = fresh.length ? fresh : bag;
-      if (pick.length) out.push(pick[Math.floor(R() * pick.length)]);
+      if (pick.length) {   // 이미 가진 강화는 가진 개수만큼 확률이 절반씩 (운이 좋으면 겹친다)
+        const wt = p => Math.pow(0.5, S.perks.filter(q => q === p.id).length), tot = pick.reduce((a, p) => a + wt(p), 0);
+        let r = R() * tot, sel = pick[pick.length - 1];
+        for (const p of pick) { r -= wt(p); if (r <= 0) { sel = p; break; } }
+        out.push(sel);
+      }
     }
   }
   S.legendNext = false;
@@ -565,7 +584,8 @@ const uSize = u => SHAPES[UNIT[u.type].shape].length;
 
 function startWave(n) {
   const st = S.stage;
-  S.wave = n; S.waveT = 0; S.mode = 'play'; S.holdLeft = 1;   // 정지장: 웨이브마다 한 번
+  S.wave = n; S.waveT = 0; S.mode = 'play'; S.holdLeft = S.pk.warp ? 2 : 1;   // 정지장: 웨이브마다 한 번 (시간 왜곡이면 두 번)
+  if (S.pk.waveGear && n > 1) addGear(S.pk.waveGear, W / 2, LINE_Y - 80);
   if (st.endless) {
     const ci = cyclePos(n);
     let mut = null;

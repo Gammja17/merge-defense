@@ -147,6 +147,43 @@ let ENDLESS_GROWTH = 1.29, ENDLESS_BASE = 1.35, ENDLESS_BOSS = 0.17;   // 초반
 const hpMul = () => S.stage.endless ? ENDLESS_BASE * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();
 const AFFIX = { fast: ['가속', '#ff9a3a'], armor: ['장갑', '#7fd4ff'], split: ['분열', '#8dff9a'], bomb: ['자폭', '#ff4a8a'] }, AFFIX_KEYS = Object.keys(AFFIX);
 // 보스 기믹: 칸을 영구 봉쇄 (그 칸의 기체는 사라진다), 기체 분해
+// ── 보스 기믹 (못 피함). 치명적: 칸 봉쇄, 강등, 줄 빙결, 대기함 비우기, (격노) 분해. 짜증: 부품 차단, 화력 감소, 단단한 캡슐, 게이지 깎기 ──
+const GIMMICK = {
+  seal:     { name: '칸 봉쇄', lethal: true, run: b => sealCells(1, b) },
+  demote:   { name: '강등', lethal: true, run: b => {
+    const us = gridUnits().filter(u => u.lv >= 3 && !u.fuse); if (!us.length) return false;
+    const u = us[Math.floor(Math.random() * us.length)], p = unitPos(u);
+    u.lv -= 2; u.maxHp = unitMaxHp(u.type, u.lv); u.hp = Math.min(u.hp, u.maxHp);
+    S.fx.push({ kind: 'bolt', pts: [{ x: b.x, y: b.y + 40 }, p], t: 0, life: 0.4, col: '#ff3a8a' }); sparks(p.x, p.y, '#ff6aa0', 20, 300);
+    addText(p.x, p.y - 30, `강등! Lv${u.lv}`, '#ff6aa0', 22, 1.2); play('shield_break', 0.45);
+  } },
+  rowfreeze: { name: '한 줄 빙결 8초', lethal: true, run: b => {
+    const r = Math.floor(Math.random() * openRows());
+    for (let c = r * COLS; c < (r + 1) * COLS; c++) { const u = S.slots[c], q = cellPos(c); if (u) u.ice = Math.max(u.ice || 0, 8); S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.5, color: '#bff4ff' }); sparks(q.x, q.y, '#dff8ff', 8, 200, 'shard'); }
+    play('shield_crack', 0.5, 1.1);
+  } },
+  purge:    { name: '대기함 비우기', lethal: true, run: b => { const rs = S.reserve.filter(Boolean); if (!rs.length) return false; for (const u of rs) destroyUnit(u, '소각!'); } },
+  shatter:  { name: '분해', lethal: true, run: b => { const us = gridUnits(); if (us.length < 2) return false; const u = us[Math.floor(Math.random() * us.length)]; S.fx.push({ kind: 'bolt', pts: [{ x: b.x, y: b.y + 40 }, unitPos(u)], t: 0, life: 0.4, col: '#ff3a4a' }); destroyUnit(u, '분해!'); } },
+  nogear:   { name: '부품 차단 60초', run: () => { S.debuff.nogear = 60; } },
+  weak:     { name: '화력 -30% 20초', run: () => { S.debuff.weak = 20; } },
+  hardcap:  { name: '단단한 캡슐 30초', run: () => { S.debuff.hardcap = 30; } },
+  drain:    { name: '사령관 게이지 절반', run: () => { if (!cmdOpen() || !S.cmd) return false; S.cmd = Math.floor(S.cmd / 2); } },
+};
+const DEBUFF_NAME = { nogear: '부품 차단', weak: '화력 -30%', hardcap: '단단한 캡슐' };
+function bossGimmick(b, when) {
+  S.debuff = S.debuff || {};
+  const keys = Object.keys(GIMMICK).filter(k => k !== 'shatter'), lethal = keys.filter(k => GIMMICK[k].lethal), annoy = keys.filter(k => !GIMMICK[k].lethal);
+  const pick = list => list[Math.floor(Math.random() * list.length)];
+  const todo = when === 'rage' ? ['shatter', pick(annoy)] : when === 'mini' ? [pick(keys)] : [pick(lethal), pick(annoy)];
+  todo.forEach((k, i) => later(i * 0.9, () => {
+    if (b.dead || S.mode !== 'play') return;
+    let g = GIMMICK[k];
+    if (g.run(b) === false) { g = GIMMICK.seal; g.run(b); }   // 할 게 없으면 칸 봉쇄로
+    addText(W / 2, 250 + i * 34, g.name + '!', g.lethal ? '#ff4a5a' : '#ffb04a', 26, 1.6);
+    S.glitch = Math.max(S.glitch, 0.3); play('zap', 0.4, 0.6);
+  }));
+  hintOnce('gimmick', '보스가 방해 기술을 써요');
+}
 // 게임 시간으로 잠시 뒤에 할 일 (일시정지, 정지장, 배속, 시뮬과 맞게)
 function later(t, fn) { (S.later || (S.later = [])).push({ t, fn }); }
 function destroyUnit(u, why) {
@@ -220,7 +257,10 @@ function runEvent(ev) {
         a.pair = b; b.pair = a;
         hintOnce('pair', '묶인 캡슐은 하나만 얻어요');
         if (stageRule() === 'side') { sideCap(a); sideCap(b); }
-      } else { const c = makeCap(ev.r, rx(), mul); if (stageRule() === 'side') sideCap(c); }
+      } else {
+        const rw = S.pk.goldCap && !ev.r.heal && Math.random() < S.pk.goldCap ? (() => { const d = battleDeck().filter(t => UNIT[t].shape === 1); return { type: d[Math.floor(Math.random() * d.length)] || 'f', lv: 3, n: 1, gold: true }; })() : ev.r;   // 황금 손
+        const c = makeCap(rw, rx(), mul); if (stageRule() === 'side') sideCap(c);
+      }
       break;
     }
     default:
@@ -229,7 +269,7 @@ function runEvent(ev) {
         if (ev.x) b.cx = ev.x;
         if (ev.mini) { const f = ev.mini === true ? 0.4 : ev.mini; for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) b[k] *= f; b.mini = true; }   // 중간 보스로 나온 보스 (체력을 줄여서)
         if (ev.rage) bossRage(b);
-        if (!SHOT && !S.tut) later(2.6, () => { if (!b.dead && S.mode === 'play') sealCells(1, b); });   // 보스, 중간 보스: 나타나면 칸 하나 봉쇄
+        if (!SHOT && !S.tut) later(2.6, () => { if (!b.dead && S.mode === 'play') bossGimmick(b, b.mini ? 'mini' : 'spawn'); });   // 보스, 중간 보스: 나타나면 기믹
         if (!S.boss || S.boss.dead) S.boss = b;
         if (!S.bossCine && !S.tut && !SHOT) { S.bossCine = { k: ev.k, t: 0 }; play('vo_hostile', 0.8); play('drums', 0.5, 0.8); }
         if (ev.k === 'boss3') hintOnce('b3', '모선 보호막은 폭발이나 번개로');
@@ -241,7 +281,8 @@ function runEvent(ev) {
   }
 }
 function makeCap(rw, x, mul) {
-  let hits = Math.max(1, rw.heal ? Math.round(12 * mul * S.pk.cap) : Math.round(UNIT[rw.type].cost * rw.n * [1, 3.2, 5.5][rw.lv - 1] * mul * S.pk.cap));
+  if (S.debuff && S.debuff.hardcap > 0) mul *= 1.5;   // 단단한 캡슐 기믹
+  let hits = Math.max(1, rw.heal ? Math.round(12 * mul * S.pk.cap) : Math.round(UNIT[rw.type].cost * rw.n * [1, 3.2, 5.5][Math.min(rw.lv, 3) - 1] * mul * S.pk.cap));
   const mh = hits;
   const c = { rw, x, y: -40, hits, maxHits: mh, pending: 0, r: 34, speed: 34, pair: null, bob: Math.random() * 6, carrier: null };
   S.caps.push(c);

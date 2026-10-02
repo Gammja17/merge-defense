@@ -217,6 +217,15 @@ function drawHud() {
     BUTTONS.push({ x: 240, y: 8, w: 44, h: 46, act: 'speed' });
   }
   if (!S.tut && (S.mode === 'play' || S.holdT > 0)) drawHoldBtn();
+  if (S.debuff) {   // 보스 기믹으로 걸린 방해: 붉은 칩과 남은 초
+    ctx.font = FK(13);
+    const on = Object.keys(S.debuff).filter(k => S.debuff[k] > 0), txts = on.map(k => `${DEBUFF_NAME[k]} ${Math.ceil(S.debuff[k])}`), ws = txts.map(t => ctx.measureText(t).width + 18);
+    let dx = W / 2 - (ws.reduce((a, b) => a + b + 6, 0) - 6) / 2;   // 가운데 정렬, 보스 체력 막대 아래
+    txts.forEach((txt, i) => {
+      ctx.fillStyle = 'rgba(60,8,16,.88)'; chamfer(dx, 112, ws[i], 24, 6); ctx.fill(); ctx.strokeStyle = '#ff5a6a'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffb0b8'; ctx.fillText(txt, dx + 9, 124); dx += ws[i] + 6;
+    });
+  }
 
   ctx.textAlign = 'center';
   ctx.font = FT(15, 900);
@@ -487,7 +496,7 @@ function drawHoldBtn() {
   if (ready) drawGlow('#7fd4ff', x, y, 40, 0.25 + 0.15 * Math.sin(t * 4));
   ctx.fillStyle = on ? 'rgba(60,150,255,.35)' : ready ? 'rgba(20,50,90,.9)' : 'rgba(20,24,36,.8)'; hexPath(x, y, r); ctx.fill();
   ctx.strokeStyle = ready || on ? '#7fd4ff' : 'rgba(255,255,255,.25)'; ctx.lineWidth = 2.5; ctx.stroke();
-  if (on) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * S.holdT / 5); ctx.stroke(); }
+  if (on) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * S.holdT / (S.pk.warp ? 8 : 5)); ctx.stroke(); }
   // 그림: 모래시계
   const c = ready || on ? '#dff4ff' : 'rgba(255,255,255,.3)';
   ctx.fillStyle = c; ctx.strokeStyle = c; ctx.lineWidth = 2.5;
@@ -1307,13 +1316,15 @@ function drawSettings() {
 function drawPause() {
   BUTTONS = [];
   ctx.fillStyle = 'rgba(2,3,12,.72)'; ctx.fillRect(0, 0, W, H);
-  panel(90, 280, W - 180, 380, '#48c8ff');
+  panel(90, 280, W - 180, 436, '#48c8ff');
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FT(26, 900); glitchText('PAUSED', W / 2, 330, '#d8f6ff', 5, Math.random() < 0.05 ? 4 : 0);
   button(W / 2 - 120, 380, 240, 52, '계속하기', 'resume', 'primary');
   button(W / 2 - 120, 446, 240, 44, '설정', 'settings', 'ghost');
   button(W / 2 - 120, 502, 240, 44, '다시 하기', 'retry', 'ghost');
-  button(W / 2 - 120, 558, 240, 44, '지도로 (이번 판 포기)', 'map', 'danger');
+  button(W / 2 - 120, 558, 240, 44, '지도로 (기록 없이 나가기)', 'map', 'ghost');
+  const armed = UI.surArm > performance.now() / 1000;   // 포기하기: 두 번 눌러야 확정. 무한은 점수가 기록돼요
+  button(W / 2 - 120, 614, 240, 44, armed ? '한 번 더 누르면 포기' : '포기하고 결과 보기', 'surrender', 'danger');
 }
 // 정비소: 부품으로 줄을 강화한다. 여는 동안 전투가 멈춘다
 function drawGearIcon(x, y, r, col = '#ffb347') {

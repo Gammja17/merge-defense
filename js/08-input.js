@@ -141,10 +141,15 @@ function doAction(b) {
     }
     case 'pause': S.paused = true; return;
     case 'resume': S.paused = false; return;
+    case 'surrender':
+      if (!(UI.surArm > performance.now() / 1000)) { UI.surArm = performance.now() / 1000 + 2.5; return; }
+      UI.surArm = 0; S.paused = false; drag = null;
+      if (S.stage && ['play', 'break', 'clearing'].includes(S.mode)) { S.hp = 0; endStage(false); }
+      return;
     case 'floor': { const own = floorsOwned(); PROG.floor = own[(own.indexOf(PROG.floor || '') + 1) % own.length]; save(); return; }
     case 'hold':   // 정지장 5초
       if (S.mode !== 'play' || S.holdT > 0 || !S.holdLeft) { if (!S.holdLeft) denied(); return; }
-      S.holdLeft--; S.holdT = 5; play('zap', 0.4, 0.5); play('shieldUp', 0.4, 0.8);
+      S.holdLeft--; S.holdT = S.pk.warp ? 8 : 5; play('zap', 0.4, 0.5); play('shieldUp', 0.4, 0.8);
       S.fx.push({ kind: 'ring', x: W / 2, y: 380, t: 0, life: 0.6, color: '#7fd4ff' }, { kind: 'ring', x: W / 2, y: 380, t: -0.1, life: 0.7, color: '#ffffff' });
       hintOnce('hold', '정지장: 5초 동안 재정비');
       return;

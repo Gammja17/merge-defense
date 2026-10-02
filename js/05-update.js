@@ -24,13 +24,17 @@ function bossRage(e) {
   S.whiteFlash = Math.max(S.whiteFlash, 0.6); S.glitch = Math.max(S.glitch, 0.5); shake(0.8);
   addText(e.x, Math.max(170, e.y + e.h * 0.4), '격노!', '#ff3a4a', 34, 1.4);
   play('vo_hostile', 0.7); play('drums', 0.5, 0.7);
-  later(1.2, () => {   // 격노한 보스는 기체 하나를 분해한다
-    if (e.dead || S.mode !== 'play') return;
-    const us = gridUnits(); if (us.length < 2) return;
-    const u = us[Math.floor(Math.random() * us.length)], p = unitPos(u);
-    S.fx.push({ kind: 'bolt', pts: [{ x: e.x, y: e.y + 40 }, p], t: 0, life: 0.4, col: '#ff3a4a' });
-    destroyUnit(u, '분해!');
-  });
+  later(1.2, () => { if (!e.dead && S.mode === 'play') bossGimmick(e, 'rage'); });   // 격노: 분해 + 짜증 기믹
+}
+// 판에 기체가 하나도 없으면 공격이 기지 보호막을 바로 때린다 (기체를 다 팔고 버티는 판이 끝나지 않는 것 막기)
+function baseStrike(e, dmg) {
+  if (gridUnits().length || S.mode !== 'play') return false;
+  const n = Math.max(1, dmg || 1), x = Math.max(30, Math.min(W - 30, e.x));
+  S.hp -= n; S.baseHitT = 0.6; shake(0.4);
+  S.fx.push({ kind: 'bolt', pts: [{ x: e.x, y: e.y + 20 }, { x, y: LINE_Y }], t: 0, life: 0.3, col: '#ff4a5a' });
+  boom(x, LINE_Y, 1, '#ff5050'); S.shieldHits.push({ x, t: 0 });
+  addText(x, LINE_Y - 30, `방어막 -${n}`, '#ff6060', 22); play('shieldDown', 0.4);
+  return true;
 }
 function updateEnemy(e, dt) {
   e.t += dt;
@@ -78,7 +82,7 @@ function updateEnemy(e, dt) {
     e.x += Math.sin(e.t * 1.3) * 18 * dt;
     e.atkT -= dt;
     if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) {
-      if (launchAttack(d.atk, e, d.atkDmg)) { e.atkLeft--; e.atkT = d.atkCd * (mutOn('rapid') ? 0.7 : 1) * endlessAtkMul(); } else e.atkT = 1;
+      if (launchAttack(d.atk, e, d.atkDmg) || baseStrike(e, d.atkDmg)) { e.atkLeft--; e.atkT = d.atkCd * (mutOn('rapid') ? 0.7 : 1) * endlessAtkMul(); } else e.atkT = 1;
     }
   }
   if (e.boss && e.y > 80) {
@@ -88,7 +92,7 @@ function updateEnemy(e, dt) {
   }
   if (e.boss && d.atk && e.y > 60) {
     e.atkT -= dt;
-    if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) e.atkT = launchAttack(e.nextAtk || d.atk, e, d.atkDmg) ? d.atkCd * (mutOn('rapid') ? 0.7 : 1) * endlessAtkMul() * (e.rage ? 0.65 : 1) : 1;
+    if (e.atkT <= 0 && !S.attacks.some(a => a.src === e)) e.atkT = launchAttack(e.nextAtk || d.atk, e, d.atkDmg) || baseStrike(e, d.atkDmg) ? d.atkCd * (mutOn('rapid') ? 0.7 : 1) * endlessAtkMul() * (e.rage ? 0.65 : 1) : 1;
   }
   // 2단계(격노): 진짜 보스는 체력이 절반 아래로 떨어지면 더 자주 쏘고 더 빨리 부하를 부른다
   if (e.boss && !e.mini && !e.rage && e.hp < e.maxHp * 0.5) bossRage(e);
@@ -275,6 +279,7 @@ function updateAuras(dt) {
     const q = S.chainQ.splice(0, 6);
     for (const c of q) { S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.35, color: c.col || '#ff8a4a' }); blast(c.x, c.y, c.r || 80, c.d); }
   }
+  S.killRushT = Math.max(0, (S.killRushT || 0) - dt);
   S.heatT = Math.max(0, (S.heatT || 0) - dt); S.ocT = Math.max(0, (S.ocT || 0) - dt); S.iceT = Math.max(0, (S.iceT || 0) - dt * 1.5);
   for (const rb of S.rebuilds) {
     rb.t -= dt;
@@ -382,6 +387,7 @@ function update(dt) {
     if (S.holdT <= 0) { play('open', 0.35, 1.2); S.fx.push({ kind: 'ring', x: W / 2, y: 380, t: 0, life: 0.5, color: '#7fd4ff' }); }
     return;
   }
+  if (S.debuff) for (const k in S.debuff) S.debuff[k] = Math.max(0, S.debuff[k] - dt);
   if (S.later && S.later.length) { for (const l of S.later) l.t -= dt; const due = S.later.filter(l => l.t <= 0); S.later = S.later.filter(l => l.t > 0); for (const l of due) l.fn(); }
 
   if (S.mode === 'break') {
@@ -621,7 +627,7 @@ function update(dt) {
     S.attacks = [];
     S.hp = Math.min(S.maxHp, S.hp + S.pk.regen);
     const gg = S.crisis ? 3 : 2;
-    addGear(gg, W / 2, LINE_Y - 80);
+    addGear(gg + (S.pk.interest ? Math.min(5 * S.pk.interest, S.pk.interest * Math.floor(S.gear / 10)) : 0), W / 2, LINE_Y - 80);   // 부품 이자
     S.banner = { text: 'CLEAR', sub: `웨이브 ${S.wave} 방어 성공, 부품 +${gg}`, color: '#8dff9a', t: 0, life: 2 };
     S.crisis = false;
     if (st.endless && S.wave >= 10) ach('endless_10');

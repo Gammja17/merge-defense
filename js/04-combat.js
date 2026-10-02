@@ -275,12 +275,16 @@ function layMines(u, base) {
 function pkDmg(u) {
   let m = S.pk.dmg;
   if (u.fuse) m *= 1.6;   // 특수 합체 기체
+  if (S.pk.vanguard && u.cells && Math.floor(u.cells[0] / COLS) === 0) m *= 1 + S.pk.vanguard;
+  if (S.pk.few || S.pk.many) { const n = gridUnits().length; if (S.pk.few && n <= 6) m *= 1 + S.pk.few; if (S.pk.many) m *= 1 + Math.min(0.6, S.pk.many * n); }
+  if (S.pk.berserk) m *= 1 + S.pk.berserk * Math.max(0, S.maxHp - S.hp);
+  if (S.debuff && S.debuff.weak > 0) m *= 0.7;   // 보스 기믹: 화력 감소
   if (S.pk.lonely && u.cells && !neighborsOf(u).size) m *= 1 + S.pk.lonely;
   if (S.pk.scrap) m *= 1 + S.pk.scrap * Math.floor(S.gear / 10);
   return m;
 }
 // 공격 속도 배율 (강화): 냉각, 합체 열기, 과충전
-const pkSpd = () => S.pk.spd * (S.heatT > 0 ? 1 + S.pk.heat : 1) * (S.ocT > 0 ? 2 : 1);
+const pkSpd = () => S.pk.spd * (S.heatT > 0 ? 1 + S.pk.heat : 1) * (S.ocT > 0 ? 2 : 1) * (S.killRushT > 0 ? 1 + S.pk.killRush : 1);
 function fireUnit(u) {
   const p = unitPos(u), L = Math.min(u.lv, 5), def = UNIT[u.type];
   const base = def.dmg * LV_MUL[u.lv - 1] * cellAtk(u) * (1 + u.buffDmg) * mkMul(u.type) * pkDmg(u);
@@ -538,6 +542,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   }
   if (DMG_BY && S.dmgBy) S.dmgBy[DMG_BY] = (S.dmgBy[DMG_BY] || 0) + Math.min(dmg, Math.max(0, e.hp));
   e.hp -= dmg;
+  if (S.pk.overkill && e.hp < 0 && src !== 'blast' && S.chainQ.length < 12 && !e.dead) S.chainQ.push({ x: e.x, y: e.y, d: -e.hp * S.pk.overkill, r: 70, col: '#ff5a3a' });   // 과잉 화력
   if (S.pk.fin && !e.boss && e.hp > 0 && e.hp < e.maxHp * S.pk.fin) { e.hp = 0; if (!quiet) addText(e.x, e.y - e.r, '마무리', '#ff5a5a', 15, 0.6); }
   if (quiet && S.time > (e.qf || 0)) { e.qf = S.time + 0.12; e.flash = Math.max(e.flash, 0.06); e.kbOff = Math.min(14, (e.kbOff || 0) + 1.5); }   // 빔, 드론, 불바다처럼 조용한 피해도 살짝 번쩍
   if (!quiet) {
@@ -592,6 +597,8 @@ function useCmd(k, x, y) {
 }
 function killEnemy(e) {
   e.dead = true;
+  if (S.pk.killRush) S.killRushT = 2;
+  if (S.pk.vamp && S.mode === 'play') { S.vampN = (S.vampN || 0) + 1; if (S.vampN >= Math.ceil(25 / S.pk.vamp)) { S.vampN = 0; if (S.hp < S.maxHp) { S.hp++; addText(W / 2, LINE_Y - 30, '흡수 방벽 +1', '#6dff8a', 18); } } }
   if (e.aff === 'split' && S.mode === 'play') for (const dx of [-22, 22]) { const m = spawnEnemy('grunt', e.x + dx, e.y); m.hp = m.maxHp = m.maxHp * 0.5; }   // 정예 분열: 둘로 갈라진다
   if (e.aff === 'bomb' && S.mode === 'play') {   // 정예 자폭: 가장 가까운 기체가 3초 동안 얼어붙는다
     let bu = null, bd = 1e9; for (const u of gridUnits()) { const p = unitPos(u), d = Math.hypot(p.x - e.x, p.y - e.y); if (d < bd) { bd = d; bu = u; } }
@@ -646,7 +653,7 @@ function killEnemy(e) {
     S.fx.push({ kind: 'debris', img: e.img, x: e.x, y: e.y, w: e.w, h: e.h, rot: e.rot, pcs, t: 0, life: 0.75 });
   }
   if (e.boss) addGear(8, e.x, e.y); else if (e.k === 'elite') addGear(4, e.x, e.y);
-  else if (!(e.hacked > 0) && e.k !== 'rock' && e.k !== 'splitS' && Math.random() < (ENEMY[e.k].atk ? 0.5 : 0.15) * S.pk.gear) addGear(1, e.x, e.y);
+  else if (!(e.hacked > 0) && e.k !== 'rock' && e.k !== 'splitS' && Math.random() < (ENEMY[e.k].atk ? 0.5 : 0.15) * S.pk.gear * (S.debuff && S.debuff.nogear > 0 ? 0.1 : 1)) addGear(1, e.x, e.y);   // 부품 차단 기믹
   if (S.pk.chain && !e.boss && S.mode === 'play' && S.chainQ.length < 12) S.chainQ.push({ x: e.x, y: e.y, d: e.maxHp * S.pk.chain });
   if (e.k === 'split') for (const vx of [-90, 0, 90]) { const c = spawnEnemy('splitS', e.x + vx * 0.2, e.y); c.vx = vx; }
   if (e.k === 'elite') {
@@ -711,11 +718,17 @@ function giveUnit(type, lv, fromX, fromY, col) {
 }
 function claimCap(c) {
   c.dead = true; c.claimed = true;
-  const rw = c.rw, look = capLook(rw), col = look.col;
+  let rw = c.rw; const look = capLook(rw), col = look.col;
   play('capbreak', 0.5);
   boom(c.x, c.y, 0.8, col);
   S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.5, color: col });
   sparks(c.x, c.y, col, 20, 280);
+  if (S.pk.capSlow) for (const e of S.enemies) if (shootable(e) && Math.hypot(e.x - c.x, e.y - c.y) < 220) { e.slow = Math.max(e.slow, 0.5); e.slowT = Math.max(e.slowT, 3); }   // 냉각 캡슐
+  if (S.pk.gamble && !rw.heal) {   // 도박사
+    const r = Math.random();
+    if (r < 0.3 && UNIT[rw.type].shape === 1) { c.rw = rw = { ...rw, lv: Math.min(5, rw.lv + 1) }; addText(c.x, c.y - 52, '대박!', '#ffd24a', 22); }
+    else if (r < 0.5) { addText(c.x, c.y - 30, '꽝!', '#aaaaaa', 24); play('deny', 0.4); if (c.pair && !c.pair.dead) c.pair.dead = true; return; }
+  }
   if (rw.heal) {
     const before = S.hp;
     S.hp = Math.min(S.maxHp, S.hp + rw.heal);
