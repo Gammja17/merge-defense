@@ -196,14 +196,14 @@ const ENEMY = {
   boss4:   { img: 'enemies/boss4', hp: 12000, speed: 9,  r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '최종 기함', shield: 0.25, regen: 8, atk: 'cross', atkCd: 8, atkDmg: 3 },
 };
 // ── 특수 합체: 짝꿍 두 기체가 둘 다 최종 단계(Lv8)면 하나를 다른 하나에 겹쳐 합친다 ──
-// keep: 합친 뒤 남는 기체 종류 (그 기체의 공격을 그대로 쓰고, 특수 능력이 붙는다). 화력 ×1.6, 체력 ×1.5
+// col: 짝마다 다른 색 (편성 화면의 테두리, 짝꿍 표시, 판 위 연결선). keep: 합친 뒤 남는 기체 종류 (그 기체의 공격을 그대로 쓰고, 특수 능력이 붙는다). 화력 ×1.6, 체력 ×1.5
 const FUSE = [
-  { id: 'aegis', short: '주변 기체 보호와 강화', a: 'g', b: 'x', keep: 'g', name: '이지스 지휘함', col: '#7fe8ff', desc: '주변 8칸 기체가 받는 피해 절반, 화력과 공격 속도 크게 증가. 10초마다 기지 보호막 +1' },
-  { id: 'bolt', short: '레이저 + 연쇄 번개',  a: 'f', b: 'e', keep: 'f', name: '번개 요격기',   col: '#ffe24a', desc: '레이저가 맞힌 적에서 번개가 튀어요' },
-  { id: 'sing', short: '끌어모아 대폭발',  a: 't', b: 'v', keep: 't', name: '특이점 포대',   col: '#c89bff', desc: '6초마다 적을 한데 끌어모은 뒤 그 자리에 큰 폭발' },
-  { id: 'zero', short: '저격 + 빙결',  a: 's', b: 'c', keep: 's', name: '절대영도 저격기', col: '#bff4ff', desc: '저격탄이 적을 얼리고, 언 적은 2배 피해' },
-  { id: 'pyro', short: '산탄 + 화염',  a: 'a', b: 'h', keep: 'a', name: '화염 산탄포',   col: '#ff8a3a', desc: '산탄에 맞은 적이 불타요' },
-  { id: 'dock', short: '드론 + 전체 수리',  a: 'd', b: 'm', keep: 'd', name: '정비 모함',     col: '#6dff8a', desc: '3초마다 판의 모든 기체를 고치고, 12초마다 기지 보호막 +1' },
+  { id: 'aegis', short: '주변 기체 보호와 강화', a: 'g', b: 'x', keep: 'g', name: '이지스 지휘함', col: '#3ad8ff', desc: '주변 8칸 기체가 받는 피해 절반, 화력과 공격 속도 크게 증가. 10초마다 기지 보호막 +1' },
+  { id: 'bolt', short: '레이저 + 연쇄 번개',  a: 'f', b: 'e', keep: 'f', name: '번개 요격기',   col: '#ffe03a', desc: '레이저가 맞힌 적에서 번개가 튀어요' },
+  { id: 'sing', short: '끌어모아 대폭발',  a: 't', b: 'v', keep: 't', name: '특이점 포대',   col: '#b86bff', desc: '6초마다 적을 한데 끌어모은 뒤 그 자리에 큰 폭발' },
+  { id: 'zero', short: '저격 + 빙결',  a: 's', b: 'c', keep: 's', name: '절대영도 저격기', col: '#ff5ab4', desc: '저격탄이 적을 얼리고, 언 적은 2배 피해' },
+  { id: 'pyro', short: '산탄 + 화염',  a: 'a', b: 'h', keep: 'a', name: '화염 산탄포',   col: '#ff7a2a', desc: '산탄에 맞은 적이 불타요' },
+  { id: 'dock', short: '드론 + 전체 수리',  a: 'd', b: 'm', keep: 'd', name: '정비 모함',     col: '#4aff7a', desc: '3초마다 판의 모든 기체를 고치고, 12초마다 기지 보호막 +1' },
 ];
 const FUSE_BY = Object.fromEntries(FUSE.map(f => [f.id, f]));
 const fuseOf = (p, q) => p && q && p !== q && !p.fuse && !q.fuse && p.lv >= MAX_LV && q.lv >= MAX_LV && FUSE.find(f => (f.a === p.type && f.b === q.type) || (f.b === p.type && f.a === q.type)) || null;

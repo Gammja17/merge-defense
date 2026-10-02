@@ -524,16 +524,17 @@ function drawPairHints() {
   // 특수 합체 짝꿍: 금빛 점선이 맥박친다
   const done = new Set();
   for (const a of us) for (const b of us) {
-    if (a === b || done.has(a) || done.has(b) || !fuseOf(a, b)) continue;
+    const ff = fuseOf(a, b);
+    if (a === b || done.has(a) || done.has(b) || !ff) continue;
     done.add(a); done.add(b);
     const p = unitPos(a), q = unitPos(b), pu = 0.5 + 0.5 * Math.sin(t * 4);
     ctx.lineCap = 'round';
-    ctx.strokeStyle = 'rgba(255,190,40,.35)'; ctx.lineWidth = 12 + 4 * pu; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
-    ctx.strokeStyle = '#ffe98a'; ctx.lineWidth = 4; ctx.setLineDash([12, 8]); ctx.lineDashOffset = -t * 40;
+    ctx.strokeStyle = ff.col; ctx.globalAlpha = 0.35; ctx.lineWidth = 12 + 4 * pu; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.setLineDash([12, 8]); ctx.lineDashOffset = -t * 40;
     ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.setLineDash([]); ctx.lineCap = 'butt';
-    for (const o of [a, b]) { const bx = unitBox(o); drawGlow('#ffd24a', bx.x + bx.w / 2, bx.y + bx.h / 2, 60, 0.3 + 0.3 * pu); ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 3 + 2 * pu; chamfer(bx.x - 2, bx.y - 2, bx.w + 4, bx.h + 4, 10); ctx.stroke(); }
+    for (const o of [a, b]) { const bx = unitBox(o); drawGlow(ff.col, bx.x + bx.w / 2, bx.y + bx.h / 2, 60, 0.3 + 0.3 * pu); ctx.strokeStyle = ff.col; ctx.lineWidth = 3 + 2 * pu; chamfer(bx.x - 2, bx.y - 2, bx.w + 4, bx.h + 4, 10); ctx.stroke(); }
     const m = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
-    ctx.font = FK(14); outlineText('특수 합체', m.x, m.y - 14, '#ffe9a8', 4);
+    ctx.font = FK(14); outlineText('특수 합체', m.x, m.y - 14, ff.col, 4);
   }
   // 같은 종류 같은 레벨 짝: 기체 위에 초록 ▲ (통통)
   for (const u of us) {
@@ -879,19 +880,19 @@ const fusePaired = t => { const o = fusePartner(t); return !!o && PROG.deck.incl
 const fuseWanted = t => { const o = fusePartner(t); return !!o && !PROG.deck.includes(t) && PROG.deck.includes(o) && isOwned(t); };   // 짝꿍이 편성에 있는데 나는 없다
 function drawFuseBadge(t, cx, cy, r) {
   const o = fusePartner(t); if (!o) return;
-  const on = fusePaired(t) || fuseWanted(t), od = UNIT[o], pu = 0.5 + 0.5 * Math.sin(performance.now() / 220);
-  if (on) drawGlow('#ffd24a', cx, cy, r * 2.2, 0.3 + 0.25 * pu);
-  ctx.fillStyle = on ? 'rgba(40,28,4,.96)' : 'rgba(20,16,8,.85)'; hexPath(cx, cy, r); ctx.fill();
-  ctx.strokeStyle = on ? '#ffd24a' : 'rgba(255,210,74,.45)'; ctx.lineWidth = on ? 2 : 1.3; ctx.stroke();
+  const on = fusePaired(t) || fuseWanted(t), od = UNIT[o], pu = 0.5 + 0.5 * Math.sin(performance.now() / 220), fc = fuseFor(t).col;   // 짝마다 다른 색
+  if (on) drawGlow(fc, cx, cy, r * 2.2, 0.3 + 0.25 * pu);
+  ctx.fillStyle = 'rgba(6,8,18,.95)'; hexPath(cx, cy, r); ctx.fill();
+  ctx.strokeStyle = fc; ctx.globalAlpha = on ? 1 : 0.6; ctx.lineWidth = on ? 2.5 : 1.8; ctx.stroke(); ctx.globalAlpha = 1;
   ctx.save(); ctx.globalAlpha = on ? 1 : 0.6; drawUnitArt(o, 1, cx, cy, Math.min(r * 1.4 / od.iw, r * 1.25 / od.ih), 1, null); ctx.restore();
 }
 // 짝꿍 카드 테두리: 둘 다 편성 = 금테 맥박, 짝꿍만 편성 = 금테 + '짝꿍' 꼬리표
 function drawFuseFrame(t, x, y, w, h, r) {
   const paired = fusePaired(t), want = fuseWanted(t);
   if (!paired && !want) return;
-  const pu = 0.5 + 0.5 * Math.sin(performance.now() / 220);
-  ctx.strokeStyle = '#ffd24a'; ctx.globalAlpha = 0.55 + 0.45 * pu; ctx.lineWidth = 3; chamfer(x - 2, y - 2, w + 4, h + 4, r + 1); ctx.stroke(); ctx.globalAlpha = 1;
-  if (want) { ctx.font = FK(11); const tw = ctx.measureText('짝꿍').width + 12; ctx.fillStyle = '#ffd24a'; chamfer(x + w / 2 - tw / 2, y - 6, tw, 16, 4); ctx.fill(); ctx.fillStyle = '#2a1a00'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('짝꿍', x + w / 2, y + 2); }
+  const pu = 0.5 + 0.5 * Math.sin(performance.now() / 220), fc = fuseFor(t).col;
+  ctx.strokeStyle = fc; ctx.globalAlpha = 0.6 + 0.4 * pu; ctx.lineWidth = 3.5; chamfer(x - 2, y - 2, w + 4, h + 4, r + 1); ctx.stroke(); ctx.globalAlpha = 1;
+  if (want) { ctx.font = FK(11); const tw = ctx.measureText('짝꿍').width + 12; ctx.fillStyle = fc; chamfer(x + w / 2 - tw / 2, y - 6, tw, 16, 4); ctx.fill(); ctx.fillStyle = '#0a0a14'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('짝꿍', x + w / 2, y + 2); }
 }
 function drawHangar() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
