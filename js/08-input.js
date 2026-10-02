@@ -138,6 +138,7 @@ function doAction(b) {
     }
     case 'pause': S.paused = true; return;
     case 'resume': S.paused = false; return;
+    case 'speed': PROG.settings.speed = SET().speed === 2 ? 1 : 2; save(); return;
     case 'settings': UI.settings = true; UI.resetArm = 0; return;
     case 'closesettings': UI.settings = false; return;
     case 'toggle': PROG.settings[b.key] = !PROG.settings[b.key]; save(); return;
@@ -316,7 +317,11 @@ function loop(now) {
     if (S.slowmo > 0) { S.slowmo -= dt; gdt *= 0.25 + 0.75 * Math.max(0, 1 - S.slowmo / 1.3) ** 2; }
     if (S.bossDown) { S.bossDown.t += dt; if (S.bossDown.t > 2.2) S.bossDown = null; }
   }
-  if (S.stage && !S.paused && !S.frozen && !UI.settings && !UI.reveal && !UI.enemyIntro && !UI.shop && !(UI.card && S.mode !== 'win')) update(gdt);
+  if (S.stage && !S.paused && !S.frozen && !UI.settings && !UI.reveal && !UI.enemyIntro && !UI.shop && !(UI.card && S.mode !== 'win')) {
+    update(gdt);
+    // 배속 ×2: 한 번에 두 배를 돌리면 빠른 탄이 적을 뚫으니 같은 dt로 한 번 더. 전투 중일 때만
+    if (!S.tut && SET().speed === 2 && S.stage && !S.paused && ['play', 'break', 'clearing'].includes(S.mode)) update(gdt);
+  }
   updateMusic(dt);
   draw(dt);
   if (NICK.el && !NICK.show) NICK.el.style.display = 'none';

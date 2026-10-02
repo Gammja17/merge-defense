@@ -202,6 +202,18 @@ function drawHud() {
   ctx.strokeStyle = 'rgba(120,220,255,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.fillStyle = '#bfefff'; ctx.fillRect(211, 22, 5, 18); ctx.fillRect(220, 22, 5, 18);
   BUTTONS.push({ x: 196, y: 8, w: 44, h: 46, act: 'pause' });
+  // 배속 버튼: ×1은 ▶ 하나(흐리게), ×2는 ▶▶ (노랗게 빛남). 튜토리얼 중엔 숨김
+  if (!S.tut) {
+    const fast = SET().speed === 2;
+    ctx.fillStyle = fast ? 'rgba(255,217,102,.16)' : 'rgba(90,210,255,.1)'; chamfer(244, 14, 36, 34, 7); ctx.fill();
+    ctx.strokeStyle = fast ? 'rgba(255,217,102,.8)' : 'rgba(120,220,255,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+    if (fast) drawGlow('#ffd966', 262, 31, 22, 0.3);
+    ctx.fillStyle = fast ? '#ffd966' : '#bfefff'; ctx.globalAlpha = fast ? 1 : 0.7;
+    const tri = x => { ctx.beginPath(); ctx.moveTo(x, 22); ctx.lineTo(x + 10, 31); ctx.lineTo(x, 40); ctx.closePath(); ctx.fill(); };
+    if (fast) { tri(252); tri(262); } else tri(257);
+    ctx.globalAlpha = 1;
+    BUTTONS.push({ x: 240, y: 8, w: 44, h: 46, act: 'speed' });
+  }
 
   ctx.textAlign = 'center';
   ctx.font = FT(15, 900);
