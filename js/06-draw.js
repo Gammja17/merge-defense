@@ -848,14 +848,20 @@ function floorPattern(k, x, y, w, h) {
   chamfer(x, y, w, h, 9);
 }
 // 판 위 기체: 칸 오른쪽 위 모서리에 딱 붙은 계급장 탭 (ㄱ자 기체처럼 모서리가 빈 모양은 맨 윗줄 오른쪽 칸 기준)
-function rankCorner(u, col) {
+function rankCorner(u, col) {   // 레벨 색 'Lv3' 꼬리표 (계급장 대신). 같은 종류 같은 레벨 짝이 있으면 ▲를 달고 맥박친다
   const top = Math.min(...u.cells.map(c => Math.floor(c / COLS))), c0 = Math.max(...u.cells.filter(c => Math.floor(c / COLS) === top).map(c => c % COLS));
-  const rx = GRID_X + (c0 + 1) * CW - 4, ty = GRID_Y + top * CH + 4, lv = u.lv, s = 0.8;
-  const tw = lv >= 6 ? 30 : 23, th = lv <= 3 ? 11 + lv * 4.6 : lv === 5 ? 30 : lv >= 6 ? 23 : 20;
-  ctx.fillStyle = 'rgba(0,6,20,.92)'; ctx.beginPath();
-  ctx.moveTo(rx - tw + 5, ty); ctx.lineTo(rx - 6, ty); ctx.lineTo(rx, ty + 6); ctx.lineTo(rx, ty + th); ctx.lineTo(rx - tw + 5, ty + th); ctx.lineTo(rx - tw, ty + th - 5); ctx.lineTo(rx - tw, ty + 5); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.save(); ctx.translate(rx - tw / 2, ty + th / 2); ctx.scale(s, s); rankIcons(lv); ctx.restore();
+  const rx = GRID_X + (c0 + 1) * CW - 4, ty = GRID_Y + top * CH + 4, lv = u.lv, t = performance.now() / 1000;
+  const lc = lv >= 8 ? RAINBOW[Math.floor(t * 6) % 6] : PAIR_COL[lv - 1];
+  const pair = !u.fuse && lv < MAX_LV && allUnits().some(o => o !== u && !o.fuse && o.type === u.type && o.lv === lv);
+  const tw = 22, th = pair ? 40 : 30, x0 = rx - tw;   // 좁고 세로로 긴 꼬리표: 위 'Lv', 아래 큰 숫자, 짝이 있으면 그 아래 ▲
+  if (pair) drawGlow(lc, x0 + tw / 2, ty + th / 2, 26, 0.35 + 0.3 * Math.sin(t * 6));
+  ctx.fillStyle = lc; ctx.beginPath();
+  ctx.moveTo(x0 + 4, ty); ctx.lineTo(rx - 5, ty); ctx.lineTo(rx, ty + 5); ctx.lineTo(rx, ty + th); ctx.lineTo(x0 + 4, ty + th); ctx.lineTo(x0, ty + th - 4); ctx.lineTo(x0, ty + 4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#071018'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = FU(8); ctx.fillText('LV', x0 + tw / 2, ty + 7);
+  ctx.font = FT(15, 900); ctx.fillText(String(lv), x0 + tw / 2, ty + 20);
+  if (pair) { const ax = x0 + tw / 2, ay = ty + 33 + Math.sin(t * 8) * 1.2; ctx.beginPath(); ctx.moveTo(ax, ay - 4); ctx.lineTo(ax + 5, ay + 3); ctx.lineTo(ax - 5, ay + 3); ctx.closePath(); ctx.fill(); }
+  ctx.textAlign = 'center';
 }
 function rankIcons(lv) {
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';

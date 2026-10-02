@@ -517,7 +517,7 @@ function drawHoldBtn() {
 // 합칠 수 있는 짝 표시: 같은 종류 같은 레벨 짝이 있으면 초록 ▲, 특수 합체 짝꿍(둘 다 Lv8)은 금빛 선으로 잇는다.
 // 기체를 짧게 탭하면 1.5초 동안 그 기체의 짝꿍을 테두리로 강조
 const PAIR_COL = ['#c8d4ea', '#5ae0ff', '#5aff8a', '#ffd24a', '#ff8a3a', '#ff5aa8', '#c88aff'];   // 합칠 짝 표시: Lv1~7 색
-function unitBox(u) {
+function pairBox(u) {
   if (u.res != null) { const q = resPos(u.res); return { x: q.x - RES_W / 2, y: q.y - RES_W / 2, w: RES_W, h: RES_W }; }
   const xs = u.cells.map(c => cellPos(c).x), ys = u.cells.map(c => cellPos(c).y);
   return { x: Math.min(...xs) - CW / 2 + 2, y: Math.min(...ys) - CH / 2 + 2, w: Math.max(...xs) - Math.min(...xs) + CW - 4, h: Math.max(...ys) - Math.min(...ys) + CH - 4 };
@@ -527,7 +527,7 @@ function drawPairHints() {
   const us = allUnits().filter(u => u.cells || u.res != null), t = S.time;
   ctx.save();
   for (const u of us) if (u.fuse) {   // 특수 합체 기체: 금색 이중 테두리, 오른쪽 아래 금색 육각에 짝꿍 그림
-    const f = FUSE_BY[u.fuse], b = unitBox(u), pu = 0.5 + 0.5 * Math.sin(t * 3 + b.x);
+    const f = FUSE_BY[u.fuse], b = pairBox(u), pu = 0.5 + 0.5 * Math.sin(t * 3 + b.x);
     ctx.strokeStyle = '#ffd24a'; ctx.globalAlpha = 0.7 + 0.3 * pu; ctx.lineWidth = 2.5; chamfer(b.x, b.y, b.w, b.h, 10); ctx.stroke();
     ctx.strokeStyle = f.col; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5; chamfer(b.x + 4, b.y + 4, b.w - 8, b.h - 8, 8); ctx.stroke(); ctx.globalAlpha = 1;
     const ot = f.keep === f.a ? f.b : f.a, od = UNIT[ot], hx = b.x + b.w - 15, hy = b.y + b.h - 15;
@@ -550,21 +550,15 @@ function drawPairHints() {
     ctx.strokeStyle = ff.col; ctx.globalAlpha = 0.35; ctx.lineWidth = 12 + 4 * pu; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
     ctx.globalAlpha = 1; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.setLineDash([12, 8]); ctx.lineDashOffset = -t * 40;
     ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.setLineDash([]); ctx.lineCap = 'butt';
-    for (const o of [a, b]) { const bx = unitBox(o); drawGlow(ff.col, bx.x + bx.w / 2, bx.y + bx.h / 2, 60, 0.3 + 0.3 * pu); ctx.strokeStyle = ff.col; ctx.lineWidth = 3 + 2 * pu; chamfer(bx.x - 2, bx.y - 2, bx.w + 4, bx.h + 4, 10); ctx.stroke(); }
+    for (const o of [a, b]) { const bx = pairBox(o); drawGlow(ff.col, bx.x + bx.w / 2, bx.y + bx.h / 2, 60, 0.3 + 0.3 * pu); ctx.strokeStyle = ff.col; ctx.lineWidth = 3 + 2 * pu; chamfer(bx.x - 2, bx.y - 2, bx.w + 4, bx.h + 4, 10); ctx.stroke(); }
     const m = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
     ctx.font = FK(14); outlineText('특수 합체', m.x, m.y - 14, ff.col, 4);
   }
-  // 같은 종류 같은 레벨 짝: 레벨마다 다른 색의 'Lv3 ▲' 꼬리표와 같은 색 테두리. 같은 색끼리 합치면 된다
+  // 같은 종류 같은 레벨 짝: 레벨 색 테두리 (레벨 표시는 오른쪽 위 Lv 꼬리표, 짝이 있으면 그 꼬리표가 ▲와 함께 맥박친다)
   for (const u of us) {
     if (u.fuse || u.lv >= MAX_LV || (cnt[u.type + u.lv] || 0) < 2) continue;
-    const b = unitBox(u), lc = PAIR_COL[u.lv - 1], pu = 0.5 + 0.5 * Math.sin(t * 5 + u.lv);
-    ctx.strokeStyle = lc; ctx.globalAlpha = 0.45 + 0.35 * pu; ctx.lineWidth = 2.5; chamfer(b.x + 1, b.y + 1, b.w - 2, b.h - 2, 9); ctx.stroke(); ctx.globalAlpha = 1;
-    const txt = `Lv${u.lv}`; ctx.font = FT(11, 900); const tw = ctx.measureText(txt).width + 22, tx = b.x - 2, ty = b.y - 8 + Math.sin(t * 6 + b.x * 0.05) * 2;
-    drawGlow(lc, tx + tw / 2, ty + 8, 22, 0.45);
-    ctx.fillStyle = lc; chamfer(tx, ty, tw, 17, 5); ctx.fill();
-    ctx.fillStyle = '#071018'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, tx + 5, ty + 9);
-    ctx.beginPath(); ctx.moveTo(tx + tw - 9, ty + 4); ctx.lineTo(tx + tw - 4, ty + 12); ctx.lineTo(tx + tw - 14, ty + 12); ctx.closePath(); ctx.fill();
-    ctx.textAlign = 'center';
+    const b = pairBox(u), pu = 0.5 + 0.5 * Math.sin(t * 5 + u.lv);
+    ctx.strokeStyle = PAIR_COL[u.lv - 1]; ctx.globalAlpha = 0.45 + 0.35 * pu; ctx.lineWidth = 2.5; chamfer(b.x + 1, b.y + 1, b.w - 2, b.h - 2, 9); ctx.stroke(); ctx.globalAlpha = 1;
   }
   // 탭한 기체의 짝꿍 강조
   const pk = UI.peek, pe = pk ? performance.now() / 1000 - pk.t0 : 9;
@@ -574,7 +568,7 @@ function drawPairHints() {
       if (tu === du) continue;
       const fz = fuseOf(tu, du), same = !fz && tu.type === du.type && tu.lv === du.lv && du.lv < MAX_LV && !tu.fuse && !du.fuse;
       if (!fz && !same) continue;
-      const b = unitBox(tu), hc = fz ? '#ffd24a' : '#8dff9a';
+      const b = pairBox(tu), hc = fz ? '#ffd24a' : '#8dff9a';
       ctx.globalAlpha = a; ctx.strokeStyle = hc; ctx.lineWidth = 3; chamfer(b.x - 2, b.y - 2, b.w + 4, b.h + 4, 10); ctx.stroke();
       ctx.font = FK(15); outlineText(fz ? '특수 합체' : '합체', b.x + b.w / 2, b.y - 8, fz ? '#ffe9a8' : '#caffd0', 4); ctx.globalAlpha = 1;
     }
