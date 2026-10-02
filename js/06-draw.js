@@ -493,6 +493,8 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
     if (u.lv >= 6) drawTex('p_ring', u.lv >= 8 ? RAINBOW[(Math.floor(t * 6) + 3) % 6] : rc, x, y + 14 * tall, 112 * s * wide, -t * 2.2, 0.4 * alpha, true, 0.36);
     drawTex('p_light', rc, x, y + 12 * tall, 70 * s * wide, -t, 0.3 * alpha, true, 0.4);
   }
+  const fz = u.fuse && FUSE_BY[u.fuse];
+  if (fz) drawGlow(fz.col, x, y, 54, (0.35 + 0.15 * Math.sin(t * 3)) * alpha, 0.8);   // 특수 합체 표시는 drawPairHints가 그림 위에 그린다
   drawUnitArt(u.type, u.lv, x, y, s, alpha, u);
   if (u.hurt > 0) drawGlow('#ff2a3a', x, y, 40 * wide, u.hurt * 2 * alpha, 0.8);
   const bot = y + (tall > 1 ? CH * 0.95 : 26);
@@ -586,6 +588,13 @@ function drawEnemyAt(e) {
     ctx.beginPath(); ctx.moveTo(e.x - 10, e.y + 10); ctx.lineTo(e.x + 10, e.y + 10);
     ctx.lineTo(e.carry.x + 34, e.carry.y); ctx.lineTo(e.carry.x - 34, e.carry.y); ctx.closePath(); ctx.fill();
     ctx.restore();
+  }
+  if (e.aff) {   // 정예: 색 고리가 돈다 + 이름표
+    const [an, ac] = AFFIX[e.aff];
+    drawGlow(ac, e.x, e.y, e.r * 1.8, 0.3 + 0.1 * Math.sin(S.time * 6));
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(S.time * 2); ctx.strokeStyle = ac; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.arc(0, 0, e.r + 8, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+    ctx.font = FK(12); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText(an, e.x, e.y + e.r + 16, ac, 3);
   }
   if (e.k === 'healer') drawGlow('#6dff8a', e.x, e.y, 60, 0.25 + 0.1 * Math.sin(S.time * 5));
   if (e.k === 'thief') drawGlow('#ff4a5a', e.x, e.y, 50, 0.3);
@@ -806,18 +815,19 @@ function lvBadge(lv, cx, cy, col, sc = 1) {
 }
 // 부서진 칸 (구역 7): 어둡게 꺼진 판, 경고 빗금, 금 간 자국. 잔해(시간 제한)는 사라지기 전에 깜빡인다
 function drawBrokenCell(i, x, y, w, h, t) {
-  const b = S.broken.find(q => q.c === i), a = b && b.t < 2 ? 0.5 + 0.5 * Math.sin(t * 14) : 1;
+  const b = S.broken.find(q => q.c === i), a = b && b.t < 2 ? 0.5 + 0.5 * Math.sin(t * 14) : 1, seal = b && b.seal;
   ctx.save(); ctx.globalAlpha = a;
   ctx.fillStyle = 'rgba(4,6,12,.9)'; chamfer(x, y, w, h, 9); ctx.fill();
   ctx.save(); ctx.clip();
-  ctx.strokeStyle = 'rgba(255,170,60,.22)'; ctx.lineWidth = 7;
+  ctx.strokeStyle = seal ? 'rgba(255,60,80,.3)' : 'rgba(255,170,60,.22)'; ctx.lineWidth = 7;
   for (let k = -h; k < w; k += 22) { ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke(); }
   ctx.restore();
   ctx.strokeStyle = 'rgba(200,215,235,.55)'; ctx.lineWidth = 2; ctx.lineJoin = 'miter';
   const s = (i * 37) % 7;
   ctx.beginPath(); ctx.moveTo(x + 10, y + 14 + s); ctx.lineTo(x + w * 0.38, y + h * 0.45); ctx.lineTo(x + w * 0.52, y + h * 0.38 + s); ctx.lineTo(x + w * 0.7, y + h * 0.62); ctx.lineTo(x + w - 8, y + h - 12 - s);
   ctx.moveTo(x + w * 0.38, y + h * 0.45); ctx.lineTo(x + w * 0.3, y + h - 8); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,150,70,.6)'; ctx.lineWidth = 1.5; chamfer(x, y, w, h, 9); ctx.stroke();
+  ctx.strokeStyle = seal ? 'rgba(255,70,90,.85)' : 'rgba(255,150,70,.6)'; ctx.lineWidth = seal ? 2.5 : 1.5; chamfer(x, y, w, h, 9); ctx.stroke();
+  if (seal) { ctx.strokeStyle = 'rgba(255,90,100,.9)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x + w / 2 - 12, y + h / 2 - 12); ctx.lineTo(x + w / 2 + 12, y + h / 2 + 12); ctx.moveTo(x + w / 2 + 12, y + h / 2 - 12); ctx.lineTo(x + w / 2 - 12, y + h / 2 + 12); ctx.stroke(); }   // 봉쇄: 붉은 X
   ctx.restore();
 }
 // 계정 레벨 보상: 칸 바닥 무늬 (빗금, 격자 테두리). 끝나면 칸 테두리 경로를 다시 잡아 둔다

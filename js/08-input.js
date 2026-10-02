@@ -137,17 +137,17 @@ function doAction(b) {
       S.fx.push({ kind: 'ring', x: W / 2, y: 420, t: 0, life: 0.6, color: pk.col }); play('up_fx', 0.5);
       S.banner = { text: pk.name, sub: pk.desc, color: pk.col, t: 0, life: 1.8 };
       play('shieldUp', 0.4);
-      if (!S.syn[pk.cat] && catCount(pk.cat) >= SYN_N) {   // 시너지 켜짐
-        const sy = SYN[pk.cat], cc = PERK_CAT[pk.cat][1];
-        S.syn[pk.cat] = true; if (sy.on) sy.on();
-        S.banner = { text: '시너지! ' + sy.name, sub: sy.desc, color: cc, t: 0, life: 2.4 };
-        S.fx.push({ kind: 'ring', x: W / 2, y: 420, t: 0, life: 0.9, color: cc }); play('levelup', 0.5);
-      }
       return;
     }
     case 'pause': S.paused = true; return;
     case 'resume': S.paused = false; return;
     case 'floor': { const own = floorsOwned(); PROG.floor = own[(own.indexOf(PROG.floor || '') + 1) % own.length]; save(); return; }
+    case 'hold':   // 정지장 5초
+      if (S.mode !== 'play' || S.holdT > 0 || !S.holdLeft) { if (!S.holdLeft) denied(); return; }
+      S.holdLeft--; S.holdT = 5; play('zap', 0.4, 0.5); play('shieldUp', 0.4, 0.8);
+      S.fx.push({ kind: 'ring', x: W / 2, y: 380, t: 0, life: 0.6, color: '#7fd4ff' }, { kind: 'ring', x: W / 2, y: 380, t: -0.1, life: 0.7, color: '#ffffff' });
+      hintOnce('hold', '정지장: 5초 동안 재정비');
+      return;
     case 'speed': PROG.settings.speed = SET().speed === 2 ? 1 : 2; save(); return;
     case 'settings': UI.settings = true; UI.resetArm = 0; UI.credits = UI.saveCode = false; return;
     case 'closesettings': UI.settings = false; return;
@@ -232,6 +232,18 @@ cv.addEventListener('pointermove', ev => {
   drag.x = p.x; drag.y = p.y;
   if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) { drag.moved = true; play('tap', 0.3, 1.1, 0.03); }
 });
+// 특수 합체: 남는 기체(keep 종류)가 대상 자리에 서고, 다른 하나는 사라진다
+function doFuse(t, u, f) {
+  unplace(u);
+  t.type = f.keep; t.fuse = f.id; t.lv = MAX_LV; t.pop = 0.6; t.cd = 0.2; t.sk = 1.5; t.drones = [];
+  t.maxHp = Math.round(unitMaxHp(t.type, t.lv) * 1.5); t.hp = t.maxHp;
+  const q = unitPos(t);
+  boom(q.x, q.y, 2.2, f.col); shockwave(q.x, q.y, 320); sparks(q.x, q.y, f.col, 50, 520); punch(1.4); shake(0.5);
+  S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.7, color: f.col }, { kind: 'ring', x: q.x, y: q.y, t: -0.15, life: 0.8, color: '#ffd24a' }, { kind: 'pillar', x: q.x, y: q.y, t: 0, life: 0.7 });
+  S.whiteFlash = Math.max(S.whiteFlash, 0.5);
+  play('unlock', 0.6); play('levelup', 0.6); play('boom_low', 0.5, 0.9);
+  S.skillPop = { lv: MAX_LV, name: f.name, color: f.col, t: 0, life: 2.4, unit: '특수 합체', cmp: f.short, fused: true };
+}
 function doMerge(target, from) {
   mergeInto(target, from);
   const q = unitPos(target), col = UNIT[target.type].col;
@@ -263,6 +275,7 @@ function dropUnit(u, x, y) {
     const r = S.reserve[k];
     if (r === u) return;
     if (r && r.type === u.type && r.lv === u.lv && r.lv < MAX_LV) return doMerge(r, u);
+    const fr = fuseOf(r, u); if (fr) return doFuse(r, u, fr);
     if (!r) { toReserve(u, k); clunk(); } else denied();
     return;
   }
@@ -270,6 +283,7 @@ function dropUnit(u, x, y) {
   if (c < 0) return;
   const t = S.slots[c];
   if (t && t !== u && t.type === u.type && t.lv === u.lv && t.lv < MAX_LV) return doMerge(t, u);
+  const ft = fuseOf(t, u); if (ft) return doFuse(t, u, ft);
   const cells = cellsFor(u, c);
   if (canPlace(u, cells)) { if (u.cells && u.cells.join() === cells.join()) return; place(u, cells); clunk(); return; }
   // 자리 바꾸기: 놓을 자리를 막은 기체가 하나뿐이고, 그 기체가 내가 있던 자리에 들어가면 서로 바꾼다
@@ -310,6 +324,7 @@ function denied() { play('deny', 0.5); }
 function endDrag(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
   const d = drag; drag = null;
+  if (!d.moved && S.slots) { UI.peek = { u: d.unit, t0: performance.now() / 1000 }; return; }   // 짧게 탭: 합칠 짝꿍을 1.5초 동안 보여 준다
   if (!d.moved || !S.slots || d.unit.hp <= 0 || S.paused) return;
   const p = toLocal(ev);
   dropUnit(d.unit, p.x, p.y);

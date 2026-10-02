@@ -195,6 +195,19 @@ const ENEMY = {
   boss8:   { img: 'enemies/boss8', hp: 24000, speed: 8, r: 104, dmg: 99, w: 250, h: 230, boss: true, name: '균열 군주', regen: 8, atk: 'cross', atkCd: 6.5, atkDmg: 3 },
   boss4:   { img: 'enemies/boss4', hp: 12000, speed: 9,  r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '최종 기함', shield: 0.25, regen: 8, atk: 'cross', atkCd: 8, atkDmg: 3 },
 };
+// ── 특수 합체: 짝꿍 두 기체가 둘 다 최종 단계(Lv8)면 하나를 다른 하나에 겹쳐 합친다 ──
+// keep: 합친 뒤 남는 기체 종류 (그 기체의 공격을 그대로 쓰고, 특수 능력이 붙는다). 화력 ×1.6, 체력 ×1.5
+const FUSE = [
+  { id: 'aegis', short: '주변 기체 보호와 강화', a: 'g', b: 'x', keep: 'g', name: '이지스 지휘함', col: '#7fe8ff', desc: '주변 8칸 기체가 받는 피해 절반, 화력과 공격 속도 크게 증가. 10초마다 기지 보호막 +1' },
+  { id: 'bolt', short: '레이저 + 연쇄 번개',  a: 'f', b: 'e', keep: 'f', name: '번개 요격기',   col: '#ffe24a', desc: '레이저가 맞힌 적에서 번개가 튀어요' },
+  { id: 'sing', short: '끌어모아 대폭발',  a: 't', b: 'v', keep: 't', name: '특이점 포대',   col: '#c89bff', desc: '6초마다 적을 한데 끌어모은 뒤 그 자리에 큰 폭발' },
+  { id: 'zero', short: '저격 + 빙결',  a: 's', b: 'c', keep: 's', name: '절대영도 저격기', col: '#bff4ff', desc: '저격탄이 적을 얼리고, 언 적은 2배 피해' },
+  { id: 'pyro', short: '산탄 + 화염',  a: 'a', b: 'h', keep: 'a', name: '화염 산탄포',   col: '#ff8a3a', desc: '산탄에 맞은 적이 불타요' },
+  { id: 'dock', short: '드론 + 전체 수리',  a: 'd', b: 'm', keep: 'd', name: '정비 모함',     col: '#6dff8a', desc: '3초마다 판의 모든 기체를 고치고, 12초마다 기지 보호막 +1' },
+];
+const FUSE_BY = Object.fromEntries(FUSE.map(f => [f.id, f]));
+const fuseOf = (p, q) => p && q && p !== q && !p.fuse && !q.fuse && p.lv >= MAX_LV && q.lv >= MAX_LV && FUSE.find(f => (f.a === p.type && f.b === q.type) || (f.b === p.type && f.a === q.type)) || null;
+const fuseFor = t => FUSE.find(f => f.a === t || f.b === t);
 // 처음 만난 적 카드에 쓰는 이름과 그림 (ENEMY에 이름이 없는 것들)
 const INTRO_NAME = { tank: '중장갑 함선', rocks: '운석 떼', split: '분열 운석', rusher: '돌격기', shield: '보호막함', healer: '수리선', thief: '캡슐 도둑', meteor: '운석 낙하', freeze: '빙결 포격' };
 const INTRO_IMG = { rocks: 'enemies/rock1', meteor: 'enemies/rock2' };
@@ -444,6 +457,7 @@ const PERKS = [
   { tier: 2, id: 'fin', cat: 'atk', name: '마무리 사격', desc: '체력이 12% 아래로 떨어진 적은 바로 격추 (보스 빼고)', col: '#ff5a5a', apply: () => { S.pk.fin += S.pk.fin ? 0.06 : 0.12; } },
   { tier: 2, id: 'hunt', cat: 'atk', name: '거함 격파', desc: '보스, 엘리트, 순양함, 모함에게 주는 피해 +50%', col: '#ffb84a', apply: () => { S.pk.hunt += 0.5; } },
   { tier: 2, id: 'capbomb', cat: 'sup', name: '캡슐 폭탄', desc: '캡슐을 까면 그 자리에서 크게 터져 주변 적을 쓸어요', col: '#ffd84a', apply: () => { S.pk.capBomb += 1; } },
+  { tier: 2, id: 'fixall', cat: 'def', name: '긴급 복구', desc: '봉쇄된 칸을 모두 되살려요', col: '#ff8a8a', ok: () => S.broken.some(b => b.seal), apply: () => { S.broken = S.broken.filter(b => !b.seal); addText(W / 2, LINE_Y - 60, '칸 복구!', '#8dff9a', 26, 1.2); } },
   { tier: 2, id: 'heat', cat: 'sp', name: '합체 열기', desc: '합체하면 4초 동안 모든 기체 공격 속도 +40%', col: '#ff7ae0', apply: () => { S.pk.heat += 0.4; } },
   // 전설: 보스를 잡으면 하나는 꼭 나온다
   { tier: 3, id: 'glass', once: true, cat: 'atk', name: '유리 대포', desc: '화력 2배, 대신 기지 보호막 최대치가 절반', col: '#ff3a5a', apply: () => { S.pk.dmg *= 2; S.maxHp = Math.max(1, Math.ceil(S.maxHp / 2)); S.hp = Math.min(S.hp, S.maxHp); } },
@@ -478,14 +492,6 @@ if (PROG.xp == null) {
   for (let l = 2; l <= PROG.lvl; l++) payLevel(l);
 }
 
-// 강화 시너지: 같은 갈래 강화를 3번 고르면 켜진다 (같은 강화를 두 번 골라도 2로 센다)
-const SYN_N = 3;
-const SYN = {
-  atk: { name: '연쇄 치명', desc: '치명타 확률 +10%, 치명타가 터지면 작은 폭발' },
-  def: { name: '철벽', desc: '웨이브마다 기지 보호막 +1, 기체 체력 전부 회복' },
-  sup: { name: '덤 보급', desc: '캡슐을 깔 때 10% 확률로 기체 하나 더' },
-  sp: { name: '지휘 우선', desc: '사령관 게이지 +50', on: () => { if (cmdOpen()) S.cmd = Math.min(100, (S.cmd || 0) + 50); } },
-};
 const catCount = cat => S.perks.filter(id => { const p = PERKS.find(q => q.id === id); return p && p.cat === cat; }).length;
 
 const PERK_CAT = { atk: ['공격', '#ff8a4a'], def: ['방어', '#5affc8'], sup: ['보급', '#ffd84a'], sp: ['특수', '#b88aff'] };
@@ -528,7 +534,7 @@ function startStage(n, endless = false, daily = false) {
     shake: 0, time: 0, glitch: 0, lost: 0,
     parts: [], shieldHits: [], banner: null, warning: 0, whiteFlash: 0, skillPop: null,
     score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0, dmgBy: {}, used: {},
-    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0, twin: 0, lonely: 0, fin: 0, hunt: 1, capBomb: 0, heat: 0, oc: 0, scrap: 0, revive: 0 }, syn: {}, chainQ: [], heatT: 0, ocT: 0, legendNext: false,
+    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0, twin: 0, lonely: 0, fin: 0, hunt: 1, capBomb: 0, heat: 0, oc: 0, scrap: 0, revive: 0 }, chainQ: [], heatT: 0, ocT: 0, legendNext: false,
     gear: 0, cellFx: new Array(COLS * ROWS).fill(null), rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0, broken: [],
   };
   if (daily === 'weekly') { const wk = weekKey(); S.daily = { day: wk, weekly: true, rule: weeklyRule(wk), deck: weeklyDeck(wk) }; lbFetchWeekly(true); }
@@ -559,7 +565,7 @@ const uSize = u => SHAPES[UNIT[u.type].shape].length;
 
 function startWave(n) {
   const st = S.stage;
-  S.wave = n; S.waveT = 0; S.mode = 'play';
+  S.wave = n; S.waveT = 0; S.mode = 'play'; S.holdLeft = 1;   // 정지장: 웨이브마다 한 번
   if (st.endless) {
     const ci = cyclePos(n);
     let mut = null;
@@ -584,7 +590,7 @@ function startWave(n) {
     return;
   }
   S.events = buildWave(st, n);
-  if (st.sector.rule === 'wreck') { S.broken = S.broken.filter(b => b.t !== Infinity); breakCells(2 + (Math.random() < 0.5 ? 1 : 0), Infinity); }   // 폐허 함대: 웨이브마다 부서진 칸이 바뀐다
+  if (st.sector.rule === 'wreck') { S.broken = S.broken.filter(b => !b.wreck); breakCells(2 + (Math.random() < 0.5 ? 1 : 0), Infinity, true); }   // 폐허 함대: 웨이브마다 부서진 칸이 바뀐다
   const K = STAGE_KINDS[st.kind || 'base'], lastW = n === st.waves;
   if (st.boss && lastW) { S.warning = 3; S.banner = null; play('drums', 0.7); }
   else if (n === 1) S.banner = { text: `STAGE ${st.n}`, sub: K.name ? `${K.name}: ${K.sub}` : '정찰대가 방어선을 떠보고 있어요', color: K.col || st.sector.color, t: 0, life: 2.6 };

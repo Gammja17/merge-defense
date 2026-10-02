@@ -24,6 +24,13 @@ function bossRage(e) {
   S.whiteFlash = Math.max(S.whiteFlash, 0.6); S.glitch = Math.max(S.glitch, 0.5); shake(0.8);
   addText(e.x, Math.max(170, e.y + e.h * 0.4), '격노!', '#ff3a4a', 34, 1.4);
   play('vo_hostile', 0.7); play('drums', 0.5, 0.7);
+  later(1.2, () => {   // 격노한 보스는 기체 하나를 분해한다
+    if (e.dead || S.mode !== 'play') return;
+    const us = gridUnits(); if (us.length < 2) return;
+    const u = us[Math.floor(Math.random() * us.length)], p = unitPos(u);
+    S.fx.push({ kind: 'bolt', pts: [{ x: e.x, y: e.y + 40 }, p], t: 0, life: 0.4, col: '#ff3a4a' });
+    destroyUnit(u, '분해!');
+  });
 }
 function updateEnemy(e, dt) {
   e.t += dt;
@@ -237,7 +244,7 @@ function updateEnemy(e, dt) {
 function updateAuras(dt) {
   const us = gridUnits();
   for (const u of allUnits()) { u.buffSpd = 0; u.buffDmg = 0; }
-  S.shatter = us.some(u => u.type === 'c' && u.lv >= 4);
+  S.shatter = us.some(u => (u.type === 'c' && u.lv >= 4) || u.fuse === 'zero');
   S.scan = us.some(u => u.type === 'x' && u.lv >= 4);
   const global = us.some(u => u.type === 'x' && u.lv >= 5);
   for (const r of us) if (r.type === 'x') {
@@ -245,6 +252,7 @@ function updateAuras(dt) {
     for (const o of neighborsOf(r)) { o.buffSpd = Math.max(o.buffSpd, spd); o.buffDmg = Math.max(o.buffDmg, dmg); }
   }
   if (global) for (const u of us) { u.buffSpd += 0.15; u.buffDmg += 0.15; }
+  for (const r of us) if (r.fuse) fuseTick(r, dt);
   for (const u of us) {
     u.t1 += dt; u.t2 = Math.max(0, u.t2 - dt); u.t3 = Math.max(0, u.t3 - dt);
     if (u.type === 'g' && u.lv >= 2 && u.t1 >= 4) { u.t1 = 0; if (u.hp < u.maxHp) u.hp++; }
@@ -273,6 +281,26 @@ function updateAuras(dt) {
     if (rb.t <= 0 && !rb.done) { rb.done = true; if (giveUnit(rb.type, 1, rb.from.x, rb.from.y, '#6dff8a') !== 'lost') addText(rb.from.x, rb.from.y - 30, '재건 완료', '#6dff8a', 18); }
   }
   S.rebuilds = S.rebuilds.filter(r => !r.done);
+}
+// 특수 합체 기체의 지속 능력 (이지스 버프와 보호막, 특이점 폭발, 정비 모함 수리)
+function fuseTick(u, dt) {
+  u.fzT = (u.fzT || 0) + dt; u.fzT2 = (u.fzT2 || 0) + dt;
+  const p = unitPos(u);
+  if (u.fuse === 'aegis') {
+    for (const o of neighborsOf(u)) { o.buffSpd = Math.max(o.buffSpd, 0.8); o.buffDmg = Math.max(o.buffDmg, 0.7); }
+    if (u.fzT >= 10) { u.fzT = 0; if (S.hp < S.maxHp) { S.hp++; addText(W / 2, LINE_Y - 30, '이지스 보호막 +1', '#7fe8ff', 18); } }
+  } else if (u.fuse === 'sing' && u.fzT >= 6 && S.mode === 'play') {
+    const c = densest(150);
+    if (c) {
+      u.fzT = 0;
+      const dmg = UNIT.t.dmg * LV_MUL[u.lv - 1] * mkMul('t') * pkDmg(u) * 6;
+      S.fields.push({ ut: 't', x: c.x, y: c.y, r: 160, t: 0, life: 1.3, pull: 240, implode: dmg });
+      S.fx.push({ kind: 'bolt', pts: [p, { x: c.x, y: c.y }], t: 0, life: 0.3, col: '#c89bff' }); play('zap', 0.3, 0.7);
+    }
+  } else if (u.fuse === 'dock') {
+    if (u.fzT >= 3) { u.fzT = 0; for (const o of gridUnits()) if (o.hp < o.maxHp) { o.hp = Math.min(o.maxHp, o.hp + 1); const q = unitPos(o); S.fx.push({ kind: 'heal', x: q.x, y: q.y, t: 0, life: 0.6 }); } }
+    if (u.fzT2 >= 12) { u.fzT2 = 0; if (S.hp < S.maxHp) { S.hp++; addText(W / 2, LINE_Y - 30, '정비 모함 수리 +1', '#6dff8a', 18); } }
+  }
 }
 function updateDrones(u, dt) {
   DMG_BY = u.type;
@@ -348,6 +376,13 @@ function update(dt) {
   S.whiteFlash = Math.max(0, S.whiteFlash - dt * 1.5);
 
   if (S.mode === 'win' || S.mode === 'lose' || S.mode === 'perk') return;
+  if (S.holdT > 0) {   // 정지장: 적, 적 공격, 캡슐, 아군 사격이 멈춘다. 기체를 옮기고 합치는 것만 된다
+    S.holdT -= dt;
+    for (const u of allUnits()) u.pop = Math.max(0, u.pop - dt);
+    if (S.holdT <= 0) { play('open', 0.35, 1.2); S.fx.push({ kind: 'ring', x: W / 2, y: 380, t: 0, life: 0.5, color: '#7fd4ff' }); }
+    return;
+  }
+  if (S.later && S.later.length) { for (const l of S.later) l.t -= dt; const due = S.later.filter(l => l.t <= 0); S.later = S.later.filter(l => l.t > 0); for (const l of due) l.fn(); }
 
   if (S.mode === 'break') {
     S.breakT -= dt;
@@ -459,6 +494,7 @@ function update(dt) {
       for (const e of S.enemies) if (shootable(e) && !s.hitSet.has(e) && Math.hypot(e.x - s.x, e.y - s.y) < e.r + 8) {
         s.hitSet.add(e);
         hitEnemy(e, s.dmg, 'laser', !s.crit);
+        if (s.fz) fuseHit(s, e);
         if (s.exec && !e.dead && !e.boss && e.hp < e.maxHp * 0.25) { killEnemy(e); addText(e.x, e.y - e.r, '처형', '#7dff7a', 16, 0.8); }
         S.fx.push({ kind: 'hit', x: s.x, y: s.y, t: 0, life: 0.2, color: s.col, big: 1.4 });
         impactSparks(s.x, s.y, s.vx, s.vy, s.col, 6);
@@ -584,7 +620,6 @@ function update(dt) {
     S.mode = 'break'; S.breakT = 3;
     S.attacks = [];
     S.hp = Math.min(S.maxHp, S.hp + S.pk.regen);
-    if (S.syn.def) { S.hp = Math.min(S.maxHp, S.hp + 1); for (const u of allUnits()) u.hp = u.maxHp; }   // 시너지 철벽
     const gg = S.crisis ? 3 : 2;
     addGear(gg, W / 2, LINE_Y - 80);
     S.banner = { text: 'CLEAR', sub: `웨이브 ${S.wave} 방어 성공, 부품 +${gg}`, color: '#8dff9a', t: 0, life: 2 };
@@ -599,6 +634,7 @@ function impact(s, t) {
   impactSparks(s.x, s.y, s.vx, s.vy, s.isCap ? '#ffe9a8' : s.type === 'f' ? LV_COL[s.lv - 1] : UNIT[s.type] ? UNIT[s.type].col : '#ffb347', s.type === 'f' || s.type === 'a' ? 4 : 7);
   if (s.isCap) { hitCap(t, s.cp || 1); t.pending = Math.max(0, t.pending - (s.cp || 1)); S.fx.push({ kind: 'hit', x: s.x, y: s.y, t: 0, life: 0.15 }); return; }
   t.pending = Math.max(0, t.pending - s.dmg);
+  if (s.fz) fuseHit(s, t);
   switch (s.type) {
     case 't': {
       const r = UNIT.t.splash * (1 + 0.12 * (s.lv - 1));

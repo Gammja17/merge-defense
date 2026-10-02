@@ -23,10 +23,10 @@ buildTints(); play = () => {}; save = () => {};
 const CS = { mk: 0, cl: 0, gv: 0 }; const GS = { got: 0, runs: 0, sum: 0, cell: 0, row: 0 }; { const ag = addGear; addGear = (n, ...r) => { GS.got += n; return ag(n, ...r); }; const da = doAction; doAction = b => { const g0 = S.gear; da(b); const used = g0 - S.gear; if (used > 0) { if (b.act === 'summon') GS.sum += used; else if (b.act === 'addrow') GS.row += used; else GS.cell += used; } }; } { const a = makeCap, b = claimCap, c = giveUnit; makeCap = (...x) => { CS.mk++; return a(...x); }; claimCap = (...x) => { CS.cl++; return b(...x); }; giveUnit = (...x) => { CS.gv++; return c(...x); }; }
 PROG.owned = UNIT_ORDER.slice(); PROG.lvl = 99; PROG.xp = 0;   // 계정 레벨로 잠긴 강화도 모두 풀린 상태
 if (cfg.mk != null) { PROG.mk = {}; for (const t of UNIT_ORDER) PROG.mk[t] = cfg.mk; }
-// 강화 고르기: 사람처럼. 유리 대포는 피하고, 시너지를 켜는 카드, 높은 등급, 갈래(공격 > 방어 > 특수 > 보급) 순
+// 강화 고르기: 사람처럼. 유리 대포는 피하고, 높은 등급, 갈래(공격 > 방어 > 특수 > 보급) 순
 function botPerk() {
   const W8 = { atk: 4, def: 3, sp: 2, sup: 1 };
-  const score = p => (p.id === 'glass' ? -100 : 0) + (!S.syn[p.cat] && catCount(p.cat) + 1 >= SYN_N ? 20 : 0) + p.tier * 5 + W8[p.cat] + (S.hp <= 4 && p.cat === 'def' ? 10 : 0);
+  const score = p => (p.id === 'glass' ? -100 : 0) + p.tier * 5 + W8[p.cat] + (S.hp <= 4 && p.cat === 'def' ? 10 : 0);
   const cs = S.perkChoices; let best = 0;
   cs.forEach((p, i) => { if (score(p) > score(cs[best])) best = i; });
   return best;

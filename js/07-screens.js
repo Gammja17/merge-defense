@@ -32,7 +32,7 @@ function draw(dt) {
     ctx.fillStyle = '#ffd966'; ctx.fillText('OR', mx, y + 1);
   }
   drawFieldStuff();
-  for (const c of S.caps) drawCap(c);
+  for (const c of S.caps) { const gh = capGhost(c); if (gh) ctx.globalAlpha = 0.3; drawCap(c); if (gh) ctx.globalAlpha = 1; }
   for (const e of S.enemies) drawEnemy(e);
   drawStrikes();
 
@@ -81,6 +81,7 @@ function draw(dt) {
   drawShots();
   drawParts();
   drawFx();
+  drawPairHints();
   if (drag && drag.moved) {
     const du = drag.unit, c = cellAt(drag.x, drag.y);
     if (c >= 0) {
@@ -88,7 +89,7 @@ function draw(dt) {
       for (const cc of cells) { const q = cellPos(cc); ctx.strokeStyle = ok ? 'rgba(120,230,255,.8)' : 'rgba(255,90,90,.6)'; ctx.lineWidth = 2; chamfer(q.x - CW / 2 + 4, q.y - CH / 2 + 4, CW - 8, CH - 8, 9); ctx.stroke(); }
     }
     { // 합체 후보 강조
-      const canM = tu => tu && tu !== du && tu.type === du.type && tu.lv === du.lv && du.lv < MAX_LV;
+      const canM = tu => tu && tu !== du && ((tu.type === du.type && tu.lv === du.lv && du.lv < MAX_LV && !tu.fuse && !du.fuse) || fuseOf(tu, du));
       const pulse = 0.5 + 0.5 * Math.sin(S.time * 10);
       for (const tu of allUnits()) {
         let bx, by, bw, bh;
@@ -96,10 +97,11 @@ function draw(dt) {
         else { const xs = tu.cells.map(cc => cellPos(cc).x), ys = tu.cells.map(cc => cellPos(cc).y); bx = Math.min(...xs) - CW / 2 + 2; by = Math.min(...ys) - CH / 2 + 2; bw = Math.max(...xs) - Math.min(...xs) + CW - 4; bh = Math.max(...ys) - Math.min(...ys) + CH - 4; }
         if (tu === du) continue;
         if (!canM(tu)) { ctx.fillStyle = 'rgba(2,4,12,.55)'; chamfer(bx, by, bw, bh, 9); ctx.fill(); continue; }
-        drawGlow('#8dff9a', bx + bw / 2, by + bh / 2, Math.max(bw, bh) * 0.8, 0.35 + 0.3 * pulse);
-        ctx.strokeStyle = '#8dff9a'; ctx.lineWidth = 3 + 2 * pulse; chamfer(bx - 2, by - 2, bw + 4, bh + 4, 10); ctx.stroke();
+        const fz = fuseOf(tu, du), hc = fz ? '#ffd24a' : '#8dff9a';   // 특수 합체 짝꿍은 금색
+        drawGlow(hc, bx + bw / 2, by + bh / 2, Math.max(bw, bh) * 0.8, 0.35 + 0.3 * pulse);
+        ctx.strokeStyle = hc; ctx.lineWidth = 3 + 2 * pulse; chamfer(bx - 2, by - 2, bw + 4, bh + 4, 10); ctx.stroke();
         ctx.font = FK(16); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        outlineText('합체', bx + bw / 2, by - 10 - 4 * pulse, '#caffd0', 4);
+        outlineText(fz ? '특수 합체' : '합체', bx + bw / 2, by - 10 - 4 * pulse, fz ? '#ffe9a8' : '#caffd0', 4);
       }
     }
     { // 해체 구역: 끄는 동안 선 위 전장을 붉게 덮고, 들어가면 번쩍인다
@@ -214,6 +216,7 @@ function drawHud() {
     ctx.globalAlpha = 1;
     BUTTONS.push({ x: 240, y: 8, w: 44, h: 46, act: 'speed' });
   }
+  if (!S.tut && (S.mode === 'play' || S.holdT > 0)) drawHoldBtn();
 
   ctx.textAlign = 'center';
   ctx.font = FT(15, 900);
@@ -470,6 +473,91 @@ function drawWarning() {
   ctx.font = FK(17); outlineText(S.warnText || `${ENEMY[S.stage.sector.boss].name}이 접근하고 있어요`, W / 2, y + 23, '#ffd0d4', 4);
   ctx.restore();
 }
+// 정지장 버튼: 전장 오른쪽 아래. 웨이브마다 한 번, 누르면 5초 동안 적이 멈추고 그동안 재정비
+function drawHoldBtn() {
+  const x = W - 44, y = 566, r = 27, on = S.holdT > 0, ready = S.holdLeft > 0 && S.mode === 'play', t = S.time;
+  if (on) {   // 전장을 푸른 막으로 덮고 남은 시간
+    const a = Math.min(1, S.holdT * 2);
+    ctx.fillStyle = `rgba(60,150,255,${0.13 * a})`; ctx.fillRect(0, 70, W, LINE_Y - 70);
+    ctx.strokeStyle = `rgba(127,212,255,${0.5 * a})`; ctx.lineWidth = 2; ctx.strokeRect(6, 74, W - 12, LINE_Y - 80);
+    ctx.font = FT(40, 900); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.85 * a;
+    outlineText(S.holdT.toFixed(1), W / 2, 330, '#bfeaff', 6); ctx.font = FK(18); outlineText('정지장', W / 2, 296, '#7fd4ff', 4); ctx.globalAlpha = 1;
+  }
+  ctx.save();
+  if (ready) drawGlow('#7fd4ff', x, y, 40, 0.25 + 0.15 * Math.sin(t * 4));
+  ctx.fillStyle = on ? 'rgba(60,150,255,.35)' : ready ? 'rgba(20,50,90,.9)' : 'rgba(20,24,36,.8)'; hexPath(x, y, r); ctx.fill();
+  ctx.strokeStyle = ready || on ? '#7fd4ff' : 'rgba(255,255,255,.25)'; ctx.lineWidth = 2.5; ctx.stroke();
+  if (on) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * S.holdT / 5); ctx.stroke(); }
+  // 그림: 모래시계
+  const c = ready || on ? '#dff4ff' : 'rgba(255,255,255,.3)';
+  ctx.fillStyle = c; ctx.strokeStyle = c; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(x - 10, y - 13); ctx.lineTo(x + 10, y - 13); ctx.moveTo(x - 10, y + 13); ctx.lineTo(x + 10, y + 13); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - 8, y - 11); ctx.lineTo(x + 8, y - 11); ctx.lineTo(x, y); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 8, y + 11); ctx.lineTo(x - 8, y + 11); ctx.closePath(); ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.restore();
+  if (ready) BUTTONS.push({ x: x - 34, y: y - 34, w: 68, h: 68, act: 'hold' });
+}
+// 합칠 수 있는 짝 표시: 같은 종류 같은 레벨 짝이 있으면 초록 ▲, 특수 합체 짝꿍(둘 다 Lv8)은 금빛 선으로 잇는다.
+// 기체를 짧게 탭하면 1.5초 동안 그 기체의 짝꿍을 테두리로 강조
+function unitBox(u) {
+  if (u.res != null) { const q = resPos(u.res); return { x: q.x - RES_W / 2, y: q.y - RES_W / 2, w: RES_W, h: RES_W }; }
+  const xs = u.cells.map(c => cellPos(c).x), ys = u.cells.map(c => cellPos(c).y);
+  return { x: Math.min(...xs) - CW / 2 + 2, y: Math.min(...ys) - CH / 2 + 2, w: Math.max(...xs) - Math.min(...xs) + CW - 4, h: Math.max(...ys) - Math.min(...ys) + CH - 4 };
+}
+function drawPairHints() {
+  if (!S.slots || !['play', 'break', 'clearing'].includes(S.mode)) return;
+  const us = allUnits().filter(u => u.cells || u.res != null), t = S.time;
+  ctx.save();
+  for (const u of us) if (u.fuse) {   // 특수 합체 기체: 금색 이중 테두리, 오른쪽 아래 금색 육각에 짝꿍 그림
+    const f = FUSE_BY[u.fuse], b = unitBox(u), pu = 0.5 + 0.5 * Math.sin(t * 3 + b.x);
+    ctx.strokeStyle = '#ffd24a'; ctx.globalAlpha = 0.7 + 0.3 * pu; ctx.lineWidth = 2.5; chamfer(b.x, b.y, b.w, b.h, 10); ctx.stroke();
+    ctx.strokeStyle = f.col; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5; chamfer(b.x + 4, b.y + 4, b.w - 8, b.h - 8, 8); ctx.stroke(); ctx.globalAlpha = 1;
+    const ot = f.keep === f.a ? f.b : f.a, od = UNIT[ot], hx = b.x + b.w - 15, hy = b.y + b.h - 15;
+    ctx.fillStyle = 'rgba(30,20,4,.95)'; hexPath(hx, hy, 14); ctx.fill(); ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.stroke();
+    drawUnitArt(ot, 1, hx, hy, Math.min(20 / od.iw, 18 / od.ih), 1, null);
+  }
+  ctx.restore();
+  if (drag && drag.moved) return;
+  const cnt = {};
+  for (const u of us) if (!u.fuse && u.lv < MAX_LV) { const k = u.type + u.lv; cnt[k] = (cnt[k] || 0) + 1; }
+  ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // 특수 합체 짝꿍: 금빛 점선이 맥박친다
+  const done = new Set();
+  for (const a of us) for (const b of us) {
+    if (a === b || done.has(a) || done.has(b) || !fuseOf(a, b)) continue;
+    done.add(a); done.add(b);
+    const p = unitPos(a), q = unitPos(b), pu = 0.5 + 0.5 * Math.sin(t * 4);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,190,40,.35)'; ctx.lineWidth = 12 + 4 * pu; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+    ctx.strokeStyle = '#ffe98a'; ctx.lineWidth = 4; ctx.setLineDash([12, 8]); ctx.lineDashOffset = -t * 40;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.setLineDash([]); ctx.lineCap = 'butt';
+    for (const o of [a, b]) { const bx = unitBox(o); drawGlow('#ffd24a', bx.x + bx.w / 2, bx.y + bx.h / 2, 60, 0.3 + 0.3 * pu); ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 3 + 2 * pu; chamfer(bx.x - 2, bx.y - 2, bx.w + 4, bx.h + 4, 10); ctx.stroke(); }
+    const m = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+    ctx.font = FK(14); outlineText('특수 합체', m.x, m.y - 14, '#ffe9a8', 4);
+  }
+  // 같은 종류 같은 레벨 짝: 기체 위에 초록 ▲ (통통)
+  for (const u of us) {
+    if (u.fuse || u.lv >= MAX_LV || (cnt[u.type + u.lv] || 0) < 2) continue;
+    const b = unitBox(u), x = b.x + 4, y = b.y + 2 + Math.sin(t * 6 + b.x * 0.05) * 3;   // 왼쪽 위 모서리에 걸쳐서
+    drawGlow('#8dff9a', x, y, 18, 0.5);
+    ctx.fillStyle = 'rgba(2,14,6,.92)'; ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.lineTo(x + 12, y + 8); ctx.lineTo(x - 12, y + 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#8dff9a'; ctx.beginPath(); ctx.moveTo(x, y - 8); ctx.lineTo(x + 8.5, y + 5); ctx.lineTo(x - 8.5, y + 5); ctx.closePath(); ctx.fill();
+  }
+  // 탭한 기체의 짝꿍 강조
+  const pk = UI.peek, pe = pk ? performance.now() / 1000 - pk.t0 : 9;
+  if (pk && pe < 1.5 && (pk.u.cells || pk.u.res != null)) {
+    const du = pk.u, a = pe > 1.1 ? (1.5 - pe) / 0.4 : 1;
+    for (const tu of us) {
+      if (tu === du) continue;
+      const fz = fuseOf(tu, du), same = !fz && tu.type === du.type && tu.lv === du.lv && du.lv < MAX_LV && !tu.fuse && !du.fuse;
+      if (!fz && !same) continue;
+      const b = unitBox(tu), hc = fz ? '#ffd24a' : '#8dff9a';
+      ctx.globalAlpha = a; ctx.strokeStyle = hc; ctx.lineWidth = 3; chamfer(b.x - 2, b.y - 2, b.w + 4, b.h + 4, 10); ctx.stroke();
+      ctx.font = FK(15); outlineText(fz ? '특수 합체' : '합체', b.x + b.w / 2, b.y - 8, fz ? '#ffe9a8' : '#caffd0', 4); ctx.globalAlpha = 1;
+    }
+  }
+  ctx.restore();
+}
 function drawSkillPop() {
   const k = S.skillPop;
   if (!k) return;
@@ -488,9 +576,10 @@ function drawSkillPop() {
   ctx.translate(W / 2, y); ctx.scale(sc, sc);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FU(12); ctx.fillStyle = 'rgba(200,240,255,.9)';
-  ctx.fillText(`UPGRADE COMPLETE // ${k.unit} LV.${k.lv}`, 0, -28);
+  ctx.fillText(k.fused ? 'SPECIAL FUSION // 특수 합체' : `UPGRADE COMPLETE // ${k.unit} LV.${k.lv}`, 0, -28);
   ctx.font = FK(34); glitchText(k.name + '!', 0, 4, k.color, 7, k.t < 0.3 ? (0.3 - k.t) * 30 : 0);
-  ctx.font = FT(13, 900); ctx.fillStyle = '#5affc8'; ctx.fillText('▲ ' + k.cmp, 0, 32);
+  if (k.fused) { ctx.font = FK(14); ctx.fillStyle = '#ffe9a8'; ctx.fillText(k.cmp, 0, 32); }
+  else { ctx.font = FT(13, 900); ctx.fillStyle = '#5affc8'; ctx.fillText('▲ ' + k.cmp, 0, 32); }
   lvBadge(k.lv, -138, 4, k.color, 1.3);   // 새 계급장
   ctx.restore();
 }
@@ -870,6 +959,13 @@ function drawCard() {
   ctx.font = FK(32); outlineText(def.name + (mkOf(t2) ? `  Mk.${mkOf(t2)}` : ''), W / 2, y + 232, mkOf(t2) ? '#ffe9a8' : '#fff', 5);
   ctx.font = FK(16); ctx.fillStyle = def.col; ctx.fillText(def.role + (def.shape === 1 ? ', 1칸' : ''), W / 2, y + 262);
   drawShapeIcon(t2, x + w - 52, y + 250, 11, def.col);
+  { const fz = c.inGame && c.u.fuse ? FUSE_BY[c.u.fuse] : fuseFor(t2);   // 특수 합체 짝 (금색 한 줄)
+    if (fz) {
+      const ot = fz.a === t2 ? fz.b : fz.a, txt = c.inGame && c.u.fuse ? `특수 합체: ${fz.name}` : `Lv8 + ${UNIT[ot].name} Lv8 → ${fz.name}`;
+      ctx.font = FK(14); const tw = ctx.measureText(txt).width + 24;
+      ctx.fillStyle = 'rgba(255,210,74,.14)'; chamfer(W / 2 - tw / 2, y + 196, tw, 24, 7); ctx.fill(); ctx.strokeStyle = 'rgba(255,210,74,.6)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#ffe9a8'; ctx.fillText(txt, W / 2, y + 208);
+    } }
   ctx.font = FK(16); ctx.fillStyle = 'rgba(220,235,255,.9)';
   wrapLines(def.desc, w - 70).forEach((l, i) => ctx.fillText(l, W / 2, y + 290 + i * 22));
   // 성능: 지금 보이는 레벨 기준
@@ -1299,30 +1395,26 @@ function drawPerk() {
     const k = Math.max(0, Math.min(1, (e - i * 0.09) / 0.28)), ease = 1 - Math.pow(1 - k, 3);
     const x = 44 + (1 - ease) * 80, y = 284 + i * 140, w = W - 88, h = 124, [cn, cc] = PERK_CAT[pk.cat];
     ctx.globalAlpha = k;
-    const tg = PERK_TIER[pk.tier], have = catCount(pk.cat), synNext = !S.syn[pk.cat] && have + 1 >= SYN_N;
-    if (synNext) drawGlow(cc, x + w / 2, y + h / 2, w * 0.5, 0.18 + 0.12 * Math.sin(e * 7));   // 이걸 고르면 시너지가 켜진다
+    const tg = PERK_TIER[pk.tier];
     if (pk.tier === 3) drawGlow(tg[1], x + w / 2, y + h / 2, w * 0.55, 0.22 + 0.1 * Math.sin(e * 5));   // 전설은 금빛으로 빛난다
     ctx.fillStyle = pk.tier === 3 ? 'rgba(40,26,6,.97)' : 'rgba(8,20,50,.96)'; chamfer(x, y, w, h, 14); ctx.fill();
     ctx.strokeStyle = tg ? tg[1] : pk.col; ctx.lineWidth = tg ? 3.5 : 2; ctx.stroke();
-    if (synNext) { ctx.strokeStyle = cc; ctx.globalAlpha = k * (0.5 + 0.5 * Math.sin(e * 7)); ctx.lineWidth = 3; chamfer(x - 5, y - 5, w + 10, h + 10, 17); ctx.stroke(); ctx.globalAlpha = k; }
     drawGlow(pk.col, x + 62, y + h / 2, 50, 0.3 + 0.08 * Math.sin(e * 4 + i));
     ctx.fillStyle = 'rgba(4,12,30,.95)'; hexPath(x + 62, y + h / 2, 34); ctx.fill(); ctx.strokeStyle = pk.col; ctx.lineWidth = 2.5; ctx.stroke();
     perkIcon(pk.cat, x + 62, y + h / 2, pk.col);
     ctx.textAlign = 'left';
-    ctx.font = FK(13); const cn2 = S.syn[pk.cat] ? `${cn} ★` : `${cn} ${Math.min(have, SYN_N)}/${SYN_N}`, tw = ctx.measureText(cn2).width + 16;   // 갈래와 시너지 진행도
-    ctx.fillStyle = cc + '33'; chamfer(x + 116, y + 18, tw, 22, 6); ctx.fill(); ctx.fillStyle = cc; ctx.fillText(cn2, x + 124, y + 30);
+    ctx.font = FK(13); const tw = ctx.measureText(cn).width + 16;
+    ctx.fillStyle = cc + '33'; chamfer(x + 116, y + 18, tw, 22, 6); ctx.fill(); ctx.fillStyle = cc; ctx.fillText(cn, x + 124, y + 30);
     if (tg) { const tw2 = ctx.measureText(tg[0]).width + 16; ctx.fillStyle = tg[1]; chamfer(x + 122 + tw, y + 18, tw2, 22, 6); ctx.fill(); ctx.fillStyle = '#10131f'; ctx.fillText(tg[0], x + 130 + tw, y + 30); }
     ctx.font = FK(24); outlineText(pk.name, x + 116, y + 62, '#fff', 4);
     ctx.font = FK(15); ctx.fillStyle = 'rgba(220,235,255,.9)';
     wrapLines(pk.desc, w - 140).slice(0, 2).forEach((l, j) => ctx.fillText(l, x + 116, y + 92 + j * 20));
     const cnt = S.perks.filter(q => q === pk.id).length;
-    ctx.textAlign = 'right'; ctx.font = FK(13);
-    if (synNext) { ctx.fillStyle = cc; ctx.fillText(`시너지! ${SYN[pk.cat].name}`, x + w - 16, y + 30); }
-    else if (cnt) { ctx.fillStyle = pk.col; ctx.fillText(`가진 것 ${cnt}개`, x + w - 16, y + 30); }
+    if (cnt) { ctx.textAlign = 'right'; ctx.font = FK(13); ctx.fillStyle = pk.col; ctx.fillText(`가진 것 ${cnt}개`, x + w - 16, y + 30); }
     ctx.globalAlpha = 1; ctx.textAlign = 'center';
     if (k >= 1) BUTTONS.push({ x, y, w, h, act: 'perk', i });
   });
-  if (S.perks.length) {   // 지금 가진 강화: 갈래마다 한 줄 (앞에 갈래와 개수, 시너지면 ★), 넘치면 +N
+  if (S.perks.length) {   // 지금 가진 강화: 갈래마다 한 줄 (앞에 갈래와 개수), 넘치면 +N
     ctx.font = FK(13); ctx.fillStyle = 'rgba(180,205,240,.75)'; ctx.fillText('지금 가진 강화', W / 2, 718);
     const cnt = {}; for (const id of S.perks) cnt[id] = (cnt[id] || 0) + 1;
     let ri = 0;
@@ -1330,7 +1422,7 @@ function drawPerk() {
       const chips = Object.keys(cnt).map(id => PERKS.find(p => p.id === id)).filter(p => p && p.cat === cat);
       if (!chips.length) continue;
       const [cn, cc] = PERK_CAT[cat], y = 732 + ri * 30; ri++;
-      const head = `${S.syn[cat] ? '★' : ''}${cn} ${catCount(cat)}`;
+      const head = `${cn} ${catCount(cat)}`;
       ctx.textAlign = 'left'; ctx.font = FK(13); ctx.fillStyle = cc; ctx.fillText(head, 34, y + 12);
       let x = 34 + 68;
       chips.forEach((p, j) => {

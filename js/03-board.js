@@ -47,12 +47,12 @@ function canPlace(u, cells) {
 }
 // 구역 7 폐허 함대: 놓을 수 없는 부서진 칸. 웨이브마다 2~3칸 새로 (t = Infinity), 난파선 잔해는 몇 초 (t = 남은 시간)
 const isBroken = c => !!(S.broken && S.broken.some(b => b.c === c));
-function breakCells(n, life) {
+function breakCells(n, life, wreck = false) {
   const free = [];
   for (let c = 0; c < COLS * openRows(); c++) if (!S.slots[c] && !isBroken(c)) free.push(c);
   for (let k = 0; k < n && free.length; k++) {
     const c = free.splice(Math.floor(Math.random() * free.length), 1)[0], q = cellPos(c);
-    S.broken.push({ c, t: life });
+    S.broken.push({ c, t: life, wreck });
     S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.5, color: '#9ab8d8' }); sparks(q.x, q.y, '#c8d8ea', 10, 160);
   }
   hintOnce('wreck', '부서진 칸엔 못 놓아요');
@@ -143,11 +143,33 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 
 // ── 스폰 ──────────────────────────────────────────────────
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s];
-let ENDLESS_GROWTH = 1.31;   // 강화가 2웨이브마다 나오는 만큼 체력 성장도 크게. 봇 기준 30~34웨이브에서 무너진다
-const hpMul = () => S.stage.endless ? 0.9 * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();
+let ENDLESS_GROWTH = 1.29, ENDLESS_BASE = 1.35, ENDLESS_BOSS = 0.17;   // 초반을 1.5배 세게, 대신 성장을 조금 낮춰 30웨이브쯤은 예전과 비슷. 보스는 그 웨이브 적 체력에 맞춘다
+const hpMul = () => S.stage.endless ? ENDLESS_BASE * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();
+const AFFIX = { fast: ['가속', '#ff9a3a'], armor: ['장갑', '#7fd4ff'], split: ['분열', '#8dff9a'], bomb: ['자폭', '#ff4a8a'] }, AFFIX_KEYS = Object.keys(AFFIX);
+// 보스 기믹: 칸을 영구 봉쇄 (그 칸의 기체는 사라진다), 기체 분해
+// 게임 시간으로 잠시 뒤에 할 일 (일시정지, 정지장, 배속, 시뮬과 맞게)
+function later(t, fn) { (S.later || (S.later = [])).push({ t, fn }); }
+function destroyUnit(u, why) {
+  const p = unitPos(u); unplace(u); u.hp = 0; S.lost++;
+  boom(p.x, p.y, 1.4, '#ff4a5a'); sparks(p.x, p.y, '#ff8a8a', 24, 340); shake(0.5);
+  addText(p.x, p.y - 30, why, '#ff6a7a', 22, 1.2); play('shield_break', 0.5); play('boom_low', 0.4);
+}
+function sealCells(n, from) {
+  for (let k = 0; k < n; k++) {
+    const pool = []; for (let c = 0; c < COLS * openRows(); c++) if (!isBroken(c)) pool.push(c);
+    if (pool.length <= 2) return;   // 판이 너무 막히지 않게 두 칸은 남긴다
+    const c = pool[Math.floor(Math.random() * pool.length)], u = S.slots[c], q = cellPos(c);
+    if (u) destroyUnit(u, '봉쇄!');
+    S.broken.push({ c, t: Infinity, seal: true });
+    if (from) S.fx.push({ kind: 'bolt', pts: [{ x: from.x, y: from.y + 40 }, q], t: 0, life: 0.35, col: '#ff4a5a' });
+    S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.6, color: '#ff4a5a' }); sparks(q.x, q.y, '#ff6a6a', 16, 260);
+  }
+  addText(W / 2, LINE_Y - 60, '칸 봉쇄!', '#ff5a6a', 26, 1.3); play('zap', 0.45, 0.6);
+  hintOnce('seal', '붉은 칸은 봉쇄됐어요');
+}
 function spawnEnemy(k, x, y) {
   const d = ENEMY[k];
-  const hp = d.hp * (d.boss ? BOSS_MUL * (S.stage.endless ? 0.7 * Math.pow(ENDLESS_GROWTH, S.wave - 10) : 1) : hpMul());
+  const hp = d.hp * (d.boss ? BOSS_MUL * (S.stage.endless ? ENDLESS_BOSS * hpMul() : 1) : hpMul());
   const sh = d.shield ? d.shield * hp : mutOn('shield') && !d.boss && k !== 'rock' && k !== 'splitS' ? 0.3 * hp : 0;
   const e = { k, x, y, hp, maxHp: hp, shield: sh, maxShield: sh, downT: 0, pending: 0, r: d.r, speed: d.speed,
               vx: 0, rot: 0, spin: d.spin ? d.spin * (Math.random() < 0.5 ? -1 : 1) : 0, t: 0, flash: 0,
@@ -155,6 +177,13 @@ function spawnEnemy(k, x, y) {
               atkT: d.boss ? 3 : 1.2, atkLeft: d.atkN || 3, hoverY: d.hover ? d.hover[0] + Math.random() * (d.hover[1] - d.hover[0]) : 250 + Math.random() * 90,
               stun: 0, frozen: 0, slow: 0, slowT: 0, burnT: 0, burnD: 0, hacked: 0, hackT: 0 };
   if (k === 'rock') { e.img = Math.random() < 0.5 ? 'enemies/rock1' : 'enemies/rock2'; e.spin = (Math.random() - 0.5) * 4; }
+  // 무한 11웨이브부터 일반 적 일부가 정예로: 가속, 장갑, 분열, 자폭 (색 고리로 구분)
+  if (S.stage.endless && !d.boss && S.wave >= 11 && !['rock', 'splitS', 'minion'].includes(k) && Math.random() < Math.min(0.3, 0.1 + 0.01 * (S.wave - 11))) {
+    e.aff = AFFIX_KEYS[Math.floor(Math.random() * AFFIX_KEYS.length)];
+    if (e.aff === 'fast') e.speed *= 1.5;
+    if (e.aff === 'armor' && !e.shield) { e.shield = e.maxShield = 0.6 * hp; }
+    hintOnce('aff', '색 고리 = 정예 적');
+  }
   S.enemies.push(e);
   return e;
 }
@@ -200,6 +229,7 @@ function runEvent(ev) {
         if (ev.x) b.cx = ev.x;
         if (ev.mini) { const f = ev.mini === true ? 0.4 : ev.mini; for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) b[k] *= f; b.mini = true; }   // 중간 보스로 나온 보스 (체력을 줄여서)
         if (ev.rage) bossRage(b);
+        if (!SHOT && !S.tut) later(2.6, () => { if (!b.dead && S.mode === 'play') sealCells(1, b); });   // 보스, 중간 보스: 나타나면 칸 하나 봉쇄
         if (!S.boss || S.boss.dead) S.boss = b;
         if (!S.bossCine && !S.tut && !SHOT) { S.bossCine = { k: ev.k, t: 0 }; play('vo_hostile', 0.8); play('drums', 0.5, 0.8); }
         if (ev.k === 'boss3') hintOnce('b3', '모선 보호막은 폭발이나 번개로');

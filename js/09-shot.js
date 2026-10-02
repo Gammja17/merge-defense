@@ -71,6 +71,10 @@ function setupShot(k) {
     PROG.deck = ['f', 't', 's', 'b', 'e']; for (let n = 1; n <= 39; n++) PROG.stars[n] = 3;
     startStage(k === 'boss7' ? 35 : 40); shotArmy([['f', 6, 2], ['f', 5, 3], ['t', 5, 8], ['s', 5, 0], ['b', 4, 13], ['e', 5, 5], ['t', 4, 10], ['f', 4, 15]]);
     S.wave = 4; startWave(5); shotRun(60 * 11, 6);
+  } else if (k === 'fuse' || k === 'fused') {   // 특수 합체: 짝꿍 Lv8 둘이 금빛 선으로 이어진 모습 / 합친 직후
+    PROG.deck = ['g', 'x', 'f', 'e', 't'];
+    startStage(12); shotArmy([['g', 8, 1], ['x', 8, 4], ['f', 8, 7], ['e', 8, 10], ['f', 5, 0], ['f', 5, 2], ['t', 4, 12], ['t', 3, 15]]); S.wave = 2; startWave(3); shotRun(60 * 4, 1);
+    if (k === 'fused') { const a = S.slots[1], b = S.slots[4]; doFuse(a, b, fuseOf(a, b)); shotRun(50, 1); }
   } else if (k === 'map2') { for (let n = 1; n <= 33; n++) PROG.stars[n] = 3; S = { mode: 'map' }; UI.mapPage = 1; }
   else if (k === 'map') S = { mode: 'map' };
   if (SHOT_RAW && S.stage) {

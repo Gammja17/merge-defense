@@ -115,6 +115,7 @@ function damageUnit(u, dmg) {
   let red = cellDef(u);
   if (u.type === 'w') red = 1 - (1 - red) * (0.5 - 0.05 * tier(u));
   else if (u.cells && gridUnits().some(o => o.type === 'w' && o.lv >= 3 && crossOf(o).has(u))) red = 1 - (1 - red) * 0.75;
+  if (u.cells && gridUnits().some(o => o.fuse === 'aegis' && neighborsOf(o).has(u))) red = 1 - (1 - red) * 0.5;   // 이지스: 주변 기체 피해 절반
   if (red) { const v = dmg * (1 - red); dmg = Math.floor(v) + (Math.random() < v % 1 ? 1 : 0); }
   if (dmg <= 0) { addText(p.x, p.y - 30, '막음', '#6ad0ff', 18, 0.8); play('shield_hit', 0.3); return; }
   u.hp -= dmg; u.hurt = 0.35;
@@ -208,7 +209,7 @@ function shoot(type, x, y, dmg, lv, fan = 0, tgt = null, extra = null) {
   const def = UNIT[type] || UNIT.f;
   const s = { type, x, y, vx: Math.cos(ang) * def.sp, vy: Math.sin(ang) * def.sp, sp: def.sp, turn: def.turn, tgt, dmg, lv, isCap, cp };
   if (extra) Object.assign(s, extra);
-  s.ut = DMG_BY; S.shots.push(s);
+  s.ut = DMG_BY; if (CUR_U && CUR_U.fuse) s.fz = CUR_U.fuse; S.shots.push(s);
   return s;
 }
 // 탭한 목표로 곧바로: 날아가던 추적탄도 방향을 틀고, 기체들은 바로 다음 발을 쏜다
@@ -229,8 +230,18 @@ function pierce(x, y, dmg, lv, tgt = null, col = '#b86bff', extra = null) {
   const ang = Math.atan2(tgt.y - y, tgt.x - x);
   const s = { type: 'p', x, y, vx: Math.cos(ang) * 1150, vy: Math.sin(ang) * 1150, dmg, lv, hitSet: new Set(), col, tgt, cp: capPow(CUR_U ? CUR_U.lv : lv) };
   if (extra) Object.assign(s, extra);
-  s.ut = DMG_BY; S.shots.push(s);
+  s.ut = DMG_BY; if (CUR_U && CUR_U.fuse) s.fz = CUR_U.fuse; S.shots.push(s);
   return s;
+}
+// 특수 합체 기체의 탄이 적에 맞았을 때
+function fuseHit(s, e) {
+  if (s.fz === 'bolt' && S.time > (S.boltT || 0)) {   // 번개 요격기: 맞힌 적에서 번개
+    S.boltT = S.time + 0.12;
+    let nx = null, nd = 160;
+    for (const o of S.enemies) if (o !== e && shootable(o)) { const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < nd) { nd = d; nx = o; } }
+    if (nx) { DMG_BY = 'e'; lightning(e, nx, s.dmg * 0.8, 5); }
+  } else if (s.fz === 'zero') { if (!e.dead) e.frozen = Math.max(e.frozen, e.boss ? 0.4 : 1.6); }   // 절대영도: 얼림
+  else if (s.fz === 'pyro') { if (!e.dead) { e.burnT = 3; e.burnD = Math.max(e.burnD || 0, s.dmg * 1.5); e.burnBy = 'a'; } }   // 화염 산탄: 불붙임
 }
 function lightning(from, first, dmg, lv) {
   const pts = [{ x: from.x, y: from.y }];
@@ -263,6 +274,7 @@ function layMines(u, base) {
 // 기체 하나의 화력 배율 (강화): 화력, 외톨이 에이스(주변 8칸이 비면), 고철 화력(가진 부품)
 function pkDmg(u) {
   let m = S.pk.dmg;
+  if (u.fuse) m *= 1.6;   // 특수 합체 기체
   if (S.pk.lonely && u.cells && !neighborsOf(u).size) m *= 1 + S.pk.lonely;
   if (S.pk.scrap) m *= 1 + S.pk.scrap * Math.floor(S.gear / 10);
   return m;
@@ -508,11 +520,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   if (e.frozen > 0 && S.shatter) dmg *= 2;
   if (e.guarded) dmg *= 0.7;
   if (e.boss && e.weak > 0) dmg *= 2;
-  const crit = S.pk.crit + (S.syn.atk ? 0.1 : 0);
-  if (crit && Math.random() < crit) {
-    dmg *= 2;
-    if (S.syn.atk && src !== 'blast' && S.time > (S.synBoomT || 0) && S.chainQ.length < 12) { S.synBoomT = S.time + 0.15; S.chainQ.push({ x: e.x, y: e.y, d: dmg * 0.5, r: 60, col: '#ff5a8a' }); }   // 시너지 연쇄 치명: 작은 폭발 (0.15초에 한 번)
-  }
+  if (S.pk.crit && Math.random() < S.pk.crit) dmg *= 2;
   if (S.pk.hunt > 1 && (e.boss || BIG_FOE.includes(e.k))) dmg *= S.pk.hunt;
   if (S.scan) dmg *= 1.15;
   if (e.shield > 0) {
@@ -584,6 +592,12 @@ function useCmd(k, x, y) {
 }
 function killEnemy(e) {
   e.dead = true;
+  if (e.aff === 'split' && S.mode === 'play') for (const dx of [-22, 22]) { const m = spawnEnemy('grunt', e.x + dx, e.y); m.hp = m.maxHp = m.maxHp * 0.5; }   // 정예 분열: 둘로 갈라진다
+  if (e.aff === 'bomb' && S.mode === 'play') {   // 정예 자폭: 가장 가까운 기체가 3초 동안 얼어붙는다
+    let bu = null, bd = 1e9; for (const u of gridUnits()) { const p = unitPos(u), d = Math.hypot(p.x - e.x, p.y - e.y); if (d < bd) { bd = d; bu = u; } }
+    boom(e.x, e.y, 1.3, '#ff4a8a');
+    if (bu) { bu.ice = Math.max(bu.ice || 0, 3); const p = unitPos(bu); S.fx.push({ kind: 'bolt', pts: [{ x: e.x, y: e.y }, p], t: 0, life: 0.3, col: '#ff4a8a' }); addText(p.x, p.y - 24, '자폭 충격!', '#ff8ab0', 18, 0.9); }
+  }
   if (e.k === 'wreck' && S.mode === 'play') breakCells(1, 8);   // 난파선 잔해가 칸 하나를 잠시 막는다
   if (S.mode === 'play' && cmdOpen()) {
     const was = S.cmd || 0;
@@ -659,8 +673,10 @@ function blast(x, y, r, dmg, main, extra) {
     if (extra && extra.stun && !e.boss) e.stun = Math.max(e.stun, extra.stun);
   }
 }
+// 묶인 캡슐(OR): 한쪽을 고르면 다른 쪽은 반투명해지고 아무것도 맞지 않는다
+const capGhost = c => !!(c.pair && !c.pair.dead && S.focus === c.pair);
 function hitCap(c, n = 1) {
-  if (c.dead) return;
+  if (c.dead || capGhost(c)) return;
   const before = c.hits / c.maxHits;
   c.hits -= n; c.flash = 0.1; c.jit = 0.12;
   c.sq = Math.min(0.35, (c.sq || 0) + 0.12 * n); c.tilt = (Math.random() - .5) * 0.4;
@@ -708,8 +724,7 @@ function claimCap(c) {
     play('shieldUp', 0.35);
   } else {
     let placed = 0, reserved = 0, lost = 0;
-    const extra = S.syn.sup && Math.random() < 0.1 ? 1 : 0;   // 시너지 덤 보급
-    for (let k = 0; k < rw.n + extra; k++) {
+    for (let k = 0; k < rw.n; k++) {
       const r = giveUnit(rw.type, rw.lv, c.x, c.y, col);
       if (r === 'placed') placed++; else if (r === 'reserve') reserved++; else lost++;
     }
