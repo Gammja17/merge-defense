@@ -52,7 +52,8 @@ function doAction(b) {
     case 'scrapInfo': if (UI.card && UI.card.u) scrapUnit(UI.card.u); UI.card = null; return;
     case 'closecard': UI.card = null; return;
     case 'closeshop': UI.shop = false; return;
-    case 'tutskip': if (S.tut) { if (S.tut.e && !S.tut.e.dead) S.tut.e.dead = true; if (S.tut.atk) S.tut.atk.cancelled = true; S.tut = null; PROG.tut = true; save(); } return;
+    case 'tutskip': if (S.tut) { if (S.tut.e && !S.tut.e.dead) S.tut.e.dead = true; if (S.tut.atk) S.tut.atk.cancelled = true; S.tut = null; PROG.tut = true; save(); if (S.stage && S.stage.training) { goMap(); UI.prep = { n: 1 }; } } return;
+    case 'train': UI.card = null; startStage('train'); return;
     case 'summon': {
       if (S.mode !== 'play' && S.mode !== 'break') return;
       const cost = summonCost(), p = { x: W - 77, y: LINE_Y - 26 };
@@ -141,7 +142,7 @@ function doAction(b) {
     case 'perk': {
       const pk = S.perkChoices[b.i];
       pk.apply(); S.perks.push(pk.id);
-      S.perkChoices = null; S.mode = 'break'; S.breakT = 2;
+      S.perkChoices = null; S.mode = S.stage.training ? 'play' : 'break'; S.breakT = 2;
       S.fx.push({ kind: 'ring', x: W / 2, y: 420, t: 0, life: 0.6, color: pk.col }); play('up_fx', 0.5);
       S.banner = { text: pk.name, sub: pk.desc, color: pk.col, t: 0, life: 1.8 };
       play('shieldUp', 0.4);
@@ -200,7 +201,7 @@ cv.addEventListener('pointerdown', ev => {
   const p = toLocal(ev);
   UI.lastP = p;
   loadSfx();
-  if (S.mode === 'title') { goMap(); return; }
+  if (S.mode === 'title') { if (!PROG.tut && !SHOT) startStage('train'); else goMap(); return; }   // 처음이면 훈련장부터
   const b = hitButton(p);
   if (b && b.act === 'prepToggle') {   // 출격 준비 칸: 짧게 누르면 넣고 빼기, 꾹 누르면 기체 정보
     const hold = UI.hold = { b, id: ev.pointerId };

@@ -621,7 +621,7 @@ function update(dt) {
   const st = S.stage;
   if (bossDead) { S.boss = S.enemies.find(e => e.boss) || null; if (!st.endless && !midDead) { beginClear(); return; } }   // 중간 보스를 잡으면 판은 이어진다
   const cleared = !S.events.length && !S.enemies.some(e => !(e.hacked > 0));
-  if (S.mode === 'play' && !st.boss && S.wave === st.waves && cleared) { beginClear(); return; }
+  if (S.mode === 'play' && !st.boss && !st.training && S.wave === st.waves && cleared) { beginClear(); return; }
   if (S.mode === 'play' && S.wave < st.waves && cleared) {
     S.mode = 'break'; S.breakT = 3;
     S.attacks = [];

@@ -97,7 +97,7 @@ function setupShot(k) {
   } else if (k === 'reveal') { S = { mode: 'map' }; UI.reveal = { type: 'e', t0: performance.now() / 1000 - 1.35, parts: [] }; }
   else if (k === 'shop') { PROG.deck = ['f', 't', 'e', 'b', 'c']; startStage(12); shotArmy(army); S.wave = 2; startWave(3); shotRun(60 * 5); S.gear = 11; S.rowsOpen = 3; S.cellFx[1] = { k: 'atk', lv: 2 }; S.cellFx[2] = { k: 'spd', lv: 1 }; S.cellFx[8] = { k: 'rng', lv: 1 }; UI.selCell = 1; S.hint = null; S.hintQueue = []; UI.shop = true; }
   else if (k === 'tut1' || k === 'tut3') {
-    PROG.deck = ['f', 't']; PROG.stars = {}; startStage(1); S.tut = { step: k === 'tut1' ? 1 : 3, t: 0 };
+    PROG.deck = ['f', 't']; PROG.stars = {}; startStage('train'); S.tut = { step: k === 'tut1' ? 1 : 3, t: 0 };
     for (let i = 0; i < (k === 'tut1' ? 150 : 420); i++) update(1 / 60);
     S.hint = null; S.frozen = true;
   }

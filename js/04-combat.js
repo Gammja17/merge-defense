@@ -576,7 +576,7 @@ const CMD = [
   { k: 'orbit', name: '궤도 포격', cost: 50, col: '#ff7a3a' },
   { k: 'freeze', name: '전체 빙결', cost: 70, col: '#8fe6ff' },
 ];
-const cmdOpen = () => S.stage && !S.tut && (S.stage.endless || S.stage.n >= 3);
+const cmdOpen = () => S.stage && (!S.tut || S.tut.step >= 9) && (S.stage.endless || S.stage.n >= 3 || S.stage.training);
 function useCmd(k, x, y) {
   const c = CMD.find(q => q.k === k);
   if (!c || (S.cmd || 0) < c.cost || S.mode !== 'play') return denied();

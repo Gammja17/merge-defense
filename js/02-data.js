@@ -578,7 +578,8 @@ let BUTTONS = [];
 let UI = { card: null, settings: false, resetArm: 0, toast: null, coreShown: null, upFx: null, parts: [], lastT: 0 };
 function startStage(n, endless = false, daily = false) {
   UI.enemyIntro = null; UI.introQ = null; UI.aim = null;
-  const st = endless ? { n: 0, s: 0, i: 0, sector: SECTORS[0], boss: false, waves: Infinity, endless: true } : stageInfo(n);
+  const st = n === 'train' ? { n: 0, s: 0, i: 0, sector: SECTORS[0], boss: false, waves: 1, kind: 'base', training: true }   // 훈련장: 튜토리얼 전용, 지지 않는다
+    : endless ? { n: 0, s: 0, i: 0, sector: SECTORS[0], boss: false, waves: Infinity, endless: true } : stageInfo(n);
   S = {
     mode: 'play', stage: st, paused: false,
     wave: 0, waveT: 0, events: [], breakT: 0,
@@ -602,8 +603,8 @@ function startStage(n, endless = false, daily = false) {
   START_LV[endless ? 1 : st.s].forEach((lv, j) => { const u = makeUnit(types[j % types.length] || 'f', lv); S.used[u.type] = (S.used[u.type] || 0) + Math.pow(2, lv - 1); const sp = findSpot(u); if (sp) place(u, sp); });
   hintOnce('info', '기체를 꾹 누르면 정보가 나와요');
   if (endless) hintOnce('endless4', '2웨이브마다 강화, 5웨이브마다 보스');
-  if (n === 1 && !endless && !PROG.tut && !PROG.stars[1] && !SHOT) S.tut = { step: 1, t: 0 };
-  if (!SHOT && !PROG.seen.cmdTut && cmdOpen()) S.cmdTut = {};
+  if (st.training) S.tut = { step: 1, t: 0 };
+  if (!SHOT && !PROG.seen.cmdTut && cmdOpen() && !st.training) S.cmdTut = {};
   if (S.daily && S.daily.rule && S.daily.rule.start) S.daily.rule.start();   // 이번 주 규칙
   startWave(1);
   if (!SHOT) play('vo_welcome', 0.6);   // 전투 시작 음성
@@ -649,10 +650,11 @@ function startWave(n) {
     else S.banner = { text: `WAVE ${n}`, sub: `${ci === 4 ? '다음은 중간 보스예요. 대비하세요' : ci === 8 ? '다음은 위기, 그다음은 보스예요. 대비하세요' : '끝없는 방어선'}`, color: ci === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2 };
     return;
   }
-  S.events = buildWave(st, n);
+  S.events = st.training ? [] : buildWave(st, n);   // 훈련장은 튜토리얼이 필요한 적만 꺼낸다
   if (st.sector.rule === 'wreck') { S.broken = S.broken.filter(b => !b.wreck); breakCells(2 + (Math.random() < 0.5 ? 1 : 0), Infinity, true); }   // 폐허 함대: 웨이브마다 부서진 칸이 바뀐다
   const K = STAGE_KINDS[st.kind || 'base'], lastW = n === st.waves;
   if (st.boss && lastW) { S.warning = 3; S.banner = null; play('drums', 0.7); }
+  else if (n === 1 && st.training) S.banner = { text: 'TRAINING', sub: '하나씩 따라 해 봐요. 여기서는 지지 않아요', color: '#5affc8', t: 0, life: 2.6 };
   else if (n === 1) S.banner = { text: `STAGE ${st.n}`, sub: K.name ? `${K.name}: ${K.sub}` : '정찰대가 방어선을 떠보고 있어요', color: K.col || st.sector.color, t: 0, life: 2.6 };
   else if (st.n >= 3 && n === midWave(st)) { S.banner = { text: 'MID BOSS', sub: '중간 보스가 나타나요. 잡으면 전설 강화를 골라요', color: '#ff5a6a', t: 0, life: 2.6 }; play('drums', 0.6); }
   else if (n === twistWave(st)) { const [tt, sub] = TWIST_TEXT[twistOf(st)]; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.8 }; }
@@ -660,9 +662,11 @@ function startWave(n) {
   else S.banner = { text: `WAVE ${n}`, sub: lastW ? '마지막 총공세! 버텨내세요' : n === 2 ? '적 본대가 도착했어요' : n === 3 ? (st.n >= 2 ? '공격형 함선이 합류했어요' : '적의 공세가 거세져요') : '적이 점점 거세져요', color: lastW ? '#ff5a6a' : '#ffd966', t: 0, life: 2.4 };
 }
 // 튜토리얼: 1 캡슐 탭하기, 2 같은 기체 합체하기, 3 붉은 칸 피하기. 끝나야 첫 웨이브가 시작된다
+const TUT_STEPS = ['캡슐 누르기', '같은 기체 겹치기', '붉은 칸에서 빼기', '부품으로 소환', '위로 끌어 해체', '정비소에서 칸 강화', '강화 고르기', '정지장으로 재정비', '사령관 스킬 쓰기'];
 function updateTut(dt) {
   const T = S.tut;
   T.t += dt;
+  S.hp = S.maxHp;   // 훈련장에서는 지지 않는다
   if (T.step === 1) {
     if (!T.cap || (T.cap.dead && !T.cap.claimed)) {
       T.cap = makeCap({ type: PROG.deck[0] || 'f', lv: 1, n: 1 }, W / 2, 1);
@@ -682,19 +686,37 @@ function updateTut(dt) {
     if (!T.atk && T.e.y >= T.e.hoverY - 4) { T.atk = { kind: 'snipe', cells: [T.cell], src: T.e, dmg: 1, t: 0, warn: 4.5 }; S.attacks.push(T.atk); }
     if (T.atk && T.unit.cells && !T.unit.cells.includes(T.cell)) T.dodged = true;
     if (T.atk && (T.atk.done || T.atk.cancelled || T.e.dead)) {
-      T.step = 4; T.t = 0;
-      if (!T.e.dead) { T.e.hp = T.e.maxHp = T.e.maxHp / 30; T.e.atkLeft = 0; }
-      if (T.dodged) tutOk(); else { addText(W / 2, 420, '붉은 칸에서 빼 주세요', '#ffb08a', 24, 1.6); play('deny', 0.5); }
+      if (!T.e.dead) T.e.dead = true;   // 훈련장: 저격함은 물러난다
+      if (T.dodged) { T.step = 4; T.t = 0; tutOk(); }
+      else { addText(W / 2, 420, '붉은 칸에서 빼 주세요', '#ffb08a', 24, 1.6); play('deny', 0.5); T.e = null; T.atk = null; }   // 다시 한 번
     }
-  } else if (T.step === 4) {   // 해체: 부품 얻기
+  } else if (T.step === 4) {   // 소환: 부품을 채워 주고 소환 버튼
+    if (T.sum0 == null) { T.sum0 = S.summons || 0; const need = summonCost() - S.gear; if (need > 0) addGear(need, W / 2, 420); }
+    if ((S.summons || 0) > T.sum0) { T.step = 5; T.t = 0; tutOk(); }
+  } else if (T.step === 5) {   // 해체: 부품 얻기
     if (!T.s4) { T.s4 = true; if (!allUnits().some(u => u.lv === 1 && uSize(u) === 1)) giveUnit(PROG.deck[0] || 'f', 1, W / 2, 420, '#8dff9a'); }
-    if (T.scrapped) { T.step = 5; T.t = 0; tutOk(); }
-  } else if (T.step === 5) {   // 정비소: 칸 강화
+    if (T.scrapped) { T.step = 6; T.t = 0; tutOk(); }
+  } else if (T.step === 6) {   // 정비소: 칸 강화
     if (!T.s5 && T.t > 0.8) { T.s5 = true; const need = cellNewCost() - S.gear; if (need > 0) addGear(need, W / 2, 420); }
-    if (S.cellFx.some(Boolean)) { T.step = 6; T.t = 0; tutOk(); }
-  } else if (T.t > 1.4) {
-    S.tut = null; PROG.tut = true; save();
-    S.banner = { text: 'WAVE 1', sub: '이제 실전이에요', color: S.stage.sector.color, t: 0, life: 2.4 };
+    if (S.cellFx.some(Boolean)) { T.step = 7; T.t = 0; tutOk(); }
+  } else if (T.step === 7) {   // 강화 고르기: 일반, 고급, 전설 한 장씩
+    if (!T.s7 && T.t > 0.6 && !UI.shop) { T.s7 = true; S.mode = 'perk'; S.perkChoices = ['dmg', 'hunt', 'oc'].map(id => PERKS.find(p => p.id === id)); S.perkT0 = performance.now() / 1000; }
+    if (S.perks.length) { T.step = 8; T.t = 0; tutOk(); }
+  } else if (T.step === 8) {   // 정지장: 적이 다가오면 멈추고 재정비
+    if (!T.s8) { T.s8 = true; S.holdLeft = 1; for (let k = 0; k < 4; k++) { const e = spawnEnemy('grunt', 120 + k * 100, -40 - k * 30); e.hp = e.maxHp = 9999; e.speed *= 0.6; } }
+    if (S.holdLeft === 0) T.held = true;   // 정지장이 켜진 동안은 이 함수가 멈추니 남은 횟수로 확인
+    if (T.held && !(S.holdT > 0)) { T.step = 9; T.t = 0; tutOk(); }
+  } else if (T.step === 9) {   // 사령관 스킬: 게이지를 채워 주고 궤도 포격
+    if (!T.s9) { T.s9 = true; S.cmd = 100; S.cmdTut = {}; for (const e of S.enemies) e.dead = true; for (let k = 0; k < 5; k++) { const e = spawnEnemy('grunt', W / 2 + (k - 2) * 46, 190 + (k % 2) * 40); e.speed *= 0.3; } }   // 한데 모인 적 다섯
+    if (S.cmdTut && S.cmdTut.done) { T.step = 10; T.t = 0; }
+  } else if (T.t > 1.6 && !T.end) {
+    T.end = true;
+    for (const e of S.enemies) e.dead = true;
+    const first = !PROG.trained; PROG.trained = true; PROG.tut = true; PROG.seen.cmdTut = true;
+    if (first) PROG.credits += 200;
+    save(); play('clear_fx', 0.6);
+    S.banner = { text: '훈련 완료', sub: first ? '코어 +200, 이제 실전이에요' : '이제 실전이에요', color: '#5affc8', t: 0, life: 2.6 };
+    setTimeout(() => { if (S.tut === T) { goMap(); UI.prep = { n: 1 }; } }, 2600);   // 1스테이지 출격 준비로
   }
 }
 function pairOnGrid() {
@@ -758,8 +780,8 @@ function tutLabel(txt, step, total) {
 function drawTut() {
   drawTutOk();
   const T = S.tut;
-  if (!T || T.step > 5) return;
-  tutLabel(['캡슐 누르기', '같은 기체 겹치기', '붉은 칸에서 빼기', '위로 끌어 해체', '정비소에서 칸 강화'][T.step - 1], T.step, 5);
+  if (!T || T.step > TUT_STEPS.length) return;
+  tutLabel(TUT_STEPS[T.step - 1], T.step, TUT_STEPS.length);
   if (T.step === 1 && T.cap && !T.cap.dead) tapDemo(T.cap.x, T.cap.y + 10);
   if (T.step === 2) {
     const us = allUnits();
@@ -769,11 +791,13 @@ function drawTut() {
     const c = T.cell, r = Math.floor(c / COLS), free = [c + 1, c - 1, c + COLS, c - COLS].find(i => i >= 0 && i < COLS * openRows() && Math.floor(i / COLS) === r + (i === c + COLS ? 1 : i === c - COLS ? -1 : 0) && !S.slots[i]);
     if (free != null) dragDemo(unitPos(T.unit), cellPos(free), T.unit);
   }
-  if (T.step === 4) {
+  if (T.step === 4) tapDemo(W - 77, LINE_Y - 26);   // 소환 버튼
+  if (T.step === 5) {
     const u = allUnits().filter(q => uSize(q) === 1 && q.cells).sort((a, b) => a.lv - b.lv)[0];
     if (u) { const p = unitPos(u); dragDemo(p, { x: p.x, y: SCRAP_Y - 110 }, u); }
   }
-  if (T.step === 5 && !UI.shop) tapDemo(SHOP_BX + 53, LINE_Y - 24);
+  if (T.step === 6 && !UI.shop) tapDemo(SHOP_BX + 53, LINE_Y - 24);
+  if (T.step === 8 && !T.held) tapDemo(W - 44, 566);   // 정지장 버튼
   button(12, 74, 92, 32, '건너뛰기', 'tutskip', 'ghost');
 }
 function hint(msg) {

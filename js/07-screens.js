@@ -216,7 +216,7 @@ function drawHud() {
     ctx.globalAlpha = 1;
     BUTTONS.push({ x: 240, y: 8, w: 44, h: 46, act: 'speed' });
   }
-  if (!S.tut && (S.mode === 'play' || S.holdT > 0)) drawHoldBtn();
+  if ((!S.tut || S.tut.step === 8) && (S.mode === 'play' || S.holdT > 0)) drawHoldBtn();
   if (S.debuff) {   // 보스 기믹으로 걸린 방해: 붉은 칩과 남은 초
     ctx.font = FK(13);
     const on = Object.keys(S.debuff).filter(k => S.debuff[k] > 0), txts = on.map(k => `${DEBUFF_NAME[k]} ${Math.ceil(S.debuff[k])}`), ws = txts.map(t => ctx.measureText(t).width + 18);
@@ -229,9 +229,9 @@ function drawHud() {
 
   ctx.textAlign = 'center';
   ctx.font = FT(15, 900);
-  glitchText(S.daily ? (S.daily.weekly ? 'WEEKLY' : 'DAILY') : st.endless ? 'ENDLESS' : `STAGE ${st.n}`, 330, 22, st.sector.color, 3, S.glitch * 6);
+  glitchText(S.daily ? (S.daily.weekly ? 'WEEKLY' : 'DAILY') : st.endless ? 'ENDLESS' : st.training ? 'TRAINING' : `STAGE ${st.n}`, 330, 22, st.sector.color, 3, S.glitch * 6);
   ctx.font = FK(13); ctx.fillStyle = 'rgba(210,225,255,.8)';
-  ctx.fillText(st.endless ? `SCORE ${S.score}` : st.sector.name, 330, 42);
+  ctx.fillText(st.endless ? `SCORE ${S.score}` : st.training ? '훈련장' : st.sector.name, 330, 42);
 
   ctx.textAlign = 'right';
   ctx.font = FU(9); ctx.fillStyle = 'rgba(140,220,255,.7)';
@@ -798,6 +798,10 @@ function drawMap() {
   for (let k = 0; k < 8; k++) { ctx.rotate(Math.PI / 4); ctx.fillStyle = '#bfefff'; ctx.fillRect(-2.5, -15, 5, 6); }
   ctx.restore();
   BUTTONS.push({ x: W - 62, y: 16, w: 52, h: 52, act: 'settings' });
+  { const tx = W - 140, ty = 22;   // 훈련장: 언제든 다시 하기
+    ctx.fillStyle = 'rgba(90,255,200,.1)'; chamfer(tx, ty, 72, 40, 8); ctx.fill(); ctx.strokeStyle = 'rgba(90,255,200,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.font = FK(14); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#bfffe8'; ctx.fillText('훈련장', tx + 36, ty + 21);
+    BUTTONS.push({ x: tx, y: ty, w: 72, h: 40, act: 'train' }); }
   let next = 1;
   while (next < STAGE_COUNT && PROG.stars[next]) next++;
   if (UI.mapPage == null) UI.mapPage = Math.min(MAP_PAGES - 1, Math.floor((next - 1) / (MAP_PER * 5)));
@@ -1377,7 +1381,7 @@ function drawShop() {
       ctx.strokeStyle = '#fff'; ctx.globalAlpha = a; ctx.lineWidth = 3; chamfer(q.x - mw / 2 + 1, q.y - mh / 2 + 1, mw - 2, mh - 2, 9); ctx.stroke(); ctx.globalAlpha = 1;
     }
   }
-  if (guide != null) { const q = mpos(guide); if (S.tut && S.tut.step === 5) tapDemo(q.x, q.y); else { ctx.font = FK(16); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('칸을 눌러 보세요', q.x, q.y - mh / 2 - 12, '#fff', 4); } }
+  if (guide != null) { const q = mpos(guide); if (S.tut && S.tut.step === 6) tapDemo(q.x, q.y); else { ctx.font = FK(16); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('칸을 눌러 보세요', q.x, q.y - mh / 2 - 12, '#fff', 4); } }
   // 고른 칸
   const py = my0 + rows * mh + 18, sc = UI.selCell, sf = sc != null ? S.cellFx[sc] : null;
   ctx.fillStyle = 'rgba(10,20,44,.9)'; chamfer(x + 16, py, w - 32, 150, 12); ctx.fill();
@@ -1392,7 +1396,7 @@ function drawShop() {
       FX_KEYS.forEach((k, j) => {
         const d = CELL_FX[k], bw2 = 112, bx2 = W / 2 - 2 * (bw2 + 8) + 4 + j * (bw2 + 8);
         button(bx2, py + 48, bw2, 54, d.name, 'cellfx', S.gear >= cost ? 'gold' : 'ghost', { c: sc, k });
-        if (j === 0 && S.tut && S.tut.step === 5) UI.tutFx = { x: bx2 + bw2 / 2, y: py + 75 };
+        if (j === 0 && S.tut && S.tut.step === 6) UI.tutFx = { x: bx2 + bw2 / 2, y: py + 75 };
         ctx.font = FK(14); ctx.fillStyle = d.col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.txt(d.v[0]), bx2 + bw2 / 2, py + 124);
       });
     } else {
@@ -1432,7 +1436,7 @@ function drawShop() {
   ctx.fillText('필요 없는 기체를 위 전장으로 끌어 놓으면 부품이 나와요.', W / 2, y + h - 96);
   button(W / 2 - 120, y + h - 70, 240, 54, '전투로 돌아가기', 'closeshop', 'primary');
   if (UI.toast && UI.toast.until > performance.now() / 1000) { ctx.font = FK(18); outlineText(UI.toast.text, W / 2, y + 160, '#ffb0b0', 4); }
-  if (S.tut && S.tut.step === 5 && UI.selCell != null && UI.tutFx && !S.cellFx.some(Boolean)) tapDemo(UI.tutFx.x, UI.tutFx.y);
+  if (S.tut && S.tut.step === 6 && UI.selCell != null && UI.tutFx && !S.cellFx.some(Boolean)) tapDemo(UI.tutFx.x, UI.tutFx.y);
   UI.tutFx = null;
 }
 function drawPerk() {
@@ -1608,7 +1612,7 @@ function drawRecords() {
   }
 }
 function drawOverlays() {
-  if (S.mode === 'perk') drawPerk();
+  if (S.mode === 'perk') { drawPerk(); if (S.tut && S.tut.step === 7 && performance.now() / 1000 - (S.perkT0 || 0) > 0.6) tapDemo(W / 2, 346); }
   if (UI.shop) drawShop();
   if (S.paused && !UI.settings) drawPause();
   if (UI.settings) drawSettings();
