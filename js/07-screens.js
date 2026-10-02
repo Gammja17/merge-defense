@@ -873,6 +873,26 @@ function drawMap() {
 }
 
 // ── 격납고 ────────────────────────────────────────────────
+// 편성 화면의 특수 합체 짝꿍 표시: 금색 육각 안에 짝꿍 그림. 둘 다 편성했으면 밝게, 아니면 흐리게
+const fusePartner = t => { const f = fuseFor(t); return f ? (f.a === t ? f.b : f.a) : null; };
+const fusePaired = t => { const o = fusePartner(t); return !!o && PROG.deck.includes(t) && PROG.deck.includes(o); };
+const fuseWanted = t => { const o = fusePartner(t); return !!o && !PROG.deck.includes(t) && PROG.deck.includes(o) && isOwned(t); };   // 짝꿍이 편성에 있는데 나는 없다
+function drawFuseBadge(t, cx, cy, r) {
+  const o = fusePartner(t); if (!o) return;
+  const on = fusePaired(t) || fuseWanted(t), od = UNIT[o], pu = 0.5 + 0.5 * Math.sin(performance.now() / 220);
+  if (on) drawGlow('#ffd24a', cx, cy, r * 2.2, 0.3 + 0.25 * pu);
+  ctx.fillStyle = on ? 'rgba(40,28,4,.96)' : 'rgba(20,16,8,.85)'; hexPath(cx, cy, r); ctx.fill();
+  ctx.strokeStyle = on ? '#ffd24a' : 'rgba(255,210,74,.45)'; ctx.lineWidth = on ? 2 : 1.3; ctx.stroke();
+  ctx.save(); ctx.globalAlpha = on ? 1 : 0.6; drawUnitArt(o, 1, cx, cy, Math.min(r * 1.4 / od.iw, r * 1.25 / od.ih), 1, null); ctx.restore();
+}
+// 짝꿍 카드 테두리: 둘 다 편성 = 금테 맥박, 짝꿍만 편성 = 금테 + '짝꿍' 꼬리표
+function drawFuseFrame(t, x, y, w, h, r) {
+  const paired = fusePaired(t), want = fuseWanted(t);
+  if (!paired && !want) return;
+  const pu = 0.5 + 0.5 * Math.sin(performance.now() / 220);
+  ctx.strokeStyle = '#ffd24a'; ctx.globalAlpha = 0.55 + 0.45 * pu; ctx.lineWidth = 3; chamfer(x - 2, y - 2, w + 4, h + 4, r + 1); ctx.stroke(); ctx.globalAlpha = 1;
+  if (want) { ctx.font = FK(11); const tw = ctx.measureText('짝꿍').width + 12; ctx.fillStyle = '#ffd24a'; chamfer(x + w / 2 - tw / 2, y - 6, tw, 16, 4); ctx.fill(); ctx.fillStyle = '#2a1a00'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('짝꿍', x + w / 2, y + 2); }
+}
 function drawHangar() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FT(28, 900); glitchText('HANGAR', W / 2, 40, '#d8f6ff', 6, Math.random() < 0.04 ? 5 : 0);
@@ -892,6 +912,7 @@ function drawHangar() {
       const def = UNIT[t2], k2 = Math.min(56 / def.iw, 48 / def.ih);
       drawUnitArt(t2, 1, x + 47, y + 34, k2, 1, null);
       ctx.font = FK(13); ctx.textAlign = 'center'; ctx.fillStyle = '#e6f4ff'; ctx.fillText(def.name, x + 47, y + 68);
+      drawFuseFrame(t2, x, y, 94, 80, 10); drawFuseBadge(t2, x + 80, y + 16, 12);
       BUTTONS.push({ x, y, w: 94, h: 80, act: 'card', type: t2 });
     } else {
       ctx.font = FK(14); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(160,210,255,.5)'; ctx.fillText('빈 칸', x + 47, y + 40);
@@ -922,6 +943,7 @@ function drawHangar() {
     }
     if (!own) { ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fillRect(x + cw - 24, y + 12, 12, 10); ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x + cw - 18, y + 12, 4, Math.PI, 0); ctx.stroke(); }
     if (own && mkOf(t2)) { const mk = mkOf(t2); ctx.fillStyle = mk >= 10 ? '#ffd24a' : 'rgba(255,210,74,.2)'; hexPath(x + 20, y + 20, 13); ctx.fill(); ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.font = FT(11, 900); ctx.textAlign = 'center'; ctx.fillStyle = mk >= 10 ? '#2a1600' : '#ffe9a8'; ctx.fillText(String(mk), x + 20, y + 21); }
+    if (own) { drawFuseFrame(t2, x, y, cw, ch, 12); drawFuseBadge(t2, x + cw - 18, y + 46, 13); }
     if ((PROG.newUnits || []).includes(t2)) {
       const pu = 0.7 + 0.3 * Math.sin(performance.now() / 150);
       ctx.fillStyle = `rgba(255,70,110,${pu})`; chamfer(x + cw - 50, y + 6, 44, 18, 5); ctx.fill();
@@ -1564,6 +1586,7 @@ function drawPrep() {
     if (t2) {
       const def = UNIT[t2]; drawUnitArt(t2, 1, sx + sw / 2, sy + 32, Math.min(52 / def.iw, 44 / def.ih), 1, null);
       ctx.font = FK(12); ctx.fillStyle = '#fff'; ctx.fillText(def.name, sx + sw / 2, sy + 64);
+      drawFuseFrame(t2, sx, sy, sw, 76, 9); drawFuseBadge(t2, sx + sw - 13, sy + 14, 11);
       BUTTONS.push({ x: sx, y: sy, w: sw, h: 76, act: 'prepToggle', type: t2 });
     } else { ctx.font = FK(13); ctx.fillStyle = 'rgba(160,210,255,.5)'; ctx.fillText('빈 칸', sx + sw / 2, sy + 38); }
   }
@@ -1580,6 +1603,7 @@ function drawPrep() {
     ctx.textAlign = 'center'; ctx.font = FK(12); ctx.fillStyle = '#fff'; ctx.fillText(def.name, tx + tw / 2, ty + 72);
     ctx.globalAlpha = 1;
     if (inDeck) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(tx + tw - 12, ty + 12, 7, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#0a1a30'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(tx + tw - 16, ty + 12); ctx.lineTo(tx + tw - 13, ty + 15); ctx.lineTo(tx + tw - 8, ty + 9); ctx.stroke(); }
+    if (own) { drawFuseFrame(t2, tx, ty, tw, tw, 9); drawFuseBadge(t2, tx + tw - 13, ty + 50, 11); }
     if (own) BUTTONS.push({ x: tx, y: ty, w: tw, h: tw, act: 'prepToggle', type: t2 });
   });
   ctx.textAlign = 'center'; ctx.font = FK(13); ctx.fillStyle = 'rgba(190,215,245,.75)';
