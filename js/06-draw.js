@@ -933,8 +933,8 @@ function drawUnitFrames(top) {
       frameFx(u.lv, boxes, col, t + u.cells[0] * 0.3);
     } else {
       if (u.maxHp) {
-        // 체력: 칸 왼쪽 가장자리의 굵은 세로 게이지 (늘 또렷하게, 위험하면 빨갛게 깜빡)
-        const r = Math.max(0, u.hp / u.maxHp), n = u.maxHp, gx = x + 4, gy = y + 9, gh = h - 24, seg = gh / n;
+        // 체력: 칸 오른쪽 가장자리의 굵은 세로 게이지 (왼쪽 위는 레벨 꼬리표 자리). 늘 또렷하게, 위험하면 빨갛게 깜빡
+        const r = Math.max(0, u.hp / u.maxHp), n = u.maxHp, gx = x + w - 11, gy = y + 9, gh = h - 24, seg = gh / n;
         const hc = r > 0.5 ? '#5affa0' : r > 0.25 ? '#ffc04a' : '#ff4a5a';
         ctx.fillStyle = 'rgba(0,6,20,.92)'; ctx.fillRect(gx - 2, gy - 2, 11, gh + 4);
         ctx.strokeStyle = 'rgba(220,240,255,.55)'; ctx.lineWidth = 1; ctx.strokeRect(gx - 2, gy - 2, 11, gh + 4);
