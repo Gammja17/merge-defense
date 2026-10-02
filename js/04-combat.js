@@ -278,13 +278,15 @@ function pkDmg(u) {
   if (S.pk.vanguard && u.cells && Math.floor(u.cells[0] / COLS) === 0) m *= 1 + S.pk.vanguard;
   if (S.pk.few || S.pk.many) { const n = gridUnits().length; if (S.pk.few && n <= 6) m *= 1 + S.pk.few; if (S.pk.many) m *= 1 + Math.min(0.6, S.pk.many * n); }
   if (S.pk.berserk) m *= 1 + S.pk.berserk * Math.max(0, S.maxHp - S.hp);
+  if (S.pk.capRush && S.capRushT > 0) m *= 1 + S.pk.capRush;
+  if (S.pk.empty) { let n = 0; for (let c = 0; c < COLS * openRows(); c++) if (!S.slots[c] && !isBroken(c)) n++; m *= 1 + S.pk.empty * n; }
   if (S.debuff && S.debuff.weak > 0) m *= 0.7;   // 보스 기믹: 화력 감소
   if (S.pk.lonely && u.cells && !neighborsOf(u).size) m *= 1 + S.pk.lonely;
   if (S.pk.scrap) m *= 1 + S.pk.scrap * Math.floor(S.gear / 10);
   return m;
 }
 // 공격 속도 배율 (강화): 냉각, 합체 열기, 과충전
-const pkSpd = () => S.pk.spd * (S.heatT > 0 ? 1 + S.pk.heat : 1) * (S.ocT > 0 ? 2 : 1) * (S.killRushT > 0 ? 1 + S.pk.killRush : 1);
+const pkSpd = () => S.pk.spd * (S.heatT > 0 ? 1 + S.pk.heat : 1) * (S.ocT > 0 ? 2 : 1) * (S.killRushT > 0 ? 1 + S.pk.killRush : 1) * (S.pk.adversity && S.hp <= 3 ? 1 + S.pk.adversity : 1);
 function fireUnit(u) {
   const p = unitPos(u), L = Math.min(u.lv, 5), def = UNIT[u.type];
   const base = def.dmg * LV_MUL[u.lv - 1] * cellAtk(u) * (1 + u.buffDmg) * mkMul(u.type) * pkDmg(u);
@@ -411,9 +413,9 @@ function fireUnit(u) {
     case 'y': ok = shoot('b', p.x, p.y - 34, base, Math.min(L, 3)); break;
   }
   if (ok) {
-    const snd = { w: 'shot_retro', l: 'shot_big', q: 'beam', y: 'shot_big', t: 'shot_retro', a: 'shot_retro', v: 'shot_retro', s: 'shot_big', b: 'shot_big', r: 'boom_low', c: 'shot', g: 'shot', m: 'shot', e: 'zapfx' }[u.type];
-    if (snd) play(snd, snd === 'shot_big' ? 0.3 : snd === 'boom_low' || snd === 'beam' ? 0.3 : snd === 'zapfx' ? 0.18 : 0.14, snd === 'shot' ? 1.1 : snd === 'shot_retro' ? 0.85 : 1);
-    if (u.type === 'e') play('crackle', 0.16, 1.1);
+    const snd = { w: 'shot_retro', l: 'shot_big', q: 'beam', y: 'shot_big', t: 'shot_retro', a: 'shot_retro', v: 'shot_retro', s: 'shot_big', b: 'shot_big', r: 'boom_low', c: 'shot', g: 'shot', m: 'shot', e: 'shot' }[u.type];
+    if (snd) play(snd, snd === 'shot_big' ? 0.3 : snd === 'boom_low' || snd === 'beam' ? 0.3 : snd === 'zapfx' ? 0.18 : 0.14, snd === 'shot' ? 1.1 : 1);
+
     const t = ok.tgt || null;
     if (t && u.type !== 'h') u.ang = Math.atan2(t.y - p.y, t.x - p.x);
     u.kick = 0.12; u.flash = 0.09;   // 쏠 때 반동
@@ -524,7 +526,8 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   if (e.frozen > 0 && S.shatter) dmg *= 2;
   if (e.guarded) dmg *= 0.7;
   if (e.boss && e.weak > 0) dmg *= 2;
-  if (S.pk.crit && Math.random() < S.pk.crit) dmg *= 2;
+  let crit = false;
+  if (S.pk.crit && Math.random() < S.pk.crit) { dmg *= 2; crit = true; }
   if (S.pk.hunt > 1 && (e.boss || BIG_FOE.includes(e.k))) dmg *= S.pk.hunt;
   if (S.scan) dmg *= 1.15;
   if (e.shield > 0) {
@@ -542,8 +545,9 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   }
   if (DMG_BY && S.dmgBy) S.dmgBy[DMG_BY] = (S.dmgBy[DMG_BY] || 0) + Math.min(dmg, Math.max(0, e.hp));
   e.hp -= dmg;
+  if (crit && S.pk.execBoom && e.hp <= 0 && !e.dead && src !== 'blast' && S.chainQ.length < 12) S.chainQ.push({ x: e.x, y: e.y, d: e.maxHp * 0.6 * S.pk.execBoom, r: 90, col: '#ff6a4a' });   // 처형 폭발
   if (S.pk.overkill && e.hp < 0 && src !== 'blast' && S.chainQ.length < 12 && !e.dead) S.chainQ.push({ x: e.x, y: e.y, d: -e.hp * S.pk.overkill, r: 70, col: '#ff5a3a' });   // 과잉 화력
-  if (S.pk.fin && !e.boss && e.hp > 0 && e.hp < e.maxHp * S.pk.fin) { e.hp = 0; if (!quiet) addText(e.x, e.y - e.r, '마무리', '#ff5a5a', 15, 0.6); }
+  if (S.pk.fin && !e.boss && e.hp > 0 && e.hp < e.maxHp * S.pk.fin) { e.hp = 0; if (!quiet) addText(e.x, e.y - e.r, '마무리', '#ff5a5a', 15, 0.6); if (S.pk.execBoom && S.chainQ.length < 12) S.chainQ.push({ x: e.x, y: e.y, d: e.maxHp * 0.6 * S.pk.execBoom, r: 90, col: '#ff6a4a' }); }
   if (quiet && S.time > (e.qf || 0)) { e.qf = S.time + 0.12; e.flash = Math.max(e.flash, 0.06); e.kbOff = Math.min(14, (e.kbOff || 0) + 1.5); }   // 빔, 드론, 불바다처럼 조용한 피해도 살짝 번쩍
   if (!quiet) {
     e.flash = 0.14; e.jit = 0.12;
@@ -554,12 +558,7 @@ function hitEnemy(e, dmg, src = 'laser', quiet = false) {
     e.tilt = (Math.random() - .5) * (e.boss ? 0.08 : 0.35);
     if (heavy > 0.12 || (e.boss && dmg > 60)) { sheetFx(1, e.x + (Math.random() - .5) * e.r, e.y + (Math.random() - .5) * e.r * 0.6, 60 + Math.min(60, heavy * 200), 0.35); play('hit', 0.18, 0.8); if (heavy > 0.3) shake(0.1); }
     if (!e.boss && !(e.hacked > 0) && dmg > e.maxHp * 0.08) e.y -= Math.min(3, dmg / e.maxHp * 10);
-    // 맞는 순간 짧고 단단한 "퍽". 세게 맞힐수록 크고 낮게. 폭발과 센 한 방은 한 겹 더
-    play('thwack', 0.16 + Math.min(0.2, heavy * 0.8), 1.15 - Math.min(0.35, heavy * 1.2), 0.08);
-    if (src === 'blast') play('imp_h', 0.12 + Math.min(0.2, heavy * 0.7), e.boss ? 0.8 : 1);
-    else if (heavy > 0.15 || dmg >= 150) play('imp_s', 0.14 + Math.min(0.18, heavy * 0.6), 1.05);
-    if (heavy > 0.12 || (e.boss && dmg > 120)) { play('imp_p', 0.3 + Math.min(0.3, heavy), 0.85); MUS.duckT = 0.18; }
-    if (e.boss) play('bosshit', 0.22, 1.35);
+    // 명중음은 위의 큰 한 방 'hit' 하나만 (주인: 겹친 둔탁한 퍽, 금속음이 거슬림)
     if (SET().nums && (heavy >= 0.2 || dmg >= 300) && S.texts.length < 25) addText(e.x + (Math.random() - .5) * 20, e.y - e.r * 0.6, String(Math.round(dmg)), dmg >= 300 ? '#ffd24a' : '#e6f4ff', dmg >= 300 ? 24 : 18, 0.5, true);   // 큰 한 방만 숫자로 (화면이 덜 어지럽게)
   }
   if (e.hp <= 0) killEnemy(e);
@@ -581,7 +580,7 @@ const cmdOpen = () => S.stage && !S.tut && (S.stage.endless || S.stage.n >= 3);
 function useCmd(k, x, y) {
   const c = CMD.find(q => q.k === k);
   if (!c || (S.cmd || 0) < c.cost || S.mode !== 'play') return denied();
-  S.cmd -= c.cost; UI.aim = null;
+  S.cmd -= c.cost; UI.aim = null; S.cmdLock = 6;   // 쓴 뒤 6초 동안은 게이지가 차지 않는다 (스킬로 잡은 적으로 바로 다시 쓰는 난사 막기)
   if (S.cmdTut && S.cmdTut.on && !S.cmdTut.done) { S.cmdTut.done = S.time; PROG.seen.cmdTut = true; save(); tutOk(); }
   if (k === 'orbit') {
     DMG_BY = null;
@@ -606,7 +605,7 @@ function killEnemy(e) {
     if (bu) { bu.ice = Math.max(bu.ice || 0, 3); const p = unitPos(bu); S.fx.push({ kind: 'bolt', pts: [{ x: e.x, y: e.y }, p], t: 0, life: 0.3, col: '#ff4a8a' }); addText(p.x, p.y - 24, '자폭 충격!', '#ff8ab0', 18, 0.9); }
   }
   if (e.k === 'wreck' && S.mode === 'play') breakCells(1, 8);   // 난파선 잔해가 칸 하나를 잠시 막는다
-  if (S.mode === 'play' && cmdOpen()) {
+  if (S.mode === 'play' && cmdOpen() && !(S.cmdLock > 0)) {
     const was = S.cmd || 0;
     S.cmd = Math.min(100, was + (e.boss ? 30 : e.k === 'elite' ? 15 : ENEMY[e.k].atk ? 4 : e.k === 'rock' || e.k === 'splitS' ? 0.5 : 1.5) * 0.75 * S.pk.cmd);
   }
@@ -635,13 +634,11 @@ function killEnemy(e) {
   if (S.combo >= 3) S.comboPop = 0.25;
   if (S.combo >= 20 && S.mode !== 'clearing') ach('combo_20');   // 클리어 소탕 연쇄는 세지 않는다
   const pitch = 1 + Math.min(S.combo, 20) * 0.015;
-  play('thwack', 0.3 + Math.min(0.2, size * 0.1), 0.85 / Math.max(1, size * 0.8), 0.05);   // 격추는 더 큰 "퍽!"
-  if (size >= 1) play('debris', 0.18 + Math.min(0.3, (size - 1) * 0.25), pitch);
-  if (size >= 1.3) { play('imp_p', 0.35 + Math.min(0.3, (size - 1.3) * 0.4), 0.7); MUS.duckT = 0.25; }
-  if (size >= 2) { shockwave(e.x, e.y, e.boss ? 460 : 260); play('kaboom', 0.8, 0.8); play('thud', 0.7); play('boom_big', 0.45); S.hitStop = 0.09; punch(1); }
-  else if (size >= 1.3) { play('kaboom', 0.55, pitch * 0.95); play('thud', 0.35, 1.2); S.hitStop = Math.max(S.hitStop || 0, 0.045); shake(0.2); punch(0.45); }
-  else if (size >= 1) { play('kaboom', 0.32, pitch * 1.15); play('boom_s', 0.18, pitch); S.hitStop = Math.max(S.hitStop || 0, 0.02); punch(0.15); }
-  else play('boom_s', 0.2, pitch * 1.3);
+  // 격추음: 작은 적은 '쾅' 하나, 큰 적은 '쿠콰쾅' 하나 (겹친 퍽, 파편, 저음 쿵은 뺐다)
+  if (size >= 2) { shockwave(e.x, e.y, e.boss ? 460 : 260); play('boom_big', 0.75); S.hitStop = 0.09; punch(1); MUS.duckT = 0.25; }
+  else if (size >= 1.3) { play('boom_big', 0.45, 1.15); S.hitStop = Math.max(S.hitStop || 0, 0.045); shake(0.2); punch(0.45); }
+  else if (size >= 1) { play('boom_s', 0.32, pitch); S.hitStop = Math.max(S.hitStop || 0, 0.02); punch(0.15); }
+  else play('boom_s', 0.22, pitch * 1.2);
   // 기체 파편: 스프라이트를 네 조각으로 나눠 흩뿌린다
   const im = IMG[e.img];
   if (im && im.width && e.k !== 'rock' && e.k !== 'splitS') {
@@ -663,9 +660,9 @@ function killEnemy(e) {
   }
   if (e.boss) {
     S.legendNext = true;   // 보스를 잡으면 다음 강화 첫 칸은 전설
-    S.shake = 1.2; S.whiteFlash = 1; S.glitch = 0.8; S.slowmo = 1.3; S.bossDown = { t: 0 };
+    S.shake = 1.2; S.whiteFlash = 0.25; S.glitch = 0.5; S.slowmo = 1.3; S.bossDown = { t: 0 };   // 하얀 번쩍임은 짧고 옅게 (주인: 너무 하얘서 안 보임)
     const g = S;
-    setTimeout(() => { if (S === g) { boom(e.x, e.y, 3.2, '#fff0c0'); shockwave(e.x, e.y, 620); blastFx(e.x, e.y, 3); play('boom_big', 0.8, 0.8); play('kaboom', 0.8, 0.7); S.whiteFlash = 0.7; shake(1); } }, 1150);
+    setTimeout(() => { if (S === g) { boom(e.x, e.y, 2.4, '#ffb347'); shockwave(e.x, e.y, 620); blastFx(e.x, e.y, 3); play('boom_big', 0.8, 0.8); play('kaboom', 0.8, 0.7); S.whiteFlash = Math.max(S.whiteFlash, 0.18); shake(1); } }, 1150);
     for (let i = 0; i < 12; i++) setTimeout(() => {
       if (S === g) boom(e.x + (Math.random() - .5) * 200, e.y + (Math.random() - .5) * 160, 1.6, i % 2 ? '#ffb347' : '#ff6a3a');
     }, i * 90);
@@ -723,6 +720,7 @@ function claimCap(c) {
   boom(c.x, c.y, 0.8, col);
   S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.5, color: col });
   sparks(c.x, c.y, col, 20, 280);
+  if (S.pk.capRush) S.capRushT = 3;
   if (S.pk.capSlow) for (const e of S.enemies) if (shootable(e) && Math.hypot(e.x - c.x, e.y - c.y) < 220) { e.slow = Math.max(e.slow, 0.5); e.slowT = Math.max(e.slowT, 3); }   // 냉각 캡슐
   if (S.pk.gamble && !rw.heal) {   // 도박사
     const r = Math.random();
@@ -773,6 +771,8 @@ function mergeInto(t, from) {
   t.lv += 1; t.pop = 0.5; t.cd = 0.2; t.sk = 1.5;
   if (S.pk.twin && t.lv < MAX_LV && Math.random() < S.pk.twin) { t.lv += 1; addText(W / 2, 430, '쌍둥이 합체!', '#9affd8', 26, 1.1); }
   if (S.pk.heat) S.heatT = 4;
+  if (S.pk.recycle) addGear(S.pk.recycle, W / 2, LINE_Y - 80);
+  if (S.pk.mergeHeal && S.time > (S.mergeHealT || 0) && S.hp < S.maxHp) { S.mergeHealT = S.time + 5; S.hp++; addText(W / 2, LINE_Y - 30, '합체 수리 +1', '#b88aff', 18); }
   t.maxHp = unitMaxHp(t.type, t.lv); t.hp = t.maxHp;
   const [name, desc] = t.lv > 5 ? [TRANSCEND[t.lv - 6], transDesc(t.type)] : SKILLS[t.type][t.lv - 1];
   const sa = levelStat(t.type, t.lv - 1), sb = levelStat(t.type, t.lv);

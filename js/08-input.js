@@ -78,6 +78,14 @@ function doAction(b) {
       const q = cellPos(b.c); S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.5, color: CELL_FX[S.cellFx[b.c].k].col });
       return;
     }
+    case 'addres': {
+      const n = S.reserve.length; if (n >= 6) return;
+      const cost = RES_ADD[n - 3];
+      if (S.gear < cost) { toast(`부품이 ${cost - S.gear}개 부족해요`); denied(); return; }
+      S.gear -= cost; S.reserve.push(null); fitReserve(); play('upgrade', 0.4);
+      const q = resPos(n); S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.6, color: '#ff8ae0' });
+      return;
+    }
     case 'addrow': {
       const rows = openRows(); if (rows >= ROWS) return;
       const cost = ROW_ADD[rows - START_ROWS];
@@ -317,7 +325,7 @@ const SCRAP_GEAR = [1, 2, 4, 7, 12, 18, 26, 36];
 function scrapUnit(u) {
   if (!u.cells && u.res == null) return;
   if (S.tut) S.tut.scrapped = true;
-  const p = unitPos(u), val = SCRAP_GEAR[u.lv - 1] * uSize(u);
+  const p = unitPos(u), val = SCRAP_GEAR[u.lv - 1] * uSize(u) * (1 + (S.pk.refund || 0));   // 분해 전문가
   unplace(u);
   if (drag && drag.unit === u) drag = null;
   sparks(p.x, p.y, '#ffb347', 16, 240, 'shard'); boom(p.x, p.y, 0.7, '#ff9a3c');

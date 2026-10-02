@@ -136,7 +136,7 @@ function draw(dt) {
 
   ctx.restore();
   drawShockwaves();
-  if (S.whiteFlash > 0) { ctx.fillStyle = `rgba(255,255,255,${S.whiteFlash * 0.8})`; ctx.fillRect(0, 0, W, H); }
+  if (S.whiteFlash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(0.35, S.whiteFlash * 0.8)})`; ctx.fillRect(0, 0, W, H); }   // 아무리 세도 화면이 가려지지 않게
   applyBloom();
   applyGrade();
   if (!SHOT_RAW) drawHud();
@@ -267,7 +267,7 @@ function drawHud() {
   }
 
   S.corePulse = Math.max(0, S.corePulse - 1 / 60);
-  { const py = LINE_Y - 30, pw = fleetPower(), px = 164;   // 함선 배치 칸 바로 위: 기체를 만지는 자리에서 변화가 보이게
+  { const big = S.reserve.length > 3, py = LINE_Y - 30 - (big ? 44 : 0), pw = fleetPower(), px = big ? RES_X : 164;   // 함선 배치 칸 바로 위 (대기함이 넓어지면 그 위로)
     if (S.powerShown == null) S.powerShown = pw;
     if (S.powerLast != null && Math.abs(pw - S.powerLast) >= 1 && S.mode !== 'win' && S.mode !== 'lose') (S.powerDeltas = S.powerDeltas || []).push({ v: pw - S.powerLast, t: S.time });
     S.powerLast = pw;
@@ -277,6 +277,8 @@ function drawHud() {
     drawPowerIcon(px + 13, py, 8);
     ctx.font = FU(9); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,200,120,.8)'; ctx.fillText('전투력', px + 24, py - 8);
     ctx.font = FT(13, 900); outlineText(fmt(S.powerShown), px + 24, py + 6, '#ffe2a8', 3);
+  }
+  { const py = LINE_Y - 30;
     if (S.mode === 'play' || S.mode === 'break') {   // 오른쪽: 소환 버튼
       { // 소환 왼쪽: 정비소 버튼 겸 지금 가진 부품
         const gx = SHOP_BX, gp = S.gearPulse || 0, canUp = S.gear >= Math.min(cellNewCost(), openRows() < ROWS ? ROW_ADD[openRows() - START_ROWS] : 99);
@@ -298,8 +300,9 @@ function drawHud() {
       ctx.font = FU(15, 700); outlineText(String(cost), bx + 100, py + 1, ok ? '#ffd6a0' : 'rgba(255,214,160,.5)', 3);
       BUTTONS.push({ x: bx, y: by, w: bw, h: bh, act: 'summon' });
     }
+    const big = S.reserve.length > 3, px = big ? RES_X : 164, ppy = py - (big ? 44 : 0);   // 전투력 칸 위로 오르는 변화량
     S.powerDeltas = (S.powerDeltas || []).filter(d => S.time - d.t < 1.2);
-    for (const d of S.powerDeltas) { const q = (S.time - d.t) / 1.2; ctx.globalAlpha = 1 - q; ctx.font = FT(13, 900); outlineText(`${d.v > 0 ? '+' : ''}${fmt(d.v)}`, px + 58, py - 24 - q * 20, d.v > 0 ? '#5affc8' : '#ff6a7a', 3); ctx.globalAlpha = 1; }
+    for (const d of S.powerDeltas) { const q = (S.time - d.t) / 1.2; ctx.globalAlpha = 1 - q; ctx.font = FT(13, 900); outlineText(`${d.v > 0 ? '+' : ''}${fmt(d.v)}`, px + 58, ppy - 24 - q * 20, d.v > 0 ? '#5affc8' : '#ff6a7a', 3); ctx.globalAlpha = 1; }
   }
   // 콤보
   if ((S.combo || 0) >= 5 && S.time - S.comboT < 1.3) {   // 콤보는 5부터, 작게 오른쪽 가장자리에
@@ -433,6 +436,11 @@ function drawCmd() {
   ctx.fillStyle = g >= CMD[0].cost ? '#ffd24a' : 'rgba(255,210,74,.55)'; ctx.fillRect(4, gy + gh * (1 - g / 100), 7, gh * g / 100);
   for (const c of CMD) { ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(2, gy + gh * (1 - c.cost / 100), 11, 1.5); }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FU(10); ctx.fillStyle = 'rgba(255,220,140,.85)'; ctx.fillText('CMD', 20, gy - 12);
+  if (S.cmdLock > 0) {   // 게이지 잠김: 자물쇠와 남은 초
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(2, gy, 11, gh);
+    const ly = gy + gh / 2; ctx.fillStyle = '#ffd24a'; ctx.fillRect(1, ly - 2, 13, 10); ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(7.5, ly - 2, 4, Math.PI, 0); ctx.stroke();
+    ctx.font = FT(10, 900); outlineText(String(Math.ceil(S.cmdLock)), 7.5, ly + 18, '#ffd24a', 3);
+  }
   CMD.forEach((c, i) => {
     const y = gy + 30 + i * 72, ready = g >= c.cost && S.mode === 'play', on = UI.aim === c.k;
     if (ready) drawGlow(c.col, x + 6, y, 34, 0.35 + 0.15 * Math.sin(S.time * 5));
@@ -1410,6 +1418,16 @@ function drawShop() {
     ctx.fillText(rows === 2 ? '칸 6개가 늘고, 세로 3칸 기체를 올릴 수 있어요' : '칸 6개가 늘어요', x + 36, ry + 54);
     button(x + w - 170, ry + 10, 140, 56, `부품 ${cost}`, 'addrow', S.gear >= cost ? 'gold' : 'ghost');
   }
+  // 대기함 칸 늘리기 (6칸까지)
+  const rn = S.reserve.length, ry2 = rows < ROWS ? ry + 86 : ry;
+  if (rn < 6) {
+    const cost = RES_ADD[rn - 3];
+    ctx.fillStyle = 'rgba(36,12,40,.85)'; chamfer(x + 16, ry2, w - 32, 76, 12); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,120,220,.55)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = FK(20); outlineText(`대기함 늘리기 (${rn + 1}칸으로)`, x + 36, ry2 + 26, '#ffc8f0', 4);
+    ctx.font = FK(14); ctx.fillStyle = 'rgba(255,210,240,.85)'; ctx.fillText('자리가 없을 때 기체를 더 맡겨 둘 수 있어요', x + 36, ry2 + 54);
+    button(x + w - 170, ry2 + 10, 140, 56, `부품 ${cost}`, 'addres', S.gear >= cost ? 'gold' : 'ghost');
+  }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FK(15); ctx.fillStyle = 'rgba(255,214,160,.85)';
   ctx.fillText('필요 없는 기체를 위 전장으로 끌어 놓으면 부품이 나와요.', W / 2, y + h - 96);
   button(W / 2 - 120, y + h - 70, 240, 54, '전투로 돌아가기', 'closeshop', 'primary');
@@ -1430,21 +1448,42 @@ function drawPerk() {
     const x = 44 + (1 - ease) * 80, y = 284 + i * 140, w = W - 88, h = 124, [cn, cc] = PERK_CAT[pk.cat];
     ctx.globalAlpha = k;
     const tg = PERK_TIER[pk.tier];
-    if (pk.tier === 3) drawGlow(tg[1], x + w / 2, y + h / 2, w * 0.55, 0.22 + 0.1 * Math.sin(e * 5));   // 전설은 금빛으로 빛난다
-    ctx.fillStyle = pk.tier === 3 ? 'rgba(40,26,6,.97)' : 'rgba(8,20,50,.96)'; chamfer(x, y, w, h, 14); ctx.fill();
-    ctx.strokeStyle = tg ? tg[1] : pk.col; ctx.lineWidth = tg ? 3.5 : 2; ctx.stroke();
+    if (pk.tier >= 2) drawGlow(tg.col, x + w / 2, y + h / 2, w * 0.55, (pk.tier === 3 ? 0.28 : 0.14) + 0.1 * Math.sin(e * 5));   // 고급은 푸르게, 전설은 금빛으로 빛난다
+    const bg = ctx.createLinearGradient(0, y, 0, y + h); bg.addColorStop(0, tg.bg[0]); bg.addColorStop(1, tg.bg[1]);
+    ctx.fillStyle = bg; chamfer(x, y, w, h, 14); ctx.fill();
+    if (pk.tier === 3) {   // 전설: 빛줄기가 카드를 훑고 지나간다
+      ctx.save(); chamfer(x, y, w, h, 14); ctx.clip();
+      const sx = x - 120 + ((e * 260) % (w + 360));
+      const sg = ctx.createLinearGradient(sx, 0, sx + 120, 0); sg.addColorStop(0, 'rgba(255,220,120,0)'); sg.addColorStop(0.5, 'rgba(255,220,120,.22)'); sg.addColorStop(1, 'rgba(255,220,120,0)');
+      ctx.fillStyle = sg; ctx.fillRect(sx, y, 120, h); ctx.restore();
+    }
+    chamfer(x, y, w, h, 14); ctx.strokeStyle = tg.col; ctx.lineWidth = tg.lw; ctx.stroke();
+    if (pk.tier >= 2) brackets(x + 5, y + 5, w - 10, h - 10, 14, tg.col, pk.tier === 3 ? 2.5 : 1.5);
+    // 등급 리본: 카드 위 가장자리에 등급 이름과 별
+    { ctx.font = FK(14); const rw = ctx.measureText(tg.name).width + 22 + pk.tier * 15, rx = x + w - rw - 16, ry = y - 11;
+      ctx.fillStyle = tg.col; chamfer(rx, ry, rw, 24, 6); ctx.fill();
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#0c0f1c'; ctx.fillText(tg.name, rx + 10, ry + 12);
+      const tnw = ctx.measureText(tg.name).width;
+      for (let s = 0; s < pk.tier; s++) drawStar(rx + 18 + tnw + s * 15, ry + 12, 6, '#0c0f1c'); }
     drawGlow(pk.col, x + 62, y + h / 2, 50, 0.3 + 0.08 * Math.sin(e * 4 + i));
     ctx.fillStyle = 'rgba(4,12,30,.95)'; hexPath(x + 62, y + h / 2, 34); ctx.fill(); ctx.strokeStyle = pk.col; ctx.lineWidth = 2.5; ctx.stroke();
     perkIcon(pk.cat, x + 62, y + h / 2, pk.col);
     ctx.textAlign = 'left';
     ctx.font = FK(13); const tw = ctx.measureText(cn).width + 16;
     ctx.fillStyle = cc + '33'; chamfer(x + 116, y + 18, tw, 22, 6); ctx.fill(); ctx.fillStyle = cc; ctx.fillText(cn, x + 124, y + 30);
-    if (tg) { const tw2 = ctx.measureText(tg[0]).width + 16; ctx.fillStyle = tg[1]; chamfer(x + 122 + tw, y + 18, tw2, 22, 6); ctx.fill(); ctx.fillStyle = '#10131f'; ctx.fillText(tg[0], x + 130 + tw, y + 30); }
+    { let bx = x + 122 + tw; const own = ownBuilds();   // 빌드 이름표: 가진 강화와 같은 빌드면 꽉 찬 색과 빛
+      for (const bk of PERK_BUILD[pk.id] || []) {
+        const [bn, bc] = BUILD[bk], on = own.has(bk), bw = ctx.measureText(bn).width + 16;
+        if (on) drawGlow(bc, bx + bw / 2, y + 29, 26, 0.35 + 0.15 * Math.sin(e * 6));
+        ctx.fillStyle = on ? bc : bc + '22'; chamfer(bx, y + 18, bw, 22, 6); ctx.fill();
+        if (!on) { ctx.strokeStyle = bc + '99'; ctx.lineWidth = 1; ctx.stroke(); }
+        ctx.fillStyle = on ? '#0c0f1c' : bc; ctx.fillText(bn, bx + 8, y + 30); bx += bw + 6;
+      } }
     ctx.font = FK(24); outlineText(pk.name, x + 116, y + 62, '#fff', 4);
     ctx.font = FK(15); ctx.fillStyle = 'rgba(220,235,255,.9)';
     wrapLines(pk.desc, w - 140).slice(0, 2).forEach((l, j) => ctx.fillText(l, x + 116, y + 92 + j * 20));
     const cnt = S.perks.filter(q => q === pk.id).length;
-    if (cnt) { ctx.textAlign = 'right'; ctx.font = FK(13); ctx.fillStyle = pk.col; ctx.fillText(`가진 것 ${cnt}개`, x + w - 16, y + 30); }
+    if (cnt) { ctx.textAlign = 'right'; ctx.font = FK(13); ctx.fillStyle = pk.col; const sm = PERK_SUM[pk.id]; ctx.fillText(sm ? `${cnt}개: ${sm(cnt)} → ${sm(cnt + 1)}` : `가진 것 ${cnt}개`, x + w - 16, y + 36); }   // 쌓인 효과와 하나 더 고른 뒤
     ctx.globalAlpha = 1; ctx.textAlign = 'center';
     if (k >= 1) BUTTONS.push({ x, y, w, h, act: 'perk', i });
   });

@@ -279,7 +279,7 @@ function updateAuras(dt) {
     const q = S.chainQ.splice(0, 6);
     for (const c of q) { S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.35, color: c.col || '#ff8a4a' }); blast(c.x, c.y, c.r || 80, c.d); }
   }
-  S.killRushT = Math.max(0, (S.killRushT || 0) - dt);
+  S.killRushT = Math.max(0, (S.killRushT || 0) - dt); S.cmdLock = Math.max(0, (S.cmdLock || 0) - dt); S.capRushT = Math.max(0, (S.capRushT || 0) - dt);
   S.heatT = Math.max(0, (S.heatT || 0) - dt); S.ocT = Math.max(0, (S.ocT || 0) - dt); S.iceT = Math.max(0, (S.iceT || 0) - dt * 1.5);
   for (const rb of S.rebuilds) {
     rb.t -= dt;

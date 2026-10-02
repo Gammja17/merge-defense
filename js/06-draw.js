@@ -1088,13 +1088,13 @@ function drawPads() {
     sg.addColorStop(0, 'rgba(120,220,255,0)'); sg.addColorStop(0.5, 'rgba(120,220,255,.07)'); sg.addColorStop(1, 'rgba(120,220,255,0)');
     ctx.fillStyle = sg; ctx.fillRect(gx, sy - 30, gw, 60); ctx.restore(); }
   drawUnitFrames(false);
-  for (let k = 0; k < RES_N; k++) {   // 대기함 칸: 판 위 줄 왼쪽
+  for (let k = 0; k < S.reserve.length; k++) {   // 대기함 칸: 판 위 줄 왼쪽
     const q = resPos(k), hs = RES_W / 2, hot = drag && drag.moved && resAt(drag.x, drag.y) === k;
     ctx.fillStyle = hot ? 'rgba(120,40,110,.9)' : 'rgba(30,10,40,.85)'; chamfer(q.x - hs, q.y - hs, RES_W, RES_W, 7); ctx.fill();
     ctx.strokeStyle = hot ? '#ff8ae0' : 'rgba(255,120,220,.45)'; ctx.lineWidth = hot ? 2 : 1.2;
     if (!S.reserve[k]) { ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]); } else ctx.stroke();
   }
-  if (!S.reserve.some(Boolean)) { ctx.font = FK(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,140,220,.75)'; ctx.fillText('대기함', RES_X + (RES_N * (RES_W + 4) - 4) / 2, LINE_Y - 58); }
+  if (!S.reserve.some(Boolean)) { ctx.font = FK(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,140,220,.75)'; ctx.fillText('대기함', RES_X + (S.reserve.length * (RES_W + 4) - 4) / 2, LINE_Y - 58); }
 }
 function drawFieldStuff() {
   for (const z of S.zones) {

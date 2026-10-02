@@ -2,6 +2,7 @@
 // ── 칸과 배치 ─────────────────────────────────────────────
 const cellPos = i => ({ x: GRID_X + (i % COLS) * CW + CW / 2, y: GRID_Y + Math.floor(i / COLS) * CH + CH / 2 });
 const resPos = k => ({ x: RES_X + RES_W / 2 + k * (RES_W + 4), y: LINE_Y - 30 });
+function fitReserve() { const n = S.reserve.length; RES_W = Math.min(46, Math.floor((SHOP_BX - 6 - RES_X) / n) - 4); }
 function unitPos(u) {
   if (u.res != null) return resPos(u.res);
   const xs = u.cells.map(c => cellPos(c).x), ys = u.cells.map(c => cellPos(c).y);
@@ -33,7 +34,7 @@ function tickLift(dt) {
 function resAt(x, y) {
   if (Math.abs(y - (LINE_Y - 30)) > RES_W / 2 + 4) return -1;
   const k = Math.floor((x - RES_X) / (RES_W + 4));
-  return k >= 0 && k < RES_N && x - RES_X - k * (RES_W + 4) <= RES_W + 2 ? k : -1;
+  return k >= 0 && k < S.reserve.length && x - RES_X - k * (RES_W + 4) <= RES_W + 2 ? k : -1;
 }
 function cellsFor(u, c) {
   // 누른 칸이 모양 가운데쯤 오게 두고, 판 밖으로 나가면 안쪽으로 민다
@@ -89,9 +90,10 @@ const CELL_FX = {
 };
 const FX_KEYS = ['atk', 'spd', 'def', 'rng'];
 const CELL_UP = [5, 8];              // 2단계, 3단계로 올리는 값
-const START_ROWS = 2, ROW_ADD = [5, 9];   // 3줄, 4줄로 늘리는 값
+const START_ROWS = 2, ROW_ADD = [20, 45];   // 3줄, 4줄로 늘리는 값 (주인: 초반에 다 열리지 않게)
+const RES_ADD = [12, 20, 30];   // 대기함 4, 5, 6칸째 (정비소에서 산다)
 const SHOP_BX = 286;   // 판 위 줄의 정비소 버튼 왼쪽 끝
-const summonCost = () => Math.max(1, 3 + (S.summons || 0) - S.pk.summonOff);
+const summonCost = () => Math.max(1, Math.round((3 + (S.summons || 0)) * Math.pow(0.75, S.pk.summonOff)));   // 소환 할인: 고를 때마다 -25%
 // 소환할수록 비싸지지만 더 좋은 기체가 나온다: 0~2번째 Lv1, 3~5번째 Lv2, 6~9번째 Lv3, 10번째부터 Lv4. 정예 소환 강화마다 +1 (Lv5까지)
 const SUMMON_LV = [3, 6, 10];
 const summonLv = () => Math.min(5, 1 + SUMMON_LV.filter(n => (S.summons || 0) >= n).length + (S.pk.summonLv || 0));
@@ -258,7 +260,8 @@ function runEvent(ev) {
         hintOnce('pair', '묶인 캡슐은 하나만 얻어요');
         if (stageRule() === 'side') { sideCap(a); sideCap(b); }
       } else {
-        const rw = S.pk.goldCap && !ev.r.heal && Math.random() < S.pk.goldCap ? (() => { const d = battleDeck().filter(t => UNIT[t].shape === 1); return { type: d[Math.floor(Math.random() * d.length)] || 'f', lv: 3, n: 1, gold: true }; })() : ev.r;   // 황금 손
+        const rw = ((S.pk.goldCap && Math.random() < S.pk.goldCap) || (S.pk.lastStand && S.hp <= 3)) && !ev.r.heal ?   // 황금 손, 배수진
+           (() => { const d = battleDeck().filter(t => UNIT[t].shape === 1); return { type: d[Math.floor(Math.random() * d.length)] || 'f', lv: 3, n: 1, gold: true }; })() : ev.r;   // 황금 손
         const c = makeCap(rw, rx(), mul); if (stageRule() === 'side') sideCap(c);
       }
       break;
