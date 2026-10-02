@@ -804,6 +804,23 @@ function lvBadge(lv, cx, cy, col, sc = 1) {
   rankIcons(lv);
   ctx.restore();
 }
+// 계정 레벨 보상: 칸 바닥 무늬 (빗금, 격자 테두리). 끝나면 칸 테두리 경로를 다시 잡아 둔다
+let HATCH_PAT = null;
+function floorPattern(k, x, y, w, h) {
+  if (k === 'hatch') {
+    if (!HATCH_PAT) {
+      const c = document.createElement('canvas'); c.width = c.height = 14; const g = c.getContext('2d');
+      g.strokeStyle = 'rgba(140,190,255,.12)'; g.lineWidth = 2;
+      g.beginPath(); for (const o of [-14, 0, 14]) { g.moveTo(o, 14); g.lineTo(o + 14, 0); } g.stroke();
+      HATCH_PAT = ctx.createPattern(c, 'repeat');
+    }
+    ctx.fillStyle = HATCH_PAT; chamfer(x, y, w, h, 9); ctx.fill();
+  } else if (k === 'grid') {
+    ctx.strokeStyle = 'rgba(140,190,255,.22)'; ctx.lineWidth = 1; chamfer(x + 7, y + 7, w - 14, h - 14, 6); ctx.stroke();
+    brackets(x + 3, y + 3, w - 6, h - 6, 9, 'rgba(160,210,255,.4)', 1.5);
+  }
+  chamfer(x, y, w, h, 9);
+}
 // 판 위 기체: 칸 오른쪽 위 모서리에 딱 붙은 계급장 탭 (ㄱ자 기체처럼 모서리가 빈 모양은 맨 윗줄 오른쪽 칸 기준)
 function rankCorner(u, col) {
   const top = Math.min(...u.cells.map(c => Math.floor(c / COLS))), c0 = Math.max(...u.cells.filter(c => Math.floor(c / COLS) === top).map(c => c % COLS));
@@ -1005,6 +1022,7 @@ function drawPads() {
     const pg = ctx.createLinearGradient(0, y, 0, y + h);
     pg.addColorStop(0, 'rgba(26,38,66,.94)'); pg.addColorStop(1, 'rgba(7,11,24,.94)');
     ctx.fillStyle = pg; chamfer(x, y, w, h, 9); ctx.fill();
+    if (PROG.floor) floorPattern(PROG.floor, x, y, w, h);
     if (u) floorFx(u.lv, x, y, w, h, lit, t + u.cells[0] * 0.3);   // 기체가 앉은 칸은 바닥을 그 기체 고유색으로 물들인다 (이 색 = 이 기체)
     ctx.strokeStyle = fc; ctx.globalAlpha = f ? 0.85 : u ? 0.6 : 0.3; ctx.lineWidth = f ? 2 : 1.2; ctx.stroke();
     if (f) { ctx.fillStyle = fc; ctx.globalAlpha = 0.1 + 0.05 * f.lv; chamfer(x, y, w, h, 9); ctx.fill(); ctx.globalAlpha = 0.8; ctx.fillRect(x + 12, y, w - 24, 2.5); }   // 강화 칸: 효과 색으로 옅게 칠하고 윗변 띠

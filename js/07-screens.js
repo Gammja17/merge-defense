@@ -538,13 +538,31 @@ function drawEarned(rx, y) {
   ctx.font = FK(12); ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(170,220,255,.75)';
   ctx.fillText(`보상 ${fmt(S.baseEarned)} + 전투 수집 ${fmt(S.cores)}${S.dailyBonus ? ' (오늘 첫 판 ×2)' : ''}`, rx, y + 18);
 }
+// 계정 경험치 막대: 획득 코어가 다 오른 뒤 1.2초 동안 차오른다. 다 차면 오른 레벨마다 보상 카드를 띄운다
+function drawXp(x, y, w) {
+  if (S.xpGain == null) return;
+  const now = performance.now() / 1000, q = Math.min(1, Math.max(0, (now - (S.endT || 0) - (S.introDur || 0) - 1.2) / 1.2));
+  const L = lvlOf(S.xpFrom + S.xpGain * (1 - Math.pow(1 - q, 3))), bx = x + 64, bw = w - 64 - 74;
+  if (S.xpLvShown && L.lvl > S.xpLvShown) { play('levelup', 0.5); S.xpFlash = now; }
+  S.xpLvShown = L.lvl;
+  const fl = Math.max(0, 1 - (now - (S.xpFlash || 0)) / 0.6);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = FT(15, 900);
+  outlineText(`Lv ${L.lvl}`, x, y, fl ? '#ffffff' : '#ffd24a', 3);
+  ctx.fillStyle = 'rgba(255,255,255,.08)'; chamfer(bx, y - 6, bw, 12, 4); ctx.fill();
+  const g = ctx.createLinearGradient(bx, 0, bx + bw, 0); g.addColorStop(0, '#ffb020'); g.addColorStop(1, '#ffe98a');
+  ctx.fillStyle = g; ctx.fillRect(bx + 1, y - 5, (bw - 2) * L.cur / L.need, 10);
+  if (q > 0 && q < 1) drawGlow('#ffd24a', bx + bw * L.cur / L.need, y, 18, 0.6);
+  if (fl) drawGlow('#ffd24a', x + 20, y, 40, fl * 0.8);
+  ctx.textAlign = 'right'; ctx.font = FU(12); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`+${S.xpGain} XP`, x + w, y);
+  if (q >= 1 && S.lvlUps.length && !UI.reveal && !UI.card && !UI.pendingReveal) UI.reveal = { lvl: S.lvlUps.shift(), t0: now - 1, parts: [] };
+}
 function drawEndlessEnd() {
   const col = '#ffd24a';
   ctx.fillStyle = 'rgba(2,3,12,.8)'; ctx.fillRect(0, 0, W, H);
   drawGlow(col, W / 2, 300, 220, 0.14);
   const dmg = S.dmgBy || {}, tot = Object.values(dmg).reduce((a, b) => a + b, 0) || 1;
   const types = [...new Set(Object.keys(dmg).concat(Object.keys(S.used || {})))].filter(t => UNIT[t]).sort((a, b) => (dmg[b] || 0) - (dmg[a] || 0)).slice(0, 5);
-  const ph = 336 + Math.max(1, types.length) * 46 + 4 + (LB_URL ? 76 : 0) + 124, top = Math.max(40, (H - ph) / 2 - 20);
+  const ph = 376 + Math.max(1, types.length) * 46 + 4 + (LB_URL ? 76 : 0) + 124, top = Math.max(40, (H - ph) / 2 - 20);
   panel(40, top, W - 80, ph, col);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FU(13); ctx.fillStyle = col; ctx.fillText(S.daily ? `// DAILY CHALLENGE / ${S.daily.day}` : '// ENDLESS DEFENSE / LINE BROKEN', W / 2, top + 30);
@@ -559,10 +577,11 @@ function drawEndlessEnd() {
     ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; if (v) ctx.fillText(v, W - 76, y);
   });
   drawEarned(W - 76, top + 260);
+  drawXp(76, top + 300, W - 152);
   // 전투 분석: 기체 종류별로 넣은 피해와 1코(Lv1) 기준 투입량
-  ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.85)'; ctx.fillText('// 전투 분석: 기체별 피해 비중과 투입량 (1코 = Lv1 한 대)', 62, top + 304);
+  ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.85)'; ctx.fillText('// 전투 분석: 기체별 피해 비중과 투입량 (1코 = Lv1 한 대)', 62, top + 344);
   types.forEach((t2, i) => {
-    const def = UNIT[t2], y = top + 336 + i * 46, d = dmg[t2] || 0, pct = Math.round(d / tot * 100);
+    const def = UNIT[t2], y = top + 376 + i * 46, d = dmg[t2] || 0, pct = Math.round(d / tot * 100);
     ctx.fillStyle = 'rgba(12,24,52,.9)'; chamfer(56, y - 20, W - 112, 40, 8); ctx.fill(); unitTint(56, y - 20, 48, 40, def.col, 8);
     drawUnitArt(t2, 1, 80, y, Math.min(30 / def.iw, 28 / def.ih), 1, null);
     ctx.textAlign = 'left'; ctx.font = FK(15); ctx.fillStyle = '#fff'; ctx.fillText(def.name, 104, y - 8);
@@ -573,9 +592,9 @@ function drawEndlessEnd() {
     ctx.textAlign = 'right'; ctx.font = FT(14, 900); ctx.fillStyle = '#fff'; ctx.fillText(`${pct}%`, W - 66, y - 6);
     ctx.font = FU(10); ctx.fillStyle = 'rgba(190,215,245,.75)'; ctx.fillText(fmt(Math.round(d)), W - 66, y + 10);
   });
-  let y2 = top + 336 + Math.max(1, types.length) * 46 + 4;
+  let y2 = top + 376 + Math.max(1, types.length) * 46 + 4;
   if (LB_URL) {   // 온라인 순위에 올리기
-    if (!S.lbSent) nickInput(64, y2, 250, 42);
+    if (!S.lbSent && !UI.reveal) nickInput(64, y2, 250, 42);   // 입력칸은 HTML이라 레벨 카드 위로 올라오니 그동안 숨김
     else { ctx.font = FK(18); ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.fillText(PROG.nick || '', 76, y2 + 21); }
     button(322, y2, 154, 42, S.lbSent ? '올렸어요' : S.lbSending ? '올리는 중' : '순위 올리기', 'lbSubmit', S.lbSent ? 'ghost' : 'gold');
     if (UI.lbMsg) { ctx.font = FK(15); ctx.textAlign = 'center'; ctx.fillStyle = S.lbSent ? '#5affc8' : '#ffd6a0'; ctx.fillText(UI.lbMsg, W / 2, y2 + 58); }
@@ -608,11 +627,11 @@ function drawEnd() {
   const ie = performance.now() / 1000 - (S.endT || 0);
   if (ie < (S.introDur || 0)) return drawEndIntro(S.mode === 'win', ie);
   // 새 기체 소개가 떠 있는 동안은 결과 창을 미룬다. 닫으면 그때 결과가 올라온다
-  if (S.mode === 'win' && (UI.pendingReveal || UI.reveal)) return drawEndIntro(true, Math.min(ie, 0.9));
+  if (S.mode === 'win' && (UI.pendingReveal || (UI.reveal && !UI.reveal.lvl))) return drawEndIntro(true, Math.min(ie, 0.9));
   const win = S.mode === 'win', col = win ? '#5affc8' : '#ff5a6a', st = S.stage;
   ctx.fillStyle = 'rgba(2,3,12,.75)'; ctx.fillRect(0, 0, W, H);
   drawGlow(col, W / 2, 420, 220, 0.18);
-  panel(50, 250, W - 100, 420, col);
+  panel(50, 250, W - 100, 470, col);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FU(13); ctx.fillStyle = col;
   ctx.fillText(`// STAGE ${st.n} / ${win ? 'MISSION COMPLETE' : 'MISSION FAILED'}`, W / 2, 286);
@@ -634,10 +653,11 @@ function drawEnd() {
     ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; if (v) ctx.fillText(v, W - 90, y);
   });
   if (win) drawEarned(W - 90, 500);
+  drawXp(90, 548, W - 180);
   const primary = win ? (st.n < STAGE_COUNT ? ['다음 스테이지', 'next'] : ['지도로', 'map']) : ['다시 하기', 'retry'];
-  button(W / 2 - 110, 540, 220, 50, primary[0], primary[1], 'primary');
-  if (primary[1] !== 'map') button(W / 2 - 110, 604, 105, 38, '지도로', 'map', 'ghost');
-  button(primary[1] !== 'map' ? W / 2 + 5 : W / 2 - 110, 604, primary[1] !== 'map' ? 105 : 220, 38, '격납고', 'hangar', 'ghost');
+  button(W / 2 - 110, 590, 220, 50, primary[0], primary[1], 'primary');
+  if (primary[1] !== 'map') button(W / 2 - 110, 654, 105, 38, '지도로', 'map', 'ghost');
+  button(primary[1] !== 'map' ? W / 2 + 5 : W / 2 - 110, 654, primary[1] !== 'map' ? 105 : 220, 38, '격납고', 'hangar', 'ghost');
 }
 
 // ── 지도 ──────────────────────────────────────────────────
@@ -657,6 +677,13 @@ function drawMap() {
   ctx.font = FT(14); ctx.textAlign = 'left'; ctx.fillStyle = '#ffe9a8';
   ctx.fillText(`${total} / ${STAGE_COUNT * 3}`, 44, 85);
   coreLabel(W - 72, 85, UI.coreShown, 15, 'right');
+  { const L = lvlOf(PROG.xp || 0), tt = titleOf(), bw = 130;   // 계정 레벨과 칭호, 다음 레벨까지 막대
+    ctx.textAlign = 'center'; ctx.font = FT(14, 900); ctx.fillStyle = '#ffd24a';
+    const lw = ctx.measureText(`Lv ${L.lvl}`).width; ctx.font = FK(13); const tw = tt ? ctx.measureText(tt).width + 8 : 0;
+    ctx.textAlign = 'left'; ctx.font = FT(14, 900); ctx.fillText(`Lv ${L.lvl}`, W / 2 - (lw + tw) / 2, 78);
+    if (tt) { ctx.font = FK(13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(tt, W / 2 - (lw + tw) / 2 + lw + 8, 78); }
+    ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(W / 2 - bw / 2, 92, bw, 5);
+    ctx.fillStyle = '#ffc24a'; ctx.fillRect(W / 2 - bw / 2, 92, bw * L.cur / L.need, 5); }
   // 설정 버튼
   ctx.save(); ctx.translate(W - 36, 42); ctx.rotate(t * 0.5);
   ctx.strokeStyle = '#bfefff'; ctx.lineWidth = 3;
@@ -1043,7 +1070,7 @@ function drawUpgradeFx(t2, ax, ay, cx, cy, dt) {
 function drawSettings() {
   BUTTONS = [];
   ctx.fillStyle = 'rgba(2,3,12,.8)'; ctx.fillRect(0, 0, W, H);
-  const x = 40, y = 150, w = W - 80, h = 640;
+  const x = 40, y = 120, w = W - 80, h = 700;
   panel(x, y, w, h, '#48c8ff');
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FT(24, 900); glitchText('SETTINGS', W / 2, y + 44, '#d8f6ff', 5, 0);
@@ -1075,13 +1102,21 @@ function drawSettings() {
     ctx.font = FU(10); ctx.textAlign = 'center'; ctx.fillStyle = on ? '#5affc8' : 'rgba(255,255,255,.5)'; ctx.fillText(on ? 'ON' : 'OFF', tx - 20, ry + 1);
     BUTTONS.push({ x: x + 24, y: ry - 24, w: w - 48, h: 50, act: 'toggle', key });
   });
+  { // 칸 바닥 무늬: 계정 레벨 보상. 누를 때마다 다음 무늬
+    const ry = y + 116 + rows.length * 58, own = floorsOwned(), more = own.length > 1;
+    ctx.fillStyle = 'rgba(255,255,255,.04)'; chamfer(x + 24, ry - 24, w - 48, 50, 8); ctx.fill();
+    ctx.textAlign = 'left'; ctx.font = FK(19); ctx.fillStyle = '#fff'; ctx.fillText('칸 바닥 무늬', x + 44, ry + 1);
+    ctx.textAlign = 'right'; ctx.font = FK(16); ctx.fillStyle = more ? '#ffd24a' : 'rgba(255,255,255,.4)';
+    ctx.fillText(more ? `${FLOORS[PROG.floor || '']} ▶` : 'Lv 8에 풀려요', x + w - 40, ry + 1);
+    if (more) BUTTONS.push({ x: x + 24, y: ry - 24, w: w - 48, h: 50, act: 'floor' });
+  }
   const armed = UI.resetArm > performance.now() / 1000;
-  button(x + 30, y + 418, w - 60, 44, armed ? '한 번 더 누르면 진행이 모두 지워져요' : '진행 초기화', 'reset', 'danger');
+  button(x + 30, y + 476, w - 60, 44, armed ? '한 번 더 누르면 진행이 모두 지워져요' : '진행 초기화', 'reset', 'danger');
   ctx.font = FK(13); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(190,210,240,.7)';
-  ctx.fillText('그래픽, 효과음: Kenney (CC0)', W / 2, y + 488);
-  ctx.fillText('음악: MintoDog, wipics, Deva (OpenGameArt, CC0)', W / 2, y + 508);
-  ctx.fillText('폰트: Orbitron, Chakra Petch, 도현 (SIL OFL)', W / 2, y + 528);
-  ctx.fillText('진행 상황은 이 기기의 브라우저에만 저장돼요', W / 2, y + 548);
+  ctx.fillText('그래픽, 효과음: Kenney (CC0)', W / 2, y + 546);
+  ctx.fillText('음악: MintoDog, wipics, Deva (OpenGameArt, CC0)', W / 2, y + 566);
+  ctx.fillText('폰트: Orbitron, Chakra Petch, 도현 (SIL OFL)', W / 2, y + 586);
+  ctx.fillText('진행 상황은 이 기기의 브라우저에만 저장돼요', W / 2, y + 606);
   button(W / 2 - 100, y + h - 76, 200, 50, '닫기', 'closesettings', 'primary');
 }
 function drawPause() {
@@ -1407,17 +1442,37 @@ function unlockUnit(t) {
   if (PROG.deck.length < DECK_N && !PROG.deck.includes(t)) PROG.deck.push(t);   // 빈자리가 있으면 바로 편성
   save();
 }
-// 해금 연출: 신호 수신 → 검은 실루엣이 떨림 → 섬광과 함께 기체가 드러남
+// 레벨 보상 카드에 쓸 글: 이름, 한 줄 설명, 아래 안내
+function levelCard(l) {
+  const rw = levelReward(l) || {}, pk = rw.perk && PERKS.find(p => p.id === rw.perk);
+  if (pk) return { col: pk.col, name: pk.name, role: '전설 강화 해금', desc: pk.desc, note: '이제 강화 고르기에 나와요' };
+  if (rw.title) return { col: '#ffd24a', name: rw.title, role: rw.core ? `칭호, 코어 ${fmt(rw.core)}` : '새 칭호', desc: '지도 위쪽 레벨 옆에 붙어요', note: rw.core ? '코어가 바로 들어왔어요' : '' };
+  if (rw.floor) return { col: '#7fe0ff', name: FLOORS[rw.floor], role: '칸 바닥 무늬', desc: '전투 판의 칸 바닥이 바뀌어요', note: '설정에서 다른 무늬로 바꿀 수 있어요' };
+  return { col: '#5ae8ff', name: `코어 ${fmt(rw.core || 0)}`, role: '레벨 보상', desc: '연구소와 격납고에서 써요', note: '코어가 바로 들어왔어요' };
+}
+// 레벨 카드 가운데 그림: 큰 육각 배지에 레벨 숫자
+function drawLvBadge(cx, cy, sc, l, col) {
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc);
+  const g = ctx.createLinearGradient(0, -90, 0, 90); g.addColorStop(0, 'rgba(40,30,8,.97)'); g.addColorStop(1, 'rgba(10,8,2,.97)');
+  ctx.fillStyle = g; hexPath(0, 0, 88); ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 5; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,233,168,.5)'; ctx.lineWidth = 1.5; hexPath(0, 0, 74); ctx.stroke();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = FU(16); ctx.fillStyle = '#ffe9a8'; ctx.fillText('LEVEL', 0, -36);
+  ctx.font = FT(64, 900); outlineText(String(l), 0, 12, '#ffffff', 6);
+  ctx.restore();
+}
+// 해금 연출: 신호 수신 → 검은 실루엣이 떨림 → 섬광과 함께 기체가 드러남 (레벨 보상은 섬광부터)
 function drawReveal() {
   BUTTONS = [];
-  const r = UI.reveal, def = UNIT[r.type], now = performance.now() / 1000, e = now - r.t0, T = 1.0;
+  const r = UI.reveal, lv = r.lvl ? levelCard(r.lvl) : null, def = lv || UNIT[r.type], now = performance.now() / 1000, e = now - r.t0, T = 1.0;
   const dt = Math.min(0.05, now - (r.last || now)); r.last = now;
   ctx.fillStyle = `rgba(1,2,10,${Math.min(0.92, e * 2.5)})`; ctx.fillRect(0, 0, W, H);
   if (!HEX_PAT) HEX_PAT = ctx.createPattern(HEX, 'repeat');
   ctx.save(); ctx.globalAlpha = 0.06 + 0.05 * Math.sin(e * 6); ctx.fillStyle = HEX_PAT; ctx.fillRect(0, 0, W, H); ctx.restore();
-  const cx = W / 2, cy = 380, k = Math.min(210 / def.iw, 180 / def.ih);
+  const cx = W / 2, cy = 380, k = lv ? 1 : Math.min(210 / def.iw, 180 / def.ih);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  if (e < T) {
+  if (e < T && !lv) {
     const q = e / T, jx = (Math.random() - .5) * 10 * q, jy = (Math.random() - .5) * 10 * q;
     if (!r.s1) { r.s1 = 1; play('zap', 0.4, 0.6); play('open', 0.4, 0.8); }
     for (let i = 0; i < 3; i++) {
@@ -1450,21 +1505,25 @@ function drawReveal() {
   for (let i = 0; i < 2; i++) { ctx.strokeStyle = i ? '#ffffff' : def.col; ctx.globalAlpha = Math.max(0, 1 - q * 1.2); ctx.lineWidth = 4 - i * 2; ctx.beginPath(); ctx.arc(cx, cy, 70 + q * (300 + i * 80), 0, Math.PI * 2); ctx.stroke(); }
   ctx.globalAlpha = 1;
   const sc = q < 0.22 ? 0.5 + q * 3.6 : 1.29 - Math.min(0.29, (q - 0.22) * 0.8);
-  if (def.shape === 1) spr('aura2', cx, cy - 6, 230 * Math.min(1, q * 3), 220 * Math.min(1, q * 3), q * 1.5, 0.5);
-  drawUnitArt(r.type, 1 + Math.min(4, Math.floor(q / 0.9)), cx, cy, k * sc, 1, null);
+  if (lv) drawLvBadge(cx, cy, sc, r.lvl, '#ffd24a');
+  else {
+    if (def.shape === 1) spr('aura2', cx, cy - 6, 230 * Math.min(1, q * 3), 220 * Math.min(1, q * 3), q * 1.5, 0.5);
+    drawUnitArt(r.type, 1 + Math.min(4, Math.floor(q / 0.9)), cx, cy, k * sc, 1, null);
+  }
   // 파편
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   for (const p of r.parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.94; p.vy = p.vy * 0.94 + 160 * dt; const a = 1 - p.t / p.life; if (a <= 0) continue; ctx.globalAlpha = a; ctx.fillStyle = p.sz > 5 ? '#ffffff' : def.col; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot + p.t * 8); hexPath(0, 0, p.sz); ctx.fill(); ctx.restore(); }
   ctx.restore();
   if (q < 0.3) { ctx.fillStyle = `rgba(255,255,255,${(0.3 - q) * 3})`; ctx.fillRect(0, 0, W, H); }
-  ctx.font = FT(26, 900); glitchText('NEW UNIT UNLOCKED', cx, 170, '#ffd24a', 6, q < 0.4 ? (0.4 - q) * 30 : Math.random() < 0.04 ? 5 : 0.5);
+  ctx.font = FT(26, 900); glitchText(lv ? 'LEVEL UP' : 'NEW UNIT UNLOCKED', cx, 170, '#ffd24a', 6, q < 0.4 ? (0.4 - q) * 30 : Math.random() < 0.04 ? 5 : 0.5);
   ctx.font = FK(44); outlineText(def.name, cx, 590, '#ffffff', 7);
   ctx.font = FK(19); ctx.fillStyle = def.col; ctx.fillText(def.role, cx, 632);
-  drawShapeIcon(r.type, cx + 170, 470, 16, def.col, '차지하는 칸');
+  if (!lv) drawShapeIcon(r.type, cx + 170, 470, 16, def.col, '차지하는 칸');
   ctx.font = FK(17); ctx.fillStyle = 'rgba(220,235,255,.9)';
   wrapLines(def.desc, W - 100).forEach((l, i) => ctx.fillText(l, cx, 670 + i * 24));
-  ctx.font = FK(15); ctx.fillStyle = 'rgba(160,220,255,.8)'; ctx.fillText(PROG.deck.includes(r.type) ? '편성에 들어갔어요. 이제 캡슐로 나와요' : '격납고에서 편성하면 캡슐로 나와요', cx, 736);
-  if (q > 0.6) {
+  ctx.font = FK(15); ctx.fillStyle = 'rgba(160,220,255,.8)'; ctx.fillText(lv ? lv.note : PROG.deck.includes(r.type) ? '편성에 들어갔어요. 이제 캡슐로 나와요' : '격납고에서 편성하면 캡슐로 나와요', cx, 736);
+  if (q > 0.6 && lv) button(cx - 95, 790, 190, 52, '확인', 'revealOk', 'primary');
+  else if (q > 0.6) {
     button(cx - 200, 790, 190, 52, '자세히 보기', 'revealDetail', 'ghost', { type: r.type });
     button(cx + 10, 790, 190, 52, '확인', 'revealOk', 'primary');
   }

@@ -640,10 +640,12 @@ function endStage(win) {
       PROG.records = (PROG.records || []).concat([rec]).sort((a, b) => b.score - a.score || b.wave - a.wave).slice(0, 10);
       S.rank = PROG.records.indexOf(rec) + 1;
     }
+    gainXp(S.wave * 8);
     save(); play('vo_fail', 0.7); S.glitch = 0.6;
     return;
   }
-  if (!win) { play('vo_fail', 0.7); S.glitch = 0.6; return; }
+  gainXp(win ? S.stage.waves * 10 + 50 : (S.wave - 1) * 10);   // 캠페인: 깬 웨이브 × 10, 이기면 +50
+  if (!win) { save(); play('vo_fail', 0.7); S.glitch = 0.6; return; }
   S.stars = S.hp >= 8 ? 3 : S.hp >= 4 ? 2 : 1;
   const n = S.stage.n, first = !PROG.stars[n];
   S.baseEarned = (first ? 90 : 30) + S.stars * 25 + S.stage.s * 25;

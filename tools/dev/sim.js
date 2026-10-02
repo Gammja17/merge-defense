@@ -21,7 +21,7 @@ eval(code + `
 ;setTimeout(() => { (function(){
 buildTints(); play = () => {}; save = () => {};
 const CS = { mk: 0, cl: 0, gv: 0 }; const GS = { got: 0, runs: 0, sum: 0, cell: 0, row: 0 }; { const ag = addGear; addGear = (n, ...r) => { GS.got += n; return ag(n, ...r); }; const da = doAction; doAction = b => { const g0 = S.gear; da(b); const used = g0 - S.gear; if (used > 0) { if (b.act === 'summon') GS.sum += used; else if (b.act === 'addrow') GS.row += used; else GS.cell += used; } }; } { const a = makeCap, b = claimCap, c = giveUnit; makeCap = (...x) => { CS.mk++; return a(...x); }; claimCap = (...x) => { CS.cl++; return b(...x); }; giveUnit = (...x) => { CS.gv++; return c(...x); }; }
-PROG.owned = UNIT_ORDER.slice();
+PROG.owned = UNIT_ORDER.slice(); PROG.lvl = 99; PROG.xp = 0;   // 계정 레벨로 잠긴 강화도 모두 풀린 상태
 if (cfg.mk != null) { PROG.mk = {}; for (const t of UNIT_ORDER) PROG.mk[t] = cfg.mk; }
 function botMerge() {
   let again = true;

@@ -434,15 +434,41 @@ const PERKS = [
   // 전설: 보스를 잡으면 하나는 꼭 나온다
   { tier: 3, id: 'glass', once: true, cat: 'atk', name: '유리 대포', desc: '화력 2배, 대신 기지 보호막 최대치가 절반', col: '#ff3a5a', apply: () => { S.pk.dmg *= 2; S.maxHp = Math.max(1, Math.ceil(S.maxHp / 2)); S.hp = Math.min(S.hp, S.maxHp); } },
   { tier: 3, id: 'oc', once: true, cat: 'sp', name: '과충전', desc: '사령관 스킬을 쓰면 6초 동안 모든 기체 공격 속도 2배', col: '#ffe24a', ok: () => cmdOpen(), apply: () => { S.pk.oc = 1; } },
-  { tier: 3, id: 'scrap', cat: 'atk', name: '고철 화력', desc: '가진 부품 10개마다 화력 +6%. 모아 둘수록 세져요', col: '#ffc86a', apply: () => { S.pk.scrap += 0.06; } },
-  { tier: 3, id: 'revive', once: true, cat: 'def', name: '최후의 방벽', desc: '기지 보호막이 처음 0이 되면 5로 버티고 적이 3초 멈춰요', col: '#5affc8', apply: () => { S.pk.revive = 1; } },
+  { tier: 3, id: 'scrap', need: 3, cat: 'atk', name: '고철 화력', desc: '가진 부품 10개마다 화력 +6%. 모아 둘수록 세져요', col: '#ffc86a', apply: () => { S.pk.scrap += 0.06; } },
+  { tier: 3, id: 'revive', need: 6, once: true, cat: 'def', name: '최후의 방벽', desc: '기지 보호막이 처음 0이 되면 5로 버티고 적이 3초 멈춰요', col: '#5affc8', apply: () => { S.pk.revive = 1; } },
 ];
+
+// 계정 레벨: 판이 끝날 때 경험치를 받는다. 다음 레벨까지 100 + 40 × 지금 레벨
+const xpNeed = l => 100 + 40 * l;
+function lvlOf(xp) { let l = 1; while (xp >= xpNeed(l)) { xp -= xpNeed(l); l++; } return { lvl: l, cur: xp, need: xpNeed(l) }; }
+const LEVEL_REWARDS = {
+  2: { core: 300 }, 3: { perk: 'scrap' }, 4: { core: 500 }, 5: { title: '신참 지휘관' }, 6: { perk: 'revive' }, 7: { core: 800 },
+  8: { floor: 'hatch' }, 10: { title: '베테랑', core: 1000 }, 12: { floor: 'grid' }, 15: { title: '에이스' },
+};
+const levelReward = l => LEVEL_REWARDS[l] || (l >= 16 ? { core: 500 } : null);   // 16부터는 레벨마다 코어 500
+const FLOORS = { '': '기본', hatch: '빗금', grid: '격자 테두리' };
+const floorsOwned = () => [''].concat(Object.keys(LEVEL_REWARDS).filter(l => l <= (PROG.lvl || 1) && LEVEL_REWARDS[l].floor).map(l => LEVEL_REWARDS[l].floor));
+function titleOf() { let t = ''; for (let l = 2; l <= (PROG.lvl || 1); l++) { const r = levelReward(l); if (r && r.title) t = r.title; } return t; }
+function payLevel(l) { const r = levelReward(l); if (!r) return; if (r.core) PROG.credits += r.core; if (r.floor) PROG.floor = r.floor; }
+// 경험치를 더하고 오른 레벨의 보상을 준다. 결과 화면이 S.xpFrom / S.xpGain / S.lvlUps로 막대와 보상 카드를 보여 준다
+function gainXp(n) {
+  S.xpFrom = PROG.xp || 0; S.xpGain = n; S.lvlUps = [];
+  PROG.xp = S.xpFrom + n;
+  const L = lvlOf(PROG.xp).lvl;
+  for (let l = (PROG.lvl || 1) + 1; l <= L; l++) { payLevel(l); if (levelReward(l)) S.lvlUps.push(l); }   // 보상 없는 레벨은 막대 반짝임만
+  PROG.lvl = Math.max(PROG.lvl || 1, L);
+}
+// 레벨이 생기기 전 저장: 깬 스테이지마다 100으로 쳐서 레벨을 맞추고 보상은 조용히 준다
+if (PROG.xp == null) {
+  PROG.xp = Object.keys(PROG.stars).length * 100; PROG.lvl = lvlOf(PROG.xp).lvl;
+  for (let l = 2; l <= PROG.lvl; l++) payLevel(l);
+}
 
 const PERK_CAT = { atk: ['공격', '#ff8a4a'], def: ['방어', '#5affc8'], sup: ['보급', '#ffd84a'], sp: ['특수', '#b88aff'] };
 // 등급: 일반(1), 희귀(2), 전설(3). 보스를 잡은 뒤 첫 선택은 첫 칸이 전설
 const PERK_TIER = { 2: ['고급', '#5ab8ff'], 3: ['전설', '#ffb020'] };
 function rollPerks() {
-  const can = p => (!p.ok || p.ok()) && !(p.once && S.perks.includes(p.id));
+  const can = p => (!p.ok || p.ok()) && !(p.once && S.perks.includes(p.id)) && (PROG.lvl || 1) >= (p.need || 0);   // need: 계정 레벨로 풀리는 강화
   const out = [];
   for (let i = 0; i < 3; i++) {
     const r = R(), want = i === 0 && S.legendNext ? 3 : r < 0.07 ? 3 : r < 0.37 ? 2 : 1;

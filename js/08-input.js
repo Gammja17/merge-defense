@@ -48,7 +48,7 @@ function doAction(b) {
     case 'cmd':
       if (b.k === 'orbit') { if (UI.aim) { UI.aim = null; return; } if ((S.cmd || 0) < CMD[0].cost || S.mode !== 'play') return denied(); UI.aim = 'orbit'; return; }
       useCmd(b.k); return;
-    case 'revealOk': if (S.mode === 'win') S.endT = performance.now() / 1000 - (S.introDur || 0); UI.reveal = null; return;
+    case 'revealOk': if (S.mode === 'win' && !UI.reveal.lvl) S.endT = performance.now() / 1000 - (S.introDur || 0); UI.reveal = null; return;
     case 'scrapInfo': if (UI.card && UI.card.u) scrapUnit(UI.card.u); UI.card = null; return;
     case 'closecard': UI.card = null; return;
     case 'closeshop': UI.shop = false; return;
@@ -138,6 +138,7 @@ function doAction(b) {
     }
     case 'pause': S.paused = true; return;
     case 'resume': S.paused = false; return;
+    case 'floor': { const own = floorsOwned(); PROG.floor = own[(own.indexOf(PROG.floor || '') + 1) % own.length]; save(); return; }
     case 'speed': PROG.settings.speed = SET().speed === 2 ? 1 : 2; save(); return;
     case 'settings': UI.settings = true; UI.resetArm = 0; return;
     case 'closesettings': UI.settings = false; return;
