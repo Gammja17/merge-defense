@@ -584,6 +584,7 @@ function useCmd(k, x, y) {
 }
 function killEnemy(e) {
   e.dead = true;
+  if (e.k === 'wreck' && S.mode === 'play') breakCells(1, 8);   // 난파선 잔해가 칸 하나를 잠시 막는다
   if (S.mode === 'play' && cmdOpen()) {
     const was = S.cmd || 0;
     S.cmd = Math.min(100, was + (e.boss ? 30 : e.k === 'elite' ? 15 : ENEMY[e.k].atk ? 4 : e.k === 'rock' || e.k === 'splitS' ? 0.5 : 1.5) * 0.75 * S.pk.cmd);

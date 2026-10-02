@@ -43,8 +43,26 @@ function cellsFor(u, c) {
   return pts.map(([r, cc]) => (r0 + r) * COLS + c0 + cc);
 }
 function canPlace(u, cells) {
-  return cells.every(c => c >= 0 && c < COLS * openRows() && (!S.slots[c] || S.slots[c] === u));
+  return cells.every(c => c >= 0 && c < COLS * openRows() && (!S.slots[c] || S.slots[c] === u) && !isBroken(c));
 }
+// 구역 7 폐허 함대: 놓을 수 없는 부서진 칸. 웨이브마다 2~3칸 새로 (t = Infinity), 난파선 잔해는 몇 초 (t = 남은 시간)
+const isBroken = c => !!(S.broken && S.broken.some(b => b.c === c));
+function breakCells(n, life) {
+  const free = [];
+  for (let c = 0; c < COLS * openRows(); c++) if (!S.slots[c] && !isBroken(c)) free.push(c);
+  for (let k = 0; k < n && free.length; k++) {
+    const c = free.splice(Math.floor(Math.random() * free.length), 1)[0], q = cellPos(c);
+    S.broken.push({ c, t: life });
+    S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.5, color: '#9ab8d8' }); sparks(q.x, q.y, '#c8d8ea', 10, 160);
+  }
+  hintOnce('wreck', '부서진 칸엔 못 놓아요');
+}
+// 구역 8 차원 균열: 캡슐이 화면 옆에서 날아 들어와 제자리에 선 뒤 내려간다
+function sideCap(c) {
+  c.tx = c.x; c.side = c.x < W / 2 ? -1 : 1; c.x = c.side < 0 ? -40 : W + 40; c.y = 130 + Math.random() * 170; c.sp0 = c.speed; c.speed = 0;
+  hintOnce('side', '캡슐이 옆에서 와요');
+}
+const stageRule = () => S.stage && !S.stage.endless ? S.stage.sector.rule : null;
 function unplace(u) {
   if (u.cells) for (const c of u.cells) if (S.slots[c] === u) S.slots[c] = null;
   u.cells = null;
@@ -172,7 +190,8 @@ function runEvent(ev) {
         const a = makeCap(ev.r[0], 150, mul), b = makeCap(ev.r[1], W - 150, mul);
         a.pair = b; b.pair = a;
         hintOnce('pair', '묶인 캡슐은 하나만 얻어요');
-      } else makeCap(ev.r, rx(), mul);
+        if (stageRule() === 'side') { sideCap(a); sideCap(b); }
+      } else { const c = makeCap(ev.r, rx(), mul); if (stageRule() === 'side') sideCap(c); }
       break;
     }
     default:

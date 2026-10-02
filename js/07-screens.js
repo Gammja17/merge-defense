@@ -217,7 +217,7 @@ function drawHud() {
 
   ctx.textAlign = 'center';
   ctx.font = FT(15, 900);
-  glitchText(S.daily ? 'DAILY' : st.endless ? 'ENDLESS' : `STAGE ${st.n}`, 330, 22, st.sector.color, 3, S.glitch * 6);
+  glitchText(S.daily ? (S.daily.weekly ? 'WEEKLY' : 'DAILY') : st.endless ? 'ENDLESS' : `STAGE ${st.n}`, 330, 22, st.sector.color, 3, S.glitch * 6);
   ctx.font = FK(13); ctx.fillStyle = 'rgba(210,225,255,.8)';
   ctx.fillText(st.endless ? `SCORE ${S.score}` : st.sector.name, 330, 42);
 
@@ -536,7 +536,7 @@ function drawEarned(rx, y) {
   if (q < 1) drawGlow('#5ae8ff', rx - 30, y, 40, 0.4);
   coreLabel(rx, y, '+' + fmt(v), 17, 'right', '#bff6ff');
   ctx.font = FK(12); ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(170,220,255,.75)';
-  ctx.fillText(`보상 ${fmt(S.baseEarned)} + 전투 수집 ${fmt(S.cores)}${S.dailyBonus ? ' (오늘 첫 판 ×2)' : ''}`, rx, y + 18);
+  ctx.fillText(`보상 ${fmt(S.baseEarned)} + 전투 수집 ${fmt(S.cores)}${S.dailyBonus ? ` (${S.dailyBonus})` : ''}`, rx, y + 18);
 }
 // 계정 경험치 막대: 획득 코어가 다 오른 뒤 1.2초 동안 차오른다. 다 차면 오른 레벨마다 보상 카드를 띄운다
 function drawXp(x, y, w) {
@@ -565,13 +565,13 @@ function drawEndlessEnd() {
   const ph = 376 + Math.max(1, types.length) * 46 + 4 + (LB_URL ? 76 : 0) + 124, top = Math.max(40, (H - ph) / 2 - 20);
   panel(40, top, W - 80, ph, col);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = FU(13); ctx.fillStyle = col; ctx.fillText(S.daily ? `// DAILY CHALLENGE / ${S.daily.day}` : '// ENDLESS DEFENSE / LINE BROKEN', W / 2, top + 30);
+  ctx.font = FU(13); ctx.fillStyle = col; ctx.fillText(S.daily ? `// ${S.daily.weekly ? 'WEEKLY' : 'DAILY'} CHALLENGE / ${S.daily.day}` : '// ENDLESS DEFENSE / LINE BROKEN', W / 2, top + 30);
   ctx.font = FK(32); glitchText('방어선 붕괴', W / 2, top + 70, '#fff', 6, S.glitch * 8);
   ctx.font = FT(42, 900); glitchText(String(S.score), W / 2, top + 122, '#ffd24a', 6, S.rank === 1 ? 2 : 0);
   ctx.font = FU(12); ctx.fillStyle = 'rgba(255,230,160,.8)'; ctx.fillText('SCORE', W / 2, top + 152);
-  if (S.rank === 1) { ctx.font = FK(18); glitchText(S.daily ? '오늘 최고 기록!' : '최고 기록 갱신!', W / 2, top + 174, '#5affc8', 4, 2); }
+  if (S.rank === 1) { ctx.font = FK(18); glitchText(S.daily ? (S.daily.weekly ? '이번 주 최고 기록!' : '오늘 최고 기록!') : '최고 기록 갱신!', W / 2, top + 174, '#5affc8', 4, 2); }
   ctx.font = FK(17);
-  [['도달 웨이브', `${S.wave}`], S.daily ? ['오늘 내 최고', `${fmt(PROG.dailyBest.score)}점`] : ['내 기록 순위', S.rank ? `${S.rank}위` : '순위 밖'], ['획득 코어', '']].forEach(([k, v], i) => {
+  [['도달 웨이브', `${S.wave}`], S.daily ? [S.daily.weekly ? '이번 주 내 최고' : '오늘 내 최고', `${fmt(PROG[S.daily.weekly ? 'weeklyBest' : 'dailyBest'].score)}점`] : ['내 기록 순위', S.rank ? `${S.rank}위` : '순위 밖'], ['획득 코어', '']].forEach(([k, v], i) => {
     const y = top + 204 + i * 28;
     ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(180,215,255,.75)'; ctx.fillText(k, 76, y);
     ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; if (v) ctx.fillText(v, W - 76, y);
@@ -600,8 +600,8 @@ function drawEndlessEnd() {
     if (UI.lbMsg) { ctx.font = FK(15); ctx.textAlign = 'center'; ctx.fillStyle = S.lbSent ? '#5affc8' : '#ffd6a0'; ctx.fillText(UI.lbMsg, W / 2, y2 + 58); }
     y2 += 76;
   }
-  button(W / 2 - 110, y2, 220, 48, '다시 도전', S.daily ? 'daily' : 'endless', 'primary');
-  button(W / 2 - 110, y2 + 58, 105, 36, '기록 보기', 'records', 'ghost', S.daily ? { tab: 'daily' } : undefined);
+  button(W / 2 - 110, y2, 220, 48, '다시 도전', S.daily ? (S.daily.weekly ? 'weekly' : 'daily') : 'endless', 'primary');
+  button(W / 2 - 110, y2 + 58, 105, 36, '기록 보기', 'records', 'ghost', S.daily ? { tab: S.daily.weekly ? 'weekly' : 'daily' } : undefined);
   button(W / 2 + 5, y2 + 58, 105, 36, '지도로', 'map', 'ghost');
 }
 // 결과창 전에 뜨는 짧은 클리어/실패 연출
@@ -661,10 +661,10 @@ function drawEnd() {
 }
 
 // ── 지도 ──────────────────────────────────────────────────
-const MAP_BAND = Math.floor((838 - 108) / SECTORS.length);   // 여섯 구역이 한 화면에
+const MAP_PER = 6, MAP_BAND = Math.floor((838 - 108) / MAP_PER), MAP_PAGES = Math.ceil(SECTORS.length / MAP_PER);   // 한 쪽에 여섯 구역, 넘치면 다음 쪽
 function mapNodePos(n) {
   const s = Math.floor((n - 1) / 5), i = (n - 1) % 5;
-  const bandY = 108 + s * MAP_BAND;
+  const bandY = 108 + (s % MAP_PER) * MAP_BAND;
   return { x: [78, 176, 274, 372, 468][i], y: bandY + 72 + (i === 4 ? -2 : i % 2 ? -6 : 6), r: i === 4 ? 25 : 19 };
 }
 function drawMap() {
@@ -691,9 +691,22 @@ function drawMap() {
   for (let k = 0; k < 8; k++) { ctx.rotate(Math.PI / 4); ctx.fillStyle = '#bfefff'; ctx.fillRect(-2.5, -15, 5, 6); }
   ctx.restore();
   BUTTONS.push({ x: W - 62, y: 16, w: 52, h: 52, act: 'settings' });
+  let next = 1;
+  while (next < STAGE_COUNT && PROG.stars[next]) next++;
+  if (UI.mapPage == null) UI.mapPage = Math.min(MAP_PAGES - 1, Math.floor((next - 1) / (MAP_PER * 5)));
+  const pg = UI.mapPage, s0 = pg * MAP_PER, s1 = Math.min(SECTORS.length, s0 + MAP_PER), inPage = n => n > s0 * 5 && n <= s1 * 5;
+  if (MAP_PAGES > 1) {   // 쪽 넘기기: 왼쪽 위 버튼 (지금 쪽 / 전체)
+    ctx.fillStyle = 'rgba(90,210,255,.12)'; chamfer(14, 20, 66, 44, 8); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,220,255,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.font = FT(13, 900); ctx.textAlign = 'center'; ctx.fillStyle = '#bfefff'; ctx.fillText(`${pg + 1}/${MAP_PAGES}`, 38, 42);
+    ctx.fillStyle = '#bfefff'; ctx.beginPath(); ctx.moveTo(62, 35); ctx.lineTo(72, 42); ctx.lineTo(62, 49); ctx.closePath(); ctx.fill();
+    BUTTONS.push({ x: 10, y: 14, w: 76, h: 56, act: 'mapPage' });
+    if (pg < MAP_PAGES - 1 && PROG.stars[s1 * 5]) { const pu = 0.6 + 0.4 * Math.sin(t * 5); drawGlow('#5affc8', 76, 22, 14, pu * 0.7); ctx.fillStyle = '#5affc8'; ctx.beginPath(); ctx.arc(76, 22, 5, 0, Math.PI * 2); ctx.fill(); }   // 다음 쪽이 열렸어요
+  }
 
   SECTORS.forEach((sec, s) => {
-    const y = 108 + s * MAP_BAND;
+    if (s < s0 || s >= s1) return;
+    const y = 108 + (s - s0) * MAP_BAND;
     const g = ctx.createLinearGradient(0, y, W, y + MAP_BAND - 6);
     g.addColorStop(0, sec.color + '26'); g.addColorStop(1, 'rgba(6,8,26,.45)');
     ctx.fillStyle = g; chamfer(16, y, W - 32, MAP_BAND - 6, 14); ctx.fill();
@@ -708,23 +721,22 @@ function drawMap() {
   });
   ctx.lineWidth = 2.5; ctx.setLineDash([6, 8]); ctx.lineDashOffset = -t * 20;
   for (let n = 1; n < STAGE_COUNT; n++) {
-    if (n % 5 === 0) continue;   // 구역 사이는 띠를 가로지르지 않고 아래 화살표로
+    if (n % 5 === 0 || !inPage(n)) continue;   // 구역 사이는 띠를 가로지르지 않고 아래 화살표로
     const a = mapNodePos(n), b = mapNodePos(n + 1);
     ctx.strokeStyle = PROG.stars[n] ? 'rgba(90,255,200,.6)' : 'rgba(255,255,255,.15)';
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
   ctx.setLineDash([]);
-  for (let s = 1; s < SECTORS.length; s++) {   // 구역 끝 → 다음 구역: 띠 사이 (4, 5번 칸 사이)에 아래로 꺾쇠 두 개
-    const ax = 420, y = 108 + s * MAP_BAND - 3, on = PROG.stars[s * 5], c = on ? '#5affc8' : 'rgba(255,255,255,.3)';
+  for (let s = s0 + 1; s < s1; s++) {   // 구역 끝 → 다음 구역: 띠 사이 (4, 5번 칸 사이)에 아래로 꺾쇠 두 개
+    const ax = 420, y = 108 + (s - s0) * MAP_BAND - 3, on = PROG.stars[s * 5], c = on ? '#5affc8' : 'rgba(255,255,255,.3)';
     ctx.strokeStyle = 'rgba(4,8,24,.9)'; ctx.lineWidth = 6; ctx.lineCap = ctx.lineJoin = 'round';
     for (const k of [0, 1]) { ctx.beginPath(); ctx.moveTo(ax - 12, y - 8 + k * 7); ctx.lineTo(ax, y + k * 7); ctx.lineTo(ax + 12, y - 8 + k * 7); ctx.stroke(); }
     ctx.strokeStyle = c; ctx.lineWidth = 2.5;
     for (const k of [0, 1]) { ctx.globalAlpha = on ? 0.6 + 0.4 * Math.sin(t * 4 - k) : 1; ctx.beginPath(); ctx.moveTo(ax - 12, y - 8 + k * 7); ctx.lineTo(ax, y + k * 7); ctx.lineTo(ax + 12, y - 8 + k * 7); ctx.stroke(); }
     ctx.globalAlpha = 1; ctx.lineCap = ctx.lineJoin = 'miter';
   }
-  let next = 1;
-  while (next < STAGE_COUNT && PROG.stars[next]) next++;
   for (let n = 1; n <= STAGE_COUNT; n++) {
+    if (!inPage(n)) continue;
     const p = mapNodePos(n), st = stageInfo(n), col = st.sector.color;
     const open = unlocked(n), stars = PROG.stars[n] || 0;
     if (n === next && open) {
@@ -1101,6 +1113,7 @@ function drawCredits() {
     yy += 36 + ls.length * 20;
   }
   ctx.textAlign = 'center';
+  button(W / 2 - 120, y + h - 138, 240, 44, '개인정보 처리방침', 'privacy', 'ghost');
   button(W / 2 - 100, y + h - 74, 200, 50, '닫기', 'closecredits', 'primary');
 }
 // 저장 코드: 진행(PROG)을 글자 한 줄로 바꿔 복사하고, 다른 기기에서 붙여 넣어 이어 하기
@@ -1345,7 +1358,7 @@ function drawRecords() {
   ctx.font = FT(26, 900); glitchText('LEADERBOARD', W / 2, 44, '#d8f6ff', 5, Math.random() < 0.04 ? 5 : 0);
   const tab = UI.recTab || (LB_URL ? 'online' : 'mine');
   if (LB_URL) {
-    [['online', '온라인 순위'], ['daily', '오늘의 도전'], ['mine', '내 기록']].forEach(([k, l], i) => button(24 + i * 168, 66, 156, 38, l, 'recTab', tab === k ? 'primary' : 'ghost', { tab: k }));
+    [['online', '온라인'], ['daily', '오늘의 도전'], ['weekly', '주간 도전'], ['mine', '내 기록']].forEach(([k, l], i) => button(24 + i * 124, 66, 116, 38, l, 'recTab', tab === k ? 'primary' : 'ghost', { tab: k }));
   } else { ctx.font = FK(16); ctx.fillStyle = 'rgba(200,230,255,.8)'; ctx.fillText('무한 방어선 내 기록 순위', W / 2, 80); }
   panel(24, 116, W - 48, 604, '#48c8ff');
   let rows = [], note = '';
@@ -1354,20 +1367,22 @@ function drawRecords() {
     rows = (LB.top || []).slice(0, 10).map((r, i) => ({ ...r, rank: i + 1, deck: [...(r.deck || '')] }));
     note = '닉네임마다 최고 기록으로 매겨요. 점수가 같으면 웨이브가 높은 쪽이 위예요.';
     if (!rows.length) { ctx.font = FK(18); ctx.fillStyle = 'rgba(200,220,255,.7)'; ctx.fillText(LB.loading || !LB.t ? '불러오는 중...' : LB.err || '아직 기록이 없어요. 첫 기록을 올려 보세요!', W / 2, 400); }
-  } else if (tab === 'daily') {
-    lbFetchDaily();
-    const day = dayKey(), deck = dailyDeck(day);
-    ctx.font = FK(14); ctx.fillStyle = 'rgba(140,220,255,.9)'; ctx.fillText(`${day} 오늘의 편성, 모두 같은 기체로 겨뤄요`, W / 2, 138);
+  } else if (tab === 'daily' || tab === 'weekly') {
+    const wk = tab === 'weekly', L = wk ? LBW : LBD;
+    if (wk) lbFetchWeekly(); else lbFetchDaily();
+    const day = wk ? weekKey() : dayKey(), deck = wk ? weeklyDeck(day) : dailyDeck(day), rule = wk ? weeklyRule(day) : null;
+    ctx.font = FK(14); ctx.fillStyle = 'rgba(140,220,255,.9)'; ctx.fillText(wk ? `${day} 이번 주 규칙: ${rule.name}` : `${day} 오늘의 편성, 모두 같은 기체로 겨뤄요`, W / 2, 138);
     deck.forEach((t2, k) => {
-      const def = UNIT[t2], x = W / 2 + (k - 2) * 84, y = 186;
+      const def = UNIT[t2], x = W / 2 + (k - (deck.length - 1) / 2) * 84, y = 186;
       ctx.fillStyle = 'rgba(12,24,52,.95)'; chamfer(x - 38, y - 32, 76, 64, 9); ctx.fill(); unitTint(x - 38, y - 32, 76, 64, def.col, 9); ctx.strokeStyle = def.col; ctx.lineWidth = 1.5; ctx.stroke();
       drawUnitArt(t2, 1, x, y - 6, Math.min(46 / def.iw, 36 / def.ih), 1, null);
       ctx.font = FK(12); ctx.fillStyle = '#e6f0ff'; ctx.fillText(def.name, x, y + 22);
     });
-    rows = (LBD.top || []).slice(0, 8).map((r, i) => ({ ...r, rank: i + 1, deck: [], y0: 250 }));
-    note = '한국 시간 0시에 바뀌어요. 연구 강화 없이 모두 같은 조건이에요.';
-    if (!rows.length) { ctx.font = FK(18); ctx.fillStyle = 'rgba(200,220,255,.7)'; ctx.fillText(LBD.loading || !LBD.t ? '불러오는 중...' : LBD.err || '아직 오늘 기록이 없어요. 첫 기록을 올려 보세요!', W / 2, 440); }
-    if (PROG.dailyBest && PROG.dailyBest.day === day) { ctx.font = FK(14); ctx.fillStyle = '#5affc8'; ctx.fillText(`오늘 내 최고 ${fmt(PROG.dailyBest.score)}점, 웨이브 ${PROG.dailyBest.wave}`, W / 2, 700); }
+    rows = (L.top || []).slice(0, 8).map((r, i) => ({ ...r, rank: i + 1, deck: [], y0: 250 }));
+    note = wk ? `${rule.desc}. 월요일 0시에 바뀌고, 그 주 첫 판은 코어 3배예요.` : '한국 시간 0시에 바뀌어요. 연구 강화 없이 모두 같은 조건이에요.';
+    if (!rows.length) { ctx.font = FK(18); ctx.fillStyle = 'rgba(200,220,255,.7)'; ctx.fillText(L.loading || !L.t ? '불러오는 중...' : L.err || (wk ? '아직 이번 주 기록이 없어요. 첫 기록을 올려 보세요!' : '아직 오늘 기록이 없어요. 첫 기록을 올려 보세요!'), W / 2, 440); }
+    const best = PROG[wk ? 'weeklyBest' : 'dailyBest'];
+    if (best && best.day === day) { ctx.font = FK(14); ctx.fillStyle = '#5affc8'; ctx.fillText(`${wk ? '이번 주' : '오늘'} 내 최고 ${fmt(best.score)}점, 웨이브 ${best.wave}`, W / 2, 700); }
   } else {
     rows = (PROG.records || []).map((r, i) => ({ ...r, rank: i + 1, name: r.date }));
     note = '이 기기에 저장된 내 기록이에요. 줄을 누르면 쓴 조합이 보여요.';
@@ -1386,7 +1401,7 @@ function drawRecords() {
   });
   ctx.font = FK(13); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(180,205,240,.65)';
   ctx.fillText(note, W / 2, 740);
-  if (endlessOpen()) button(W / 2 - 130, 772, 260, 54, tab === 'daily' ? '오늘의 도전 시작' : '무한 방어선 도전', tab === 'daily' ? 'daily' : 'endless', tab === 'daily' ? 'gold' : 'primary');
+  if (endlessOpen()) button(W / 2 - 130, 772, 260, 54, tab === 'daily' ? '오늘의 도전 시작' : tab === 'weekly' ? '주간 도전 시작' : '무한 방어선 도전', tab === 'daily' || tab === 'weekly' ? tab : 'endless', tab === 'daily' || tab === 'weekly' ? 'gold' : 'primary');
   else { ctx.font = FK(16); ctx.fillStyle = 'rgba(255,200,140,.9)'; ctx.fillText('스테이지 5를 깨면 무한 방어선이 열려요', W / 2, 798); }
   button(W / 2 - 110, 844, 220, 46, '지도로', 'map', 'ghost');
   // 고른 기록의 조합: 편성 5종과 마지막 판의 기체

@@ -168,6 +168,28 @@ function updateEnemy(e, dt) {
       if (e.spawnT > 4 && e.y > 40) { e.spawnT = 0; spawnEnemy('minion', e.x - 80, e.y + 50); spawnEnemy('minion', e.x + 80, e.y + 50); }
       if (e.phase < 1 && e.hp < e.maxHp * 0.5) { e.phase = 1; spawnEnemy('healer', e.x, e.y + 80); }
       break;
+    case 'rift':   // 균열함: 몇 초마다 앞으로 순간이동
+      e.blinkT = (e.blinkT == null ? 2 + Math.random() * 1.5 : e.blinkT) - dt;
+      if (e.blinkT <= 0 && e.y > 60 && e.y < LINE_Y - 330) {
+        e.blinkT = 3.5; S.fx.push({ kind: 'warp', x: e.x, y: e.y, t: 0, life: 0.4 });
+        e.y += 110; e.x = Math.max(50, Math.min(W - 50, e.x + (Math.random() - 0.5) * 140));
+        S.fx.push({ kind: 'warp', x: e.x, y: e.y, t: 0, life: 0.4 }); if (S.focus === e) S.focus = null;
+      }
+      break;
+    case 'boss7':   // 폐허 기함: 난파선을 부르고, 반쯤 부서지면 잔해를 쏟아 칸을 막는다
+      e.x = (e.cx || W / 2) + Math.sin(S.time * 0.5) * 70 * (e.cx ? 0.4 : 1);
+      e.spawnT += dt;
+      if (e.spawnT > 5 && e.y > 40) { e.spawnT = 0; spawnEnemy('wreck', e.x - 90, e.y + 40); spawnEnemy('wreck', e.x + 90, e.y + 40); }
+      if (e.phase < 1 && e.hp < e.maxHp * 0.5) { e.phase = 1; shake(0.6); addText(e.x, e.y + 110, '잔해 낙하!', '#c8d8ea', 24); breakCells(3, 10); }
+      break;
+    case 'boss8':   // 균열 군주: 좌우로 순간이동하며 균열함을 부른다
+      if (e.bx == null) e.bx = e.x;
+      e.x = e.bx + Math.sin(S.time * 0.6) * 50 * (e.cx ? 0.4 : 1);
+      e.blinkT = (e.blinkT == null ? 6 : e.blinkT) - dt;
+      if (e.blinkT <= 0 && e.y > 60) { e.blinkT = e.rage ? 4 : 6; S.fx.push({ kind: 'warp', x: e.x, y: e.y, t: 0, life: 0.5 }); e.bx = e.cx ? e.cx : 140 + Math.random() * (W - 280); e.x = e.bx; S.fx.push({ kind: 'warp', x: e.x, y: e.y, t: 0, life: 0.5 }); }
+      e.spawnT += dt;
+      if (e.spawnT > 5 && e.y > 40) { e.spawnT = 0; spawnEnemy('rift', e.x - 90, e.y + 40); spawnEnemy('rift', e.x + 90, e.y + 40); }
+      break;
     case 'phase':
       e.phT = (e.phT == null ? 2 + Math.random() * 2 : e.phT) - dt;
       if (e.ph > 0) e.ph -= dt;
@@ -302,6 +324,7 @@ function update(dt) {
   if (UI.introQ && S.time >= UI.introQ.at) { UI.enemyIntro = { k: UI.introQ.k, t0: performance.now() / 1000 }; UI.introQ = null; play('open', 0.4); }
   S.time += dt;
   tickLift(dt);
+  if (S.broken && S.broken.length) { for (const b of S.broken) b.t -= dt; S.broken = S.broken.filter(b => b.t > 0); }
   if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 2);
   if (S.punch > 0) S.punch = Math.max(0, S.punch - dt * 5);
   S.glitch = Math.max(0, S.glitch - dt);
@@ -389,6 +412,7 @@ function update(dt) {
     c.sq = Math.max(0, (c.sq || 0) - dt * 3); c.tilt = (c.tilt || 0) * Math.pow(0.01, dt);
     if (c.carrier && !c.carrier.dead) continue;
     c.carrier = null;
+    if (c.side) { const d = c.tx - c.x, mv = 320 * dt; if (Math.abs(d) <= mv) { c.x = c.tx; c.side = 0; c.speed = c.sp0; } else c.x += Math.sign(d) * mv; }   // 옆에서 날아오는 캡슐
     c.y += c.speed * dt;
     if (c.vx) { c.x += c.vx * dt; if (!c.dead && (c.x < -70 || c.x > W + 70)) { c.dead = true; if (S.focus === c) S.focus = null; } }
     if (c.y > LINE_Y + 10 && !c.dead) {
@@ -628,14 +652,15 @@ function endStage(win) {
   if (S.stage.endless) {
     const score = S.score;
     S.baseEarned = 20 + S.wave * 20 + Math.floor(S.wave / 10) * 100;   // 웨이브마다 20, 10웨이브마다 도달 보너스 100
-    if (S.daily && PROG.dailyPaid !== S.daily.day) { S.baseEarned *= 2; PROG.dailyPaid = S.daily.day; S.dailyBonus = true; }   // 오늘의 도전: 그날 첫 판은 2배
+    if (S.daily && S.daily.weekly) { if (PROG.weeklyPaid !== S.daily.day) { S.baseEarned *= 3; PROG.weeklyPaid = S.daily.day; S.dailyBonus = '이번 주 첫 판 ×3'; } }   // 주간 도전: 그 주 첫 판은 3배
+    else if (S.daily && PROG.dailyPaid !== S.daily.day) { S.baseEarned *= 2; PROG.dailyPaid = S.daily.day; S.dailyBonus = '오늘 첫 판 ×2'; }   // 오늘의 도전: 그날 첫 판은 2배
     S.earned = S.baseEarned + S.cores; S.endT = performance.now() / 1000;
     PROG.credits += S.earned;
     S.lastBoard = gridUnits().sort((a, b) => b.lv - a.lv).map(u => u.type + Math.min(u.lv, 8)).join(','); UI.lbMsg = '';
     if (S.daily) {
-      const b = PROG.dailyBest && PROG.dailyBest.day === S.daily.day ? PROG.dailyBest : null;
+      const bk = S.daily.weekly ? 'weeklyBest' : 'dailyBest', b = PROG[bk] && PROG[bk].day === S.daily.day ? PROG[bk] : null;
       S.rank = !b || score > b.score || (score === b.score && S.wave > b.wave) ? 1 : 0;
-      if (S.rank) PROG.dailyBest = { day: S.daily.day, score, wave: S.wave };
+      if (S.rank) PROG[bk] = { day: S.daily.day, score, wave: S.wave };
     } else {
       const rec = { score, wave: S.wave, date: new Date().toISOString().slice(0, 10), deck: PROG.deck.slice(), board: S.lastBoard };
       PROG.records = (PROG.records || []).concat([rec]).sort((a, b) => b.score - a.score || b.wave - a.wave).slice(0, 10);
@@ -654,7 +679,7 @@ function endStage(win) {
   PROG.credits += S.earned;
   if ((PROG.stars[n] || 0) < S.stars) PROG.stars[n] = S.stars;
   if (n === 1) ach('first_clear');
-  if (n % 5 === 0) ach('boss_' + n / 5);
+  if (n % 5 === 0 && n <= 30) ach('boss_' + n / 5);   // 7, 8구역 보스 도전 과제는 아직 SKEAM에 없음
   if (S.stars === 3) ach('three_star');
   if (Array.from({ length: STAGE_COUNT }, (_, i) => PROG.stars[i + 1]).every(v => v === 3)) ach('all_stars');
   save();

@@ -804,6 +804,22 @@ function lvBadge(lv, cx, cy, col, sc = 1) {
   rankIcons(lv);
   ctx.restore();
 }
+// 부서진 칸 (구역 7): 어둡게 꺼진 판, 경고 빗금, 금 간 자국. 잔해(시간 제한)는 사라지기 전에 깜빡인다
+function drawBrokenCell(i, x, y, w, h, t) {
+  const b = S.broken.find(q => q.c === i), a = b && b.t < 2 ? 0.5 + 0.5 * Math.sin(t * 14) : 1;
+  ctx.save(); ctx.globalAlpha = a;
+  ctx.fillStyle = 'rgba(4,6,12,.9)'; chamfer(x, y, w, h, 9); ctx.fill();
+  ctx.save(); ctx.clip();
+  ctx.strokeStyle = 'rgba(255,170,60,.22)'; ctx.lineWidth = 7;
+  for (let k = -h; k < w; k += 22) { ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke(); }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(200,215,235,.55)'; ctx.lineWidth = 2; ctx.lineJoin = 'miter';
+  const s = (i * 37) % 7;
+  ctx.beginPath(); ctx.moveTo(x + 10, y + 14 + s); ctx.lineTo(x + w * 0.38, y + h * 0.45); ctx.lineTo(x + w * 0.52, y + h * 0.38 + s); ctx.lineTo(x + w * 0.7, y + h * 0.62); ctx.lineTo(x + w - 8, y + h - 12 - s);
+  ctx.moveTo(x + w * 0.38, y + h * 0.45); ctx.lineTo(x + w * 0.3, y + h - 8); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,150,70,.6)'; ctx.lineWidth = 1.5; chamfer(x, y, w, h, 9); ctx.stroke();
+  ctx.restore();
+}
 // 계정 레벨 보상: 칸 바닥 무늬 (빗금, 격자 테두리). 끝나면 칸 테두리 경로를 다시 잡아 둔다
 let HATCH_PAT = null;
 function floorPattern(k, x, y, w, h) {
@@ -1023,6 +1039,7 @@ function drawPads() {
     pg.addColorStop(0, 'rgba(26,38,66,.94)'); pg.addColorStop(1, 'rgba(7,11,24,.94)');
     ctx.fillStyle = pg; chamfer(x, y, w, h, 9); ctx.fill();
     if (PROG.floor) floorPattern(PROG.floor, x, y, w, h);
+    if (isBroken(i)) { drawBrokenCell(i, x, y, w, h, t); continue; }
     if (u) floorFx(u.lv, x, y, w, h, lit, t + u.cells[0] * 0.3);   // 기체가 앉은 칸은 바닥을 그 기체 고유색으로 물들인다 (이 색 = 이 기체)
     ctx.strokeStyle = fc; ctx.globalAlpha = f ? 0.85 : u ? 0.6 : 0.3; ctx.lineWidth = f ? 2 : 1.2; ctx.stroke();
     if (f) { ctx.fillStyle = fc; ctx.globalAlpha = 0.1 + 0.05 * f.lv; chamfer(x, y, w, h, 9); ctx.fill(); ctx.globalAlpha = 0.8; ctx.fillRect(x + 12, y, w - 24, 2.5); }   // 강화 칸: 효과 색으로 옅게 칠하고 윗변 띠

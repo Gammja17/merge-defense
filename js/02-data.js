@@ -1,7 +1,7 @@
 'use strict';
 // ── 배경음악: 상황별 곡, 교차 페이드 ──
 const MUS = { tracks: {} };
-const BOSS_TRACK = { boss1: 'boss1', boss2: 'boss1', boss3: 'boss2', boss4: 'boss3', boss5: 'boss2', boss6: 'boss3' };
+const BOSS_TRACK = { boss1: 'boss1', boss2: 'boss1', boss3: 'boss2', boss4: 'boss3', boss5: 'boss2', boss6: 'boss3', boss7: 'boss3', boss8: 'boss2' };
 function musicTrack(k) {
   if (!MUS.tracks[k]) {
     const a = new Audio('assets/bgm/' + k + '.mp3');
@@ -184,11 +184,15 @@ const ENEMY = {
   artillery: { img: 'enemies/artillery', hp: 900, speed: 26, r: 50, dmg: 3, w: 118, h: 140, shield: 0.2, atk: 'barrage', atkCd: 5.5, atkDmg: 2, atkN: 6, hover: [200, 290], name: '포격 순양함' },
   jammer:  { img: 'enemies/jammer',  hp: 150, speed: 42,  r: 32, dmg: 1, w: 72,  h: 72,  atk: 'jam',    atkCd: 6,   atkDmg: 0, atkN: 4, name: '교란함' },
   mother:  { img: 'enemies/mother',  hp: 1000, speed: 13, r: 62, dmg: 3, w: 160, h: 158, name: '침공 모함' },
+  wreck:   { img: 'enemies/wreck',   hp: 240, speed: 30,  r: 36, dmg: 2, w: 82,  h: 84,  name: '난파선' },
+  rift:    { img: 'enemies/rift',    hp: 110, speed: 52,  r: 28, dmg: 1, w: 64,  h: 66,  name: '균열함' },
   boss1:   { img: 'enemies/boss1', hp: 8000,  speed: 11, r: 90,  dmg: 99, w: 224, h: 196, boss: true, name: '외계 모함', atk: 'column', atkCd: 7, atkDmg: 3 },
   boss2:   { img: 'enemies/boss2', hp: 9500,  speed: 10, r: 100, dmg: 99, w: 230, h: 226, boss: true, name: '거대 운석 핵', spin: 0.3, atk: 'meteor', atkCd: 6, atkDmg: 3 },
   boss3:   { img: 'enemies/boss3',  hp: 9000,  speed: 10, r: 96,  dmg: 99, w: 210, h: 210, boss: true, name: 'UFO 모선', spin: 0.8, shield: 0.35, regen: 6, atk: 'row', atkCd: 8, atkDmg: 3 },
   boss5:   { img: 'enemies/boss5', hp: 14000, speed: 9, r: 100, dmg: 99, w: 250, h: 210, boss: true, name: '빙결 요새', shield: 0.3, atk: 'freeze', atkCd: 6.5, atkDmg: 0 },
   boss6:   { img: 'enemies/boss6', hp: 17000, speed: 8, r: 104, dmg: 99, w: 250, h: 230, boss: true, name: '블랙홀 모함', regen: 8, atk: 'cross', atkCd: 7, atkDmg: 3 },
+  boss7:   { img: 'enemies/boss7', hp: 17000, speed: 8, r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '폐허 기함', shield: 0.2, atk: 'barrage', atkCd: 6, atkDmg: 3 },
+  boss8:   { img: 'enemies/boss8', hp: 24000, speed: 8, r: 104, dmg: 99, w: 250, h: 230, boss: true, name: '균열 군주', regen: 8, atk: 'cross', atkCd: 6.5, atkDmg: 3 },
   boss4:   { img: 'enemies/boss4', hp: 12000, speed: 9,  r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '최종 기함', shield: 0.25, regen: 8, atk: 'cross', atkCd: 8, atkDmg: 3 },
 };
 // 처음 만난 적 카드에 쓰는 이름과 그림 (ENEMY에 이름이 없는 것들)
@@ -211,6 +215,8 @@ const ENEMY_HINT = {
   freeze:  '파란 칸은 빙결 포격이에요. 맞은 기체는 4초 동안 얼어서 쏘지 못해요.',
   artillery: '포격 순양함은 위쪽에 버티고 서서 여러 칸에 포탄을 떨어뜨려요. 붉은 칸을 비우거나 먼저 격추하세요.',
   jammer:  '교란함이 노란 칸의 기체를 전파로 묶어 못 쏘게 해요. 교란함을 격추하면 바로 풀려요.',
+  wreck:   '난파선을 격추하면 잔해가 떨어져 칸 하나를 잠시 막아요.',
+  rift:    '균열함은 몇 초마다 앞으로 순간이동해요. 빨리 잡으세요.',
   mother:  '침공 모함은 천천히 내려오며 작은 드론을 계속 뿌려요. 드론이 쌓이기 전에 모함을 노리세요.',
 };
 
@@ -228,7 +234,13 @@ const SECTORS = [
     info: '새 적: 위상함, 빙결 포격', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'freeze'], fresh: ['phase'], boss: 'boss5' },
   { name: '블랙홀', color: '#ffc46a', planet: ['#fff0c8', '#c07a2a', '#1a0f06'],
     info: '새 적: 중력함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['grav'], boss: 'boss6' },
+  // 구역마다 판 규칙 하나 (rule): 폐허 함대는 부서진 칸, 차원 균열은 옆에서 오는 캡슐
+  { name: '폐허 함대', color: '#9ab8d8', planet: ['#dfe8f2', '#5a6a80', '#121822'], rule: 'wreck',
+    info: '규칙: 부서진 칸, 새 적: 난파선', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav', 'wreck'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['wreck'], boss: 'boss7' },
+  { name: '차원 균열', color: '#ff6ad8', planet: ['#ffd0f4', '#a83a90', '#1e0a1a'], rule: 'side',
+    info: '규칙: 옆에서 오는 캡슐, 새 적: 균열함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav', 'wreck', 'rift'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['rift'], boss: 'boss8' },
 ];
+const ENDLESS_SECTORS = 6;   // 무한 방어선은 1~6구역 보스와 배율만 쓴다 (밸런스 유지)
 const STAGE_COUNT = SECTORS.length * 5;
 // 스테이지 종류: 구역마다 섞는다. 기본(5웨이브), 장기전(7웨이브, 천천히 강해지고 캡슐이 많다), 러시(3웨이브, 적이 몰려온다),
 // 포위(포격 순양함과 교란함 위주), 보스 러시(중간 보스가 여러 번, 마지막에 보스)
@@ -246,6 +258,8 @@ const STAGE_PLAN = [
   ['rush', 'siege', 'long', 'base', 'brush'],
   ['siege', 'long', 'rush', 'base', 'base'],
   ['rush', 'long', 'siege', 'base', 'brush'],
+  ['base', 'long', 'rush', 'siege', 'brush'],
+  ['rush', 'siege', 'long', 'base', 'brush'],
 ];
 function stageInfo(n) {
   const s = Math.floor((n - 1) / 5), i = (n - 1) % 5, kind = STAGE_PLAN[s][i];
@@ -256,9 +270,9 @@ const kindName = st => st.boss && st.kind === 'base' ? '보스' : STAGE_KINDS[st
 const wavePw = (st, w) => st.kind === 'long' ? 1 + (w - 1) * 4 / 6 : st.kind === 'rush' ? [1, 2, 3.4][w - 1] || 3.4 : w;
 const twistWave = st => st.kind === 'long' ? 5 : st.kind === 'rush' || st.kind === 'brush' ? 0 : 4;
 let WAVE_GROWTH = 0.4, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
-let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75][i]);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게
+let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8, 5.0, 6.4].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75, 1.8, 1.85][i]);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
-const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2]];
+const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2], [3, 3, 3, 3], [4, 3, 3, 3]];
 
 function pickWeighted(pool, fresh) {
   const bag = [];
@@ -376,13 +390,13 @@ const endlessAtkMul = () => S.stage && S.stage.endless ? Math.pow(0.92, Math.flo
 function buildEndlessWave(w) {
   const ci = cyclePos(w), cyc = Math.floor((w - 1) / 10);
   const tier = Math.min(3, Math.floor((w - 1) / 6));
-  const bossW = ci === 10, bs = Math.floor(R() * SECTORS.length), supply = ci === 1 && w > 10;
+  const bossW = ci === 10, bs = Math.floor(R() * ENDLESS_SECTORS), supply = ci === 1 && w > 10;
   S.crisis = ci === 9;
   S.stage.s = bossW ? bs : tier; S.stage.sector = SECTORS[S.stage.s];
   const st = { n: Math.min(20, 3 + w), s: tier, i: Math.min(3, Math.floor(w / 5)), sector: SECTORS[S.stage.s], boss: bossW, waves: 5, twist: supply ? 'supply' : TWISTS[1 + cyc % 2] };
   const ev = buildWave(st, bossW ? 5 : supply ? 4 : [2, 3, 4, 4, 5, 2, 3, 4, 5][ci - 1]);
   if (ci === 5) {   // 5웨이브째도 보스 (체력을 줄여서). 2주기부터는 엘리트 호위도
-    ev.push({ t: 3, k: SECTORS[Math.floor(R() * SECTORS.length)].boss, mini: 0.4 + 0.1 * Math.min(3, cyc) });
+    ev.push({ t: 3, k: SECTORS[Math.floor(R() * ENDLESS_SECTORS)].boss, mini: 0.4 + 0.1 * Math.min(3, cyc) });
     if (cyc >= 1) ev.push({ t: 12, k: 'elite' });
   }
   if (LULL(ci) && !supply) for (const t of [5, 13]) ev.push({ t, k: 'cap', r: rollReward(st.n, 3) });   // 숨 돌리는 웨이브엔 캡슐을 더
@@ -401,7 +415,7 @@ function buildEndlessWave(w) {
   if (bossW && w >= 20) ev.find(e => ENEMY[e.k] && ENEMY[e.k].boss).rage = true;   // 3주기부터 10웨이브 보스는 처음부터 격노
   if (bossW && w >= 20) {
     const b1 = ev.find(e => ENEMY[e.k] && ENEMY[e.k].boss);
-    let k2; do { k2 = SECTORS[Math.floor(R() * SECTORS.length)].boss; } while (k2 === b1.k);
+    let k2; do { k2 = SECTORS[Math.floor(R() * ENDLESS_SECTORS)].boss; } while (k2 === b1.k);
     b1.x = 160; add(k2, 4, W - 160);
   }
   return ev.sort((a, b) => a.t - b.t);
@@ -515,15 +529,17 @@ function startStage(n, endless = false, daily = false) {
     parts: [], shieldHits: [], banner: null, warning: 0, whiteFlash: 0, skillPop: null,
     score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0, dmgBy: {}, used: {},
     pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0, twin: 0, lonely: 0, fin: 0, hunt: 1, capBomb: 0, heat: 0, oc: 0, scrap: 0, revive: 0 }, syn: {}, chainQ: [], heatT: 0, ocT: 0, legendNext: false,
-    gear: 0, cellFx: new Array(COLS * ROWS).fill(null), rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0,
+    gear: 0, cellFx: new Array(COLS * ROWS).fill(null), rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0, broken: [],
   };
-  if (daily) { S.daily = { day: dayKey(), deck: dailyDeck(dayKey()) }; lbFetchDaily(true); }
+  if (daily === 'weekly') { const wk = weekKey(); S.daily = { day: wk, weekly: true, rule: weeklyRule(wk), deck: weeklyDeck(wk) }; lbFetchWeekly(true); }
+  else if (daily) { S.daily = { day: dayKey(), deck: dailyDeck(dayKey()) }; lbFetchDaily(true); }
   const types = battleDeck().filter(t => UNIT[t].shape === 1).sort((a, b) => UNIT[b].stat[0] * UNIT[b].stat[1] - UNIT[a].stat[0] * UNIT[a].stat[1]);
   START_LV[endless ? 1 : st.s].forEach((lv, j) => { const u = makeUnit(types[j % types.length] || 'f', lv); S.used[u.type] = (S.used[u.type] || 0) + Math.pow(2, lv - 1); const sp = findSpot(u); if (sp) place(u, sp); });
   hintOnce('info', '기체를 꾹 누르면 정보가 나와요');
   if (endless) hintOnce('endless4', '2웨이브마다 강화, 5웨이브마다 보스');
   if (n === 1 && !endless && !PROG.tut && !PROG.stars[1] && !SHOT) S.tut = { step: 1, t: 0 };
   if (!SHOT && !PROG.seen.cmdTut && cmdOpen()) S.cmdTut = {};
+  if (S.daily && S.daily.rule && S.daily.rule.start) S.daily.rule.start();   // 이번 주 규칙
   startWave(1);
   if (!SHOT) play('vo_welcome', 0.6);   // 전투 시작 음성
 }
@@ -568,6 +584,7 @@ function startWave(n) {
     return;
   }
   S.events = buildWave(st, n);
+  if (st.sector.rule === 'wreck') { S.broken = S.broken.filter(b => b.t !== Infinity); breakCells(2 + (Math.random() < 0.5 ? 1 : 0), Infinity); }   // 폐허 함대: 웨이브마다 부서진 칸이 바뀐다
   const K = STAGE_KINDS[st.kind || 'base'], lastW = n === st.waves;
   if (st.boss && lastW) { S.warning = 3; S.banner = null; play('drums', 0.7); }
   else if (n === 1) S.banner = { text: `STAGE ${st.n}`, sub: K.name ? `${K.name}: ${K.sub}` : '정찰대가 방어선을 떠보고 있어요', color: K.col || st.sector.color, t: 0, life: 2.6 };

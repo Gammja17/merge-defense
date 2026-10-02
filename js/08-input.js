@@ -16,7 +16,7 @@ function setSlider(b, px) {
   if (b.key === 'sfxVol') play('coin', 0.4, 1.2);
 }
 function toast(text) { UI.toast = { text, until: performance.now() / 1000 + 1.8 }; }
-function goMap() { S = { mode: 'map' }; UI.card = null; UI.shop = false; UI.enemyIntro = null; UI.introQ = null; }
+function goMap() { S = { mode: 'map' }; UI.mapPage = null; UI.card = null; UI.shop = false; UI.enemyIntro = null; UI.introQ = null; }
 function doAction(b) {
   const now = performance.now() / 1000;
   switch (b.act) {
@@ -35,7 +35,7 @@ function doAction(b) {
       else if (PROG.deck.length >= DECK_N) { toast('편성이 꽉 찼어요. 위에서 하나를 먼저 빼 주세요'); denied(); return; }
       else PROG.deck.push(b.type);
       save(); play('tap', 0.4); return;
-    case 'retry': UI.shop = false; if (S.stage.endless) startStage(0, true, !!S.daily); else startStage(S.stage.n); return;
+    case 'retry': UI.shop = false; if (S.stage.endless) startStage(0, true, S.daily ? (S.daily.weekly ? 'weekly' : true) : false); else startStage(S.stage.n); return;
     case 'map':
       if (S.mode === 'hangar' && !PROG.deck.length) { toast('기체를 하나 이상 편성해야 해요'); return; }
       goMap(); return;
@@ -122,8 +122,11 @@ function doAction(b) {
     case 'daily':
       if (!endlessOpen()) return;
       UI.card = null; startStage(0, true, true); return;
-    case 'records': S = { mode: 'records' }; UI.card = null; UI.recSel = null; if (b.tab) UI.recTab = b.tab; lbFetch(true); lbFetchDaily(true); return;
-    case 'recTab': UI.recTab = b.tab; UI.recSel = null; if (b.tab === 'online') lbFetch(true); if (b.tab === 'daily') lbFetchDaily(true); return;
+    case 'weekly':
+      if (!endlessOpen()) return;
+      UI.card = null; startStage(0, true, 'weekly'); return;
+    case 'records': S = { mode: 'records' }; UI.card = null; UI.recSel = null; if (b.tab) UI.recTab = b.tab; lbFetch(true); lbFetchDaily(true); lbFetchWeekly(true); return;
+    case 'recTab': UI.recTab = b.tab; UI.recSel = null; if (b.tab === 'online') lbFetch(true); if (b.tab === 'daily') lbFetchDaily(true); if (b.tab === 'weekly') lbFetchWeekly(true); return;
     case 'recRow': UI.recSel = b.r; return;
     case 'recClose': UI.recSel = null; return;
     case 'lbSubmit': lbSubmit(); return;
@@ -149,7 +152,9 @@ function doAction(b) {
     case 'settings': UI.settings = true; UI.resetArm = 0; UI.credits = UI.saveCode = false; return;
     case 'closesettings': UI.settings = false; return;
     case 'credits': UI.credits = true; return;
+    case 'mapPage': UI.mapPage = ((UI.mapPage || 0) + 1) % MAP_PAGES; return;
     case 'closecredits': UI.credits = false; return;
+    case 'privacy': window.open('https://gammja17.github.io/merge-defense/privacy.html', '_blank'); return;
     case 'savecode': UI.saveCode = true; UI.saveMsg = null; return;
     case 'closesave': UI.saveCode = false; return;
     case 'savecopy': {

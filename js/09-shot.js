@@ -62,7 +62,17 @@ function setupShot(k) {
     S.wave = 4; startWave(5); shotRun(60 * 9, 5);
     if (S.boss) S.boss.hp = S.boss.maxHp * 0.49;
     shotRun(40, 5); S.frozen = true;
-  } else if (k === 'map') S = { mode: 'map' };
+  } else if (k === 'wreck' || k === 'rift') {   // 구역 7 부서진 칸 / 구역 8 옆에서 오는 캡슐
+    PROG.deck = ['f', 't', 'e', 'b', 'c']; for (let n = 1; n <= 35; n++) PROG.stars[n] = 3;
+    const big = army.map(([t, lv, c]) => [t, Math.min(6, lv + 2), c]);
+    startStage(k === 'wreck' ? 32 : 37); shotArmy(big); S.wave = 1; startWave(2); shotRun(60 * (k === 'wreck' ? 6 : 4), 6);
+    if (k === 'rift') { const c = S.caps.find(q => q.side) || S.caps[0]; if (!c) { const n = makeCap({ type: 'f', lv: 2, n: 1 }, 150, 1); sideCap(n); n.x = 70; } }
+  } else if (k === 'boss7' || k === 'boss8') {
+    PROG.deck = ['f', 't', 's', 'b', 'e']; for (let n = 1; n <= 39; n++) PROG.stars[n] = 3;
+    startStage(k === 'boss7' ? 35 : 40); shotArmy([['f', 6, 2], ['f', 5, 3], ['t', 5, 8], ['s', 5, 0], ['b', 4, 13], ['e', 5, 5], ['t', 4, 10], ['f', 4, 15]]);
+    S.wave = 4; startWave(5); shotRun(60 * 11, 6);
+  } else if (k === 'map2') { for (let n = 1; n <= 33; n++) PROG.stars[n] = 3; S = { mode: 'map' }; UI.mapPage = 1; }
+  else if (k === 'map') S = { mode: 'map' };
   if (SHOT_RAW && S.stage) {
     // 연출용 한 순간: 빔, 폭격, 폭발, 탄환을 동시에 띄우고 멈춘다
     for (let k2 = 0; k2 < 3; k2++) { for (const u of gridUnits()) fireUnit(u); for (let f = 0; f < 5; f++) update(1 / 60); }

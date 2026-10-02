@@ -73,6 +73,10 @@ function buildTints() {
   makeTint('enemies/gunship', '#ff8a2a', 'enemies/artillery', 0.42);
   makeTint('enemies/heal', '#e0ff3a', 'enemies/jammer', 0.5);
   makeTint('enemies/boss1', '#3affc0', 'enemies/mother', 0.4);
+  makeTint('enemies/tank', '#c8925a', 'enemies/wreck', 0.5);
+  makeTint('enemies/phase', '#ff4ad8', 'enemies/rift', 0.5);
+  makeTint('enemies/boss4', '#9ab8d8', 'enemies/boss7', 0.55);
+  makeTint('enemies/boss6', '#ff4ad8', 'enemies/boss8', 0.45);
   makeTint('u_b', '#4ab8ff', 'u_b2', 0.3, true);
   makeTint('u_c', '#6af0ff', 'u_c2', 0.45);
   makeTint('u_v', '#b86bff', 'u_v2', 0.45);
@@ -86,6 +90,22 @@ const dayKey = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10
 function seedOf(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
 function mulberry(a) { return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const R = () => (S.rng ? S.rng() : Math.random());   // 웨이브를 짤 때만 씨앗을 쓴다 (전투 중 우연은 그대로)
+// ── 주간 도전: 한국 시간 월요일 0시에 바뀐다. 주 id는 2026-W40 같은 ISO 주 번호 ──
+function weekKey(off = 0) {
+  const k = new Date(Date.now() + 9 * 3600e3 + off * 7 * 864e5), t = new Date(Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()));
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+  const wk = Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 864e5 + 1) / 7);
+  return `${t.getUTCFullYear()}-W${String(wk).padStart(2, '0')}`;
+}
+// 이번 주 규칙: 주마다 하나 (start는 판이 시작될 때 한 번)
+const WEEKLY_RULES = [
+  { id: 'laser', name: '레이저 전투기만', desc: '캡슐에서 레이저 전투기만 나와요', deck: ['f'] },
+  { id: 'glass', name: '유리 대포', desc: '유리 대포를 들고 시작해요', start: () => { const p = PERKS.find(q => q.id === 'glass'); p.apply(); S.perks.push('glass'); } },
+  { id: 'shield', name: '전원 보호막', desc: '모든 적이 보호막을 달고 와요', start: () => { S.mut.push('shield'); } },
+  { id: 'rush', name: '추진기 대군', desc: '적이 20% 빠르고 잔챙이가 1.6배', start: () => { S.mut.push('fast', 'swarm'); } },
+];
+const weeklyRule = wk => WEEKLY_RULES[seedOf('rule' + wk) % WEEKLY_RULES.length];
+const weeklyDeck = wk => weeklyRule(wk).deck || dailyDeck(wk);
 function dailyDeck(day) {
   const r = mulberry(seedOf('deck' + day)), ones = UNIT_ORDER.filter(t => UNIT[t].shape === 1), deck = [];
   while (deck.length < 2) { const t = ones[Math.floor(r() * ones.length)]; if (!deck.includes(t)) deck.push(t); }   // 1칸 기체 둘은 꼭 (시작 기체와 캡슐)
@@ -94,6 +114,16 @@ function dailyDeck(day) {
 }
 const battleDeck = () => S.daily ? S.daily.deck : PROG.deck.filter(t => isOwned(t));
 const LBD = { top: null, t: 0, loading: false, err: '', day: '', ok: null };
+const LBW = { top: null, t: 0, loading: false, err: '', day: '', ok: null };   // 주간 도전 순위 (서버 v3부터)
+function lbFetchWeekly(force) {
+  const wk = weekKey();
+  if (!LB_URL || LBW.loading || (!force && LBW.day === wk && LBW.t && performance.now() - LBW.t < 30000)) return;
+  LBW.loading = true; LBW.err = ''; LBW.day = wk;
+  fetch(LB_URL + '?weekly=' + wk).then(r => r.json()).then(d => {
+    LBW.ok = d.v >= 3; LBW.top = LBW.ok ? d.top || [] : []; LBW.total = d.total || 0; LBW.t = performance.now();
+    if (!LBW.ok) LBW.err = '주간 순위는 준비 중이에요';
+  }).catch(() => { LBW.err = '순위를 불러오지 못했어요'; LBW.t = performance.now(); }).finally(() => { LBW.loading = false; });
+}
 function lbFetchDaily(force) {
   const day = dayKey();
   if (!LB_URL || LBD.loading || (!force && LBD.day === day && LBD.t && performance.now() - LBD.t < 30000)) return;
@@ -113,12 +143,13 @@ function lbSubmit() {
   const name = (NICK.el ? NICK.el.value : '').trim().slice(0, 12);
   if (!name) { UI.lbMsg = '닉네임을 입력해 주세요'; return; }
   if (S.lbSending || S.lbSent) return;
-  if (S.daily && !LBD.ok) { UI.lbMsg = LBD.loading ? '잠시 뒤에 다시 눌러 주세요' : '오늘의 순위는 준비 중이에요'; lbFetchDaily(true); return; }
+  const wk = S.daily && S.daily.weekly, LBX = wk ? LBW : LBD;
+  if (S.daily && !LBX.ok) { UI.lbMsg = LBX.loading ? '잠시 뒤에 다시 눌러 주세요' : wk ? '주간 순위는 준비 중이에요' : '오늘의 순위는 준비 중이에요'; if (wk) lbFetchWeekly(true); else lbFetchDaily(true); return; }
   PROG.nick = name; save(); S.lbSending = true; UI.lbMsg = '올리는 중...';
-  fetch(LB_URL, { method: 'POST', body: JSON.stringify({ name, score: S.score, wave: S.wave, deck: battleDeck().join(''), board: S.lastBoard || '', mode: S.daily ? 'daily' : undefined, day: S.daily ? S.daily.day : undefined }) })
+  fetch(LB_URL, { method: 'POST', body: JSON.stringify({ name, score: S.score, wave: S.wave, deck: battleDeck().join(''), board: S.lastBoard || '', mode: wk ? 'weekly' : S.daily ? 'daily' : undefined, day: S.daily && !wk ? S.daily.day : undefined, week: wk ? S.daily.day : undefined }) })
     .then(r => r.json()).then(d => {
-      if (d.ok) { S.lbSent = true; UI.lbMsg = `${S.daily ? '오늘의 도전' : '온라인'} ${d.rank}위! (전체 ${d.total}명)`; LB.t = 0; LBD.t = 0; play('levelup', 0.4); }
-      else UI.lbMsg = d.err === 'wait' ? '잠시 뒤에 다시 올려 주세요' : '올리지 못했어요';
+      if (d.ok) { S.lbSent = true; UI.lbMsg = `${wk ? '주간 도전' : S.daily ? '오늘의 도전' : '온라인'} ${d.rank}위! (전체 ${d.total}명)`; LB.t = 0; LBD.t = 0; LBW.t = 0; play('levelup', 0.4); }
+      else UI.lbMsg = d.err === 'wait' ? '잠시 뒤에 다시 올려 주세요' : d.err === 'badname' ? '쓸 수 없는 닉네임이에요' : '올리지 못했어요';
     }).catch(() => { UI.lbMsg = '연결에 실패했어요. 다시 눌러 주세요'; }).finally(() => { S.lbSending = false; });
 }
 // 닉네임 입력칸: 캔버스 위에 진짜 입력칸을 띄운다 (그린 프레임에만 보인다)
