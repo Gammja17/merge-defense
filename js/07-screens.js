@@ -215,7 +215,6 @@ function drawHud() {
     ctx.globalAlpha = 1;
     BUTTONS.push({ x: 240, y: 8, w: 44, h: 46, act: 'speed' });
   }
-  if ((!S.tut || S.tut.step === 8) && (S.mode === 'play' || S.holdT > 0)) drawHoldBtn();
   if (S.debuff) {   // 보스 기믹으로 걸린 방해: 붉은 칩과 남은 초
     ctx.font = FK(13);
     const on = Object.keys(S.debuff).filter(k => S.debuff[k] > 0), txts = on.map(k => `${DEBUFF_NAME[k]} ${Math.ceil(S.debuff[k])}`), ws = txts.map(t => ctx.measureText(t).width + 18);
@@ -280,14 +279,16 @@ function drawHud() {
   { const py = LINE_Y - 30;
     if (S.mode === 'play' || S.mode === 'break') {   // 오른쪽: 소환 버튼
       { // 소환 왼쪽: 정비소 버튼 겸 지금 가진 부품
-        const gx = SHOP_BX, gp = S.gearPulse || 0, canUp = S.gear >= Math.min(cellNewCost(), openRows() < ROWS ? ROW_ADD[openRows() - START_ROWS] : 99);
+        const gx = SHOP_BX, gp = S.gearPulse || 0, open = S.mode === 'break',   // 정비소는 웨이브 사이에만 열린다
+          rowCost = openRows() < ROWS ? ROW_ADD[openRows() - START_ROWS] : 99, resCost = S.reserve.length < 6 ? RES_ADD[S.reserve.length - 3] : 99,
+          canUp = open && S.gear >= Math.min(rowCost, resCost);
         if (gp > 0 || (canUp && !drag)) drawGlow('#ffb347', gx + 53, py, 56, gp * 0.8 + (canUp ? 0.15 + 0.1 * Math.sin(S.time * 5) : 0), 0.5);
         ctx.fillStyle = 'rgba(40,24,10,.92)'; chamfer(gx, py - 16, 106, 32, 7); ctx.fill();
         ctx.strokeStyle = canUp ? '#ffb347' : 'rgba(255,180,70,.6)'; ctx.lineWidth = canUp ? 1.8 : 1.2; ctx.stroke();
         drawGearIcon(gx + 15, py, 7);
         ctx.font = FK(13); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffd6a0'; ctx.fillText('정비소', gx + 27, py + 1);
         ctx.font = FT(15, 900); ctx.textAlign = 'right'; outlineText(String(S.gear), gx + 99, py + 1, '#fff', 3);
-        BUTTONS.push({ x: gx, y: py - 16, w: 106, h: 32, act: 'openshop' });
+        if (open) BUTTONS.push({ x: gx, y: py - 16, w: 106, h: 32, act: 'openshop' });
       }
       const cost = summonCost(), ok = S.gear >= cost, bx = W - 142, by = py - 16, bw = 130, bh = 32, slv = summonLv(), up = Math.max(0, 1 - (S.time - (S.summonUpT ?? -9)) / 1.2);
       if (ok || up) drawGlow('#ffb347', bx + bw / 2, py, 60, 0.18 + 0.1 * Math.sin(S.time * 5) + up * 0.6, 0.5);
@@ -488,30 +489,6 @@ function drawWarning() {
   ctx.globalAlpha = fade;
   ctx.font = FK(17); outlineText(S.warnText || `${ENEMY[S.stage.sector.boss].name}이 접근하고 있어요`, W / 2, y + 23, '#ffd0d4', 4);
   ctx.restore();
-}
-// 정지장 버튼: 전장 오른쪽 아래. 웨이브마다 한 번, 누르면 5초 동안 적이 멈추고 그동안 재정비
-function drawHoldBtn() {
-  const x = W - 44, y = 566, r = 27, on = S.holdT > 0, ready = S.holdLeft > 0 && S.mode === 'play', t = S.time;
-  if (on) {   // 전장을 푸른 막으로 덮고 남은 시간
-    const a = Math.min(1, S.holdT * 2);
-    ctx.fillStyle = `rgba(60,150,255,${0.13 * a})`; ctx.fillRect(0, 70, W, LINE_Y - 70);
-    ctx.strokeStyle = `rgba(127,212,255,${0.5 * a})`; ctx.lineWidth = 2; ctx.strokeRect(6, 74, W - 12, LINE_Y - 80);
-    ctx.font = FT(40, 900); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.85 * a;
-    outlineText(S.holdT.toFixed(1), W / 2, 330, '#bfeaff', 6); ctx.font = FK(18); outlineText('정지장', W / 2, 296, '#7fd4ff', 4); ctx.globalAlpha = 1;
-  }
-  ctx.save();
-  if (ready) drawGlow('#7fd4ff', x, y, 40, 0.25 + 0.15 * Math.sin(t * 4));
-  ctx.fillStyle = on ? 'rgba(60,150,255,.35)' : ready ? 'rgba(20,50,90,.9)' : 'rgba(20,24,36,.8)'; hexPath(x, y, r); ctx.fill();
-  ctx.strokeStyle = ready || on ? '#7fd4ff' : 'rgba(255,255,255,.25)'; ctx.lineWidth = 2.5; ctx.stroke();
-  if (on) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * S.holdT / (S.pk.warp ? 8 : 5)); ctx.stroke(); }
-  // 그림: 모래시계
-  const c = ready || on ? '#dff4ff' : 'rgba(255,255,255,.3)';
-  ctx.fillStyle = c; ctx.strokeStyle = c; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(x - 10, y - 13); ctx.lineTo(x + 10, y - 13); ctx.moveTo(x - 10, y + 13); ctx.lineTo(x + 10, y + 13); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x - 8, y - 11); ctx.lineTo(x + 8, y - 11); ctx.lineTo(x, y); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 8, y + 11); ctx.lineTo(x - 8, y + 11); ctx.closePath(); ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1;
-  ctx.restore();
-  if (ready) BUTTONS.push({ x: x - 34, y: y - 34, w: 68, h: 68, act: 'hold' });
 }
 // 합칠 수 있는 짝 표시: 같은 종류 같은 레벨 짝이 있으면 초록 ▲, 특수 합체 짝꿍(둘 다 Lv8)은 금빛 선으로 잇는다.
 // 기체를 짧게 탭하면 1.5초 동안 그 기체의 짝꿍을 테두리로 강조
@@ -1348,77 +1325,24 @@ function drawGearIcon(x, y, r, col = '#ffb347') {
 function drawShop() {
   BUTTONS = [];
   ctx.fillStyle = 'rgba(2,3,12,.85)'; ctx.fillRect(0, 0, W, H);
-  const x = 14, y = 70, w = W - 28, h = 830;
+  const x = 14, w = W - 28, h = 440, y = (H - h) / 2, rows = openRows();
   panel(x, y, w, h, '#ffb347');
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FT(32, 900); glitchText('WORKSHOP', W / 2, y + 48, '#ffd6b0', 5, Math.random() < 0.05 ? 4 : 0);
-  ctx.font = FK(19); ctx.fillStyle = 'rgba(230,236,255,.92)';
-  ctx.fillText('칸을 골라 강화해요. 이번 전투 동안 유지돼요.', W / 2, y + 88);
-  ctx.fillStyle = 'rgba(40,24,10,.8)'; chamfer(W / 2 - 90, y + 110, 180, 48, 10); ctx.fill();
+  ctx.fillStyle = 'rgba(40,24,10,.8)'; chamfer(W / 2 - 90, y + 86, 180, 48, 10); ctx.fill();
   ctx.strokeStyle = 'rgba(255,180,70,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
-  drawGearIcon(W / 2 - 54, y + 134, 12);
-  ctx.font = FK(20); ctx.textAlign = 'left'; ctx.fillStyle = '#ffd6a0'; ctx.fillText('부품', W / 2 - 32, y + 135);
-  ctx.font = FT(26, 900); outlineText(String(S.gear), W / 2 + 22, y + 135, '#fff', 4);
-  // 작은 판: 칸을 눌러 고른다
-  const mw = 72, mh = 60, mx0 = W / 2 - COLS * mw / 2, my0 = y + 180, rows = openRows(), tt = performance.now() / 1000;
-  const mpos = i => ({ x: mx0 + (i % COLS) * mw + mw / 2, y: my0 + Math.floor(i / COLS) * mh + mh / 2 });
-  let guide = null;
-  if (UI.selCell == null && !S.cellFx.some(Boolean)) { const best = gridUnits().sort((a, b) => b.lv - a.lv)[0]; if (best) guide = best.cells[0]; }
-  for (let i = 0; i < COLS * rows; i++) {
-    const q = mpos(i), f = S.cellFx[i], fc = f ? CELL_FX[f.k].col : '#5a86c8';
-    ctx.fillStyle = 'rgba(10,18,40,.95)'; chamfer(q.x - mw / 2 + 3, q.y - mh / 2 + 3, mw - 6, mh - 6, 8); ctx.fill();
-    if (f) { ctx.fillStyle = fc; ctx.globalAlpha = 0.14 + 0.06 * f.lv; ctx.fill(); ctx.globalAlpha = 1; }
-    ctx.strokeStyle = fc; ctx.globalAlpha = f ? 0.9 : 0.35; ctx.lineWidth = f ? 2 : 1.2; ctx.stroke(); ctx.globalAlpha = 1;
-    BUTTONS.push({ x: q.x - mw / 2, y: q.y - mh / 2, w: mw, h: mh, act: 'cellsel', c: i });
-  }
-  for (const u of gridUnits()) { const xs = u.cells.map(c => mpos(c).x), ys = u.cells.map(c => mpos(c).y); drawUnit(u, (Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2, 0.55, 0.78); }
-  for (let i = 0; i < COLS * rows; i++) {
-    const q = mpos(i), f = S.cellFx[i];
-    if (f) { ctx.font = FU(9); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText(fxLabel(f), q.x, q.y + mh / 2 - 12, CELL_FX[f.k].col, 3); }
-    if (i === UI.selCell || i === guide) {
-      const a = i === guide ? 0.5 + 0.5 * Math.sin(tt * 6) : 1;
-      ctx.strokeStyle = '#fff'; ctx.globalAlpha = a; ctx.lineWidth = 3; chamfer(q.x - mw / 2 + 1, q.y - mh / 2 + 1, mw - 2, mh - 2, 9); ctx.stroke(); ctx.globalAlpha = 1;
-    }
-  }
-  if (guide != null) { const q = mpos(guide); if (S.tut && S.tut.step === 6) tapDemo(q.x, q.y); else { ctx.font = FK(16); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('칸을 눌러 보세요', q.x, q.y - mh / 2 - 12, '#fff', 4); } }
-  // 고른 칸
-  const py = my0 + rows * mh + 18, sc = UI.selCell, sf = sc != null ? S.cellFx[sc] : null;
-  ctx.fillStyle = 'rgba(10,20,44,.9)'; chamfer(x + 16, py, w - 32, 150, 12); ctx.fill();
-  ctx.strokeStyle = sf ? CELL_FX[sf.k].col : 'rgba(255,180,70,.5)'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  if (sc == null || sc >= COLS * rows) { ctx.font = FK(18); ctx.fillStyle = 'rgba(210,230,255,.85)'; ctx.fillText('강화할 칸을 누르세요', W / 2, py + 75); }
-  else {
-    const nm = 'ABCD'[Math.floor(sc / COLS)] + (sc % COLS + 1);
-    if (!sf) {
-      const cost = cellNewCost();
-      ctx.font = FK(18); ctx.fillStyle = '#fff'; ctx.fillText(`${nm} 칸에 붙일 효과를 고르세요 (부품 ${cost})`, W / 2, py + 24);
-      FX_KEYS.forEach((k, j) => {
-        const d = CELL_FX[k], bw2 = 112, bx2 = W / 2 - 2 * (bw2 + 8) + 4 + j * (bw2 + 8);
-        button(bx2, py + 48, bw2, 54, d.name, 'cellfx', S.gear >= cost ? 'gold' : 'ghost', { c: sc, k });
-        if (j === 0 && S.tut && S.tut.step === 6) UI.tutFx = { x: bx2 + bw2 / 2, y: py + 75 };
-        ctx.font = FK(14); ctx.fillStyle = d.col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.txt(d.v[0]), bx2 + bw2 / 2, py + 124);
-      });
-    } else {
-      const d = CELL_FX[sf.k];
-      ctx.font = FK(20); outlineText(`${nm} 칸, ${d.name} Lv${sf.lv}`, W / 2, py + 26, d.col, 4);
-      ctx.font = FK(16); ctx.fillStyle = 'rgba(210,230,255,.92)'; ctx.textAlign = 'left';
-      ctx.fillText(`지금 ${d.txt(d.v[sf.lv - 1])}`, x + 40, py + 70);
-      if (sf.lv < 3) {
-        ctx.fillStyle = d.col; ctx.fillText(`다음 ${d.txt(d.v[sf.lv])}`, x + 40, py + 100);
-        const cost = CELL_UP[sf.lv - 1];
-        button(x + w - 190, py + 58, 160, 58, `부품 ${cost}`, 'cellup', S.gear >= cost ? 'gold' : 'ghost', { c: sc });
-      } else { ctx.textAlign = 'center'; ctx.font = FT(22, 900); outlineText('MAX', x + w - 110, py + 86, d.col, 4); }
-    }
-  }
+  drawGearIcon(W / 2 - 54, y + 110, 12);
+  ctx.font = FK(20); ctx.textAlign = 'left'; ctx.fillStyle = '#ffd6a0'; ctx.fillText('부품', W / 2 - 32, y + 111);
+  ctx.font = FT(26, 900); outlineText(String(S.gear), W / 2 + 22, y + 111, '#fff', 4);
   // 줄 추가
-  const ry = py + 166;
+  const ry = y + 156;
   if (rows < ROWS) {
     const cost = ROW_ADD[rows - START_ROWS];
     ctx.fillStyle = 'rgba(40,24,10,.85)'; chamfer(x + 16, ry, w - 32, 76, 12); ctx.fill();
     ctx.strokeStyle = 'rgba(255,180,70,.6)'; ctx.lineWidth = 2; ctx.stroke();
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = FK(20); outlineText(`줄 추가 (${rows + 1}줄로)`, x + 36, ry + 26, '#ffd6a0', 4);
     ctx.font = FK(14); ctx.fillStyle = 'rgba(255,220,180,.85)';
-    ctx.fillText(rows === 2 ? '칸 6개가 늘고, 세로 3칸 기체를 올릴 수 있어요' : '칸 6개가 늘어요', x + 36, ry + 54);
+    ctx.fillText(rows === 2 ? `칸 ${COLS}개가 늘고, 세로 3칸 기체를 올릴 수 있어요` : `칸 ${COLS}개가 늘어요`, x + 36, ry + 54);
     button(x + w - 170, ry + 10, 140, 56, `부품 ${cost}`, 'addrow', S.gear >= cost ? 'gold' : 'ghost');
   }
   // 대기함 칸 늘리기 (6칸까지)
@@ -1434,9 +1358,7 @@ function drawShop() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FK(15); ctx.fillStyle = 'rgba(255,214,160,.85)';
   ctx.fillText('필요 없는 기체를 위 전장으로 끌어 놓으면 부품이 나와요.', W / 2, y + h - 96);
   button(W / 2 - 120, y + h - 70, 240, 54, '전투로 돌아가기', 'closeshop', 'primary');
-  if (UI.toast && UI.toast.until > performance.now() / 1000) { ctx.font = FK(18); outlineText(UI.toast.text, W / 2, y + 160, '#ffb0b0', 4); }
-  if (S.tut && S.tut.step === 6 && UI.selCell != null && UI.tutFx && !S.cellFx.some(Boolean)) tapDemo(UI.tutFx.x, UI.tutFx.y);
-  UI.tutFx = null;
+  if (UI.toast && UI.toast.until > performance.now() / 1000) { ctx.font = FK(18); outlineText(UI.toast.text, W / 2, y + 146, '#ffb0b0', 4); }
 }
 function drawPerk() {
   BUTTONS = [];
@@ -1611,7 +1533,7 @@ function drawRecords() {
   }
 }
 function drawOverlays() {
-  if (S.mode === 'perk') { drawPerk(); if (S.tut && S.tut.step === 7 && performance.now() / 1000 - (S.perkT0 || 0) > 0.6) tapDemo(W / 2, 346); }
+  if (S.mode === 'perk') { drawPerk(); if (S.tut && S.tut.step === 5 && performance.now() / 1000 - (S.perkT0 || 0) > 0.6) tapDemo(W / 2, 346); }
   if (UI.shop) drawShop();
   if (S.paused && !UI.settings) drawPause();
   if (UI.settings) drawSettings();

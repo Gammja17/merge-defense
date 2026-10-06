@@ -66,19 +66,7 @@ function doAction(b) {
       if (summonLv() > lv) { S.summonUpT = S.time; addText(p.x, p.y - 56, `다음 소환 Lv${summonLv()}`, '#ffd24a', 18, 1.4); }
       return;
     }
-    case 'openshop': if (S.mode === 'play' || S.mode === 'break') { UI.shop = true; play('open', 0.45); } return;
-    case 'cellsel': UI.selCell = b.c; return;
-    case 'cellfx': case 'cellup': {
-      const f = S.cellFx[b.c], cost = f ? CELL_UP[f.lv - 1] : cellNewCost();
-      if (f && f.lv >= 3) return;
-      if (S.gear < cost) { toast(`부품이 ${cost - S.gear}개 부족해요`); denied(); return; }
-      S.gear -= cost;
-      if (f) f.lv++; else S.cellFx[b.c] = { k: b.k, lv: 1 };
-      if (S.cellFx[b.c].lv >= 3) ach('workshop_max');
-      play('upgrade', 0.5); play('levelup', 0.45, 1.1);
-      const q = cellPos(b.c); S.fx.push({ kind: 'ring', x: q.x, y: q.y, t: 0, life: 0.5, color: CELL_FX[S.cellFx[b.c].k].col });
-      return;
-    }
+    case 'openshop': if (S.mode === 'break') { UI.shop = true; play('open', 0.45); } return;   // 웨이브 사이에만
     case 'addres': {
       const n = S.reserve.length; if (n >= 6) return;
       const cost = RES_ADD[n - 3];
@@ -156,12 +144,6 @@ function doAction(b) {
       if (S.stage && ['play', 'break', 'clearing'].includes(S.mode)) { S.hp = 0; endStage(false); }
       return;
     case 'floor': { const own = floorsOwned(); PROG.floor = own[(own.indexOf(PROG.floor || '') + 1) % own.length]; save(); return; }
-    case 'hold':   // 정지장 5초
-      if (S.mode !== 'play' || S.holdT > 0 || !S.holdLeft) { if (!S.holdLeft) denied(); return; }
-      S.holdLeft--; S.holdT = S.pk.warp ? 8 : 5; play('zap', 0.4, 0.5); play('shieldUp', 0.4, 0.8);
-      S.fx.push({ kind: 'ring', x: W / 2, y: 380, t: 0, life: 0.6, color: '#7fd4ff' }, { kind: 'ring', x: W / 2, y: 380, t: -0.1, life: 0.7, color: '#ffffff' });
-      hintOnce('hold', '정지장: 5초 동안 재정비');
-      return;
     case 'speed': PROG.settings.speed = SET().speed === 2 ? 1 : 2; save(); return;
     case 'settings': UI.settings = true; UI.resetArm = 0; UI.credits = UI.saveCode = false; return;
     case 'closesettings': UI.settings = false; return;

@@ -113,7 +113,7 @@ function drawPowerIcon(x, y, r) {
   ctx.lineTo(x - r * 0.3, y + r * 1.1); ctx.lineTo(x + r * 0.7, y - r * 0.15); ctx.lineTo(x + r * 0.05, y - r * 0.15); ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 function unitPower(u) {
-  return levelStat(u.type, u.lv).v * cellAtk(u) * cellSpd(u) * (1 + u.buffDmg) * (1 + u.buffSpd) * pkDmg(u) * S.pk.spd;
+  return levelStat(u.type, u.lv).v * (1 + u.buffDmg) * (1 + u.buffSpd) * pkDmg(u) * S.pk.spd;
 }
 const fleetPower = () => Math.round(gridUnits().reduce((a, u) => a + unitPower(u), 0));
 function drawCore(x, y, r, alpha = 1) {
@@ -724,11 +724,6 @@ function drawAttacks() {
         drawGlow('#ffb347', m.x, my, 60, 0.7);
       }
     }
-    ctx.font = FU(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const top = Math.min(...a.cells.map(c => cellPos(c).y)) - CH / 2 - 8;
-    ctx.globalAlpha = 0.6 + 0.4 * pulse;
-    outlineText(`⚠ INCOMING ${(a.warn - a.t).toFixed(1)}`, m.x, Math.max(top, LINE_Y + 6), '#ff6a7a', 3);
-    ctx.globalAlpha = 1;
   }
 }
 
@@ -1046,7 +1041,7 @@ function drawPads() {
   for (let i = 0; i < COLS * ROWS; i++) {
     // 편대 발진대: 금속 판 + 착륙 표적 + 칸 번호 + 유도등. 줄마다 색(앞 주황, 가운데 청록, 뒤 파랑)
     const p = cellPos(i), x = p.x - CW / 2 + 4, y = p.y - CH / 2 + 4, w = CW - 8, h = CH - 8;
-    const r = Math.floor(i / COLS), c = i % COLS, f = S.cellFx[i], fc = f ? CELL_FX[f.k].col : '#5a86c8', u = S.slots[i], lit = u ? UNIT[u.type].col : fc;
+    const r = Math.floor(i / COLS), c = i % COLS, fc = '#5a86c8', u = S.slots[i], lit = u ? UNIT[u.type].col : fc;
     if (r >= openRows() || (r === S.popRow && r === 2)) continue;
     const pg = ctx.createLinearGradient(0, y, 0, y + h);
     pg.addColorStop(0, 'rgba(26,38,66,.94)'); pg.addColorStop(1, 'rgba(7,11,24,.94)');
@@ -1054,8 +1049,7 @@ function drawPads() {
     if (PROG.floor) floorPattern(PROG.floor, x, y, w, h);
     if (isBroken(i)) { drawBrokenCell(i, x, y, w, h, t); continue; }
     if (u) floorFx(u.lv, x, y, w, h, lit, t + u.cells[0] * 0.3);   // 기체가 앉은 칸은 바닥을 그 기체 고유색으로 물들인다 (이 색 = 이 기체)
-    ctx.strokeStyle = fc; ctx.globalAlpha = f ? 0.85 : u ? 0.6 : 0.3; ctx.lineWidth = f ? 2 : 1.2; ctx.stroke();
-    if (f) { ctx.fillStyle = fc; ctx.globalAlpha = 0.1 + 0.05 * f.lv; chamfer(x, y, w, h, 9); ctx.fill(); ctx.globalAlpha = 0.8; ctx.fillRect(x + 12, y, w - 24, 2.5); }   // 강화 칸: 효과 색으로 옅게 칠하고 윗변 띠
+    ctx.strokeStyle = fc; ctx.globalAlpha = u ? 0.6 : 0.3; ctx.lineWidth = 1.2; ctx.stroke();
     ctx.save(); ctx.translate(p.x, p.y + 4); ctx.rotate(u ? t * 0.5 : 0);
     ctx.strokeStyle = lit; ctx.globalAlpha = u ? 0.55 : 0.2; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.stroke();
@@ -1064,15 +1058,10 @@ function drawPads() {
     if (u) drawGlow(lit, p.x, p.y + 8, 36, 0.16 + 0.06 * Math.sin(t * 3 + i), 0.5);
     ctx.font = FU(8); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = fc; ctx.globalAlpha = 0.65;
     ctx.fillText('ABCD'[r] + (c + 1), x + 5, y + 5); ctx.globalAlpha = 1;
-    if (f) for (let q = 0; q < f.lv; q++) { ctx.fillStyle = fc; hexPath(x + w - 8 - q * 9, y + 9, 3.5); ctx.fill(); }   // 오른쪽 위 단계 표시
     for (let k = 0; k < 5; k++) {
       const on = u && (Math.floor(t * 7) + 50 - k) % 5 === 0;
       ctx.fillStyle = on ? lit : 'rgba(255,255,255,.13)';
       ctx.fillRect(x + 14 + k * (w - 28) / 4 - 2, y + h - 5, 4, 2);
-    }
-    if (!u && f) {
-      ctx.font = FU(9); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = fc;
-      ctx.fillText(fxLabel(f), p.x, p.y + 4);
     }
     if (drag && drag.moved) {
       const du = drag.unit, tu = S.slots[i];

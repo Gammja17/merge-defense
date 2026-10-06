@@ -219,14 +219,14 @@ const ENEMY_HINT = {
   shield:  '보호막함은 레이저를 대부분 막고, 선으로 이어진 주변 적이 받는 피해도 줄여요. 폭발이나 번개로 먼저 깨세요.',
   healer:  '수리선은 주변 적을 계속 고쳐요. 먼저 떨어뜨리는 게 좋아요.',
   thief:   '캡슐 도둑이 캡슐을 낚아채 달아나요. 놓치기 전에 격추하면 캡슐이 다시 떨어져요.',
-  sniper:  '저격함이 내 기체를 노려요! 붉게 표시된 칸에서 기체를 빼거나, 저격함을 탭해 먼저 격추하세요.',
+  sniper:  '저격함이 내 기체를 쏴요. 저격함을 탭해서 먼저 격추하세요.',
   gunship: '포격함은 세로 한 줄을 통째로 쓸어요. 그 열에서 기체를 옮기세요.',
   bomber:  '폭격기는 대각선으로 폭탄을 떨어뜨려요.',
-  meteor:  '운석이 떨어지는 자리에 그림자가 생겨요. 그 네 칸을 비우세요.',
+  meteor:  '운석이 네 칸에 한꺼번에 떨어져요. 체력이 많은 기체로 버텨요.',
   phase:   '위상함은 잠깐씩 투명해져서 공격이 통하지 않아요. 다시 보일 때 노리세요.',
   grav:    '중력함은 근처 캡슐을 끌어당겨 위로 데려가요. 캡슐을 지키려면 먼저 격추하세요.',
   freeze:  '파란 칸은 빙결 포격이에요. 맞은 기체는 4초 동안 얼어서 쏘지 못해요.',
-  artillery: '포격 순양함은 위쪽에 버티고 서서 여러 칸에 포탄을 떨어뜨려요. 붉은 칸을 비우거나 먼저 격추하세요.',
+  artillery: '포격 순양함은 위쪽에 버티고 서서 여러 칸에 포탄을 떨어뜨려요. 먼저 격추하세요.',
   jammer:  '교란함이 노란 칸의 기체를 전파로 묶어 못 쏘게 해요. 교란함을 격추하면 바로 풀려요.',
   wreck:   '난파선을 격추하면 잔해가 떨어져 칸 하나를 잠시 막아요.',
   rift:    '균열함은 몇 초마다 앞으로 순간이동해요. 빨리 잡으세요.',
@@ -439,7 +439,6 @@ const PERKS = [
   { tier: 1, id: 'shield', cat: 'def', name: '방어선 보강', desc: '기지 보호막 최대치 +3, 즉시 +3', col: '#5affc8', apply: () => { S.maxHp += 3; S.hp += 3; } },
   { tier: 1, id: 'armor', cat: 'def', name: '장갑 강화', desc: '모든 기체 최대 체력 +2', col: '#6ad0ff', apply: () => { S.pk.hp += 2; for (const u of allUnits()) { u.maxHp += 2; u.hp += 2; } } },
   { tier: 1, id: 'cap', cat: 'sup', name: '보급 효율', desc: '캡슐을 까는 데 필요한 타수 -20%', col: '#ffd84a', apply: () => { S.pk.cap *= 0.8; } },
-  { tier: 1, id: 'front', cat: 'atk', name: '공격 칸 정비', desc: '정비소 공격 칸 효과 +50%', col: '#ffb347', apply: () => { S.pk.front += 0.5; } },
   { tier: 1, id: 'slow', cat: 'def', name: '중력 교란', desc: '모든 적 이동 속도 -10%', col: '#b86bff', apply: () => { S.pk.enemySpd *= 0.9; } },
   { tier: 1, id: 'repair', cat: 'def', name: '자동 수리', desc: '웨이브를 넘길 때마다 기지 보호막 +1', col: '#6dff8a', apply: () => { S.pk.regen += 1; } },
   { tier: 1, id: 'gift', cat: 'sup', name: '긴급 증원', desc: '가장 높은 기체보다 한 단계 아래 기체를 지급 (Lv3 이상)', col: '#ffe24a', apply: () => {   // 후반에도 쓸모 있게: 판의 최고 레벨 -1 (Lv3~6)
@@ -481,7 +480,6 @@ const PERKS = [
   { tier: 3, id: 'glass', once: true, cat: 'atk', name: '유리 대포', desc: '공격력 2배, 대신 기지 보호막 최대치가 절반', col: '#ff3a5a', apply: () => { S.pk.dmg *= 2; S.maxHp = Math.max(1, Math.ceil(S.maxHp / 2)); S.hp = Math.min(S.hp, S.maxHp); } },
   { tier: 3, id: 'oc', once: true, cat: 'sp', name: '과충전', desc: '사령관 스킬을 쓰면 6초 동안 모든 기체 공격 속도 2배', col: '#ffe24a', ok: () => cmdOpen(), apply: () => { S.pk.oc = 1; } },
   { tier: 3, id: 'berserk', cat: 'atk', name: '광전사', desc: '기지 보호막을 1칸 잃을 때마다 공격력 +15%', col: '#ff3a3a', apply: () => { S.pk.berserk = (S.pk.berserk || 0) + 0.15; } },
-  { tier: 3, id: 'warp', cat: 'sp', name: '시간 왜곡', desc: '정지장을 웨이브마다 2번, 8초 동안 써요', col: '#7fd4ff', apply: () => { S.pk.warp = 1; S.holdLeft = Math.max(S.holdLeft || 0, 2); } },
   { tier: 3, id: 'goldcap', cat: 'sup', name: '황금 손', desc: '캡슐의 12%가 Lv3 황금 캡슐로 바뀌어요', col: '#ffd24a', apply: () => { S.pk.goldCap = (S.pk.goldCap || 0) + 0.12; } },
   { tier: 3, id: 'bulwark', cat: 'def', name: '철옹성', desc: '기지 보호막 최대치 +10, 즉시 +10. 대신 공격력 -20%', col: '#5affc8', apply: () => { S.maxHp += 10; S.hp += 10; S.pk.dmg *= 0.8; } },
   { tier: 3, id: 'laststand', cat: 'sup', name: '배수진', desc: '기지 보호막이 3 이하면 모든 캡슐이 Lv3 황금 캡슐', col: '#ff4a7a', apply: () => { S.pk.lastStand = 1; } },
@@ -527,7 +525,7 @@ const PERK_BUILD = {
   twin: ['merge'], heat: ['merge'], arc: ['merge'], mergeheal: ['merge', 'risk'],
   chain: ['kill'], overkill: ['kill'], killrush: ['kill'], vamp: ['kill'], fin: ['kill'], crit: ['kill'], execboom: ['kill'],
   berserk: ['risk'], glass: ['risk'], revive: ['risk'], bulwark: ['risk'], shield: ['risk'], repair: ['risk'], adversity: ['risk'],
-  lonely: ['place'], few: ['place'], many: ['place'], vanguard: ['place'], front: ['place'], emptyslot: ['place'],
+  lonely: ['place'], few: ['place'], many: ['place'], vanguard: ['place'], emptyslot: ['place'],
 };
 const ownBuilds = () => { const s = new Set(); for (const id of S.perks) for (const b of PERK_BUILD[id] || []) s.add(b); return s; };
 // 같은 강화를 여러 번 고르면 쌓이는 효과 (n개일 때). 강화 카드에 "2개: +32% → +52%"처럼 보여 준다
@@ -535,7 +533,7 @@ const pct = v => `${Math.round(v * 100)}%`;
 const PERK_SUM = {
   dmg: n => `공격력 +${pct(Math.pow(1.15, n) - 1)}`, spd: n => `공격 속도 +${pct(Math.pow(1.12, n) - 1)}`,
   shield: n => `보호막 최대치 +${3 * n}`, armor: n => `기체 체력 +${2 * n}`, cap: n => `캡슐 타수 -${pct(1 - Math.pow(0.8, n))}`,
-  front: n => `공격 칸 효과 +${50 * n}%`, slow: n => `적 속도 -${pct(1 - Math.pow(0.9, n))}`, repair: n => `웨이브마다 보호막 +${n}`,
+  slow: n => `적 속도 -${pct(1 - Math.pow(0.9, n))}`, repair: n => `웨이브마다 보호막 +${n}`,
   crit: n => `치명타 확률 ${15 * n}%`, salvage: n => `부품 ×${Math.pow(2, n)}`, summon: n => `소환 비용 -${pct(1 - Math.pow(0.75, n))}`,
   elite: n => `소환 레벨 +${n}`, cmdup: n => `게이지 속도 +${pct(Math.pow(1.6, n) - 1)}`, chain: n => `폭발 피해 ${35 * n}%`, arc: n => `번개 피해 ×${n}`,
   killrush: n => `공격 속도 +${15 * n}%`, vanguard: n => `앞줄 공격력 +${25 * n}%`, wavegear: n => `웨이브마다 부품 +${2 * n}부터`,
@@ -593,8 +591,8 @@ function startStage(n, endless = false, daily = false) {
     shake: 0, time: 0, glitch: 0, lost: 0,
     parts: [], shieldHits: [], banner: null, warning: 0, whiteFlash: 0, skillPop: null,
     score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0, dmgBy: {}, used: {},
-    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, front: 0, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0, twin: 0, lonely: 0, fin: 0, hunt: 1, capBomb: 0, heat: 0, oc: 0, scrap: 0, revive: 0 }, chainQ: [], heatT: 0, ocT: 0, legendNext: false,
-    gear: 0, cellFx: new Array(COLS * ROWS).fill(null), rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0, broken: [],
+    pk: { dmg: 1, spd: 1, hp: 0, cap: 1, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0, twin: 0, lonely: 0, fin: 0, hunt: 1, capBomb: 0, heat: 0, oc: 0, scrap: 0, revive: 0 }, chainQ: [], heatT: 0, ocT: 0, legendNext: false,
+    gear: 0, rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0, broken: [],
   };
   RES_W = 46;
   if (daily === 'weekly') { const wk = weekKey(); S.daily = { day: wk, weekly: true, rule: weeklyRule(wk), deck: weeklyDeck(wk) }; lbFetchWeekly(true); }
@@ -625,7 +623,7 @@ const uSize = u => SHAPES[UNIT[u.type].shape].length;
 
 function startWave(n) {
   const st = S.stage;
-  S.wave = n; S.waveT = 0; S.mode = 'play'; S.holdLeft = S.pk.warp ? 2 : 1;   // 정지장: 웨이브마다 한 번 (시간 왜곡이면 두 번)
+  S.wave = n; S.waveT = 0; S.mode = 'play';
   if (S.pk.waveGear && n > 1) addGear(S.pk.waveGear * (2 + Math.floor(n / 5)), W / 2, LINE_Y - 80);
   if (st.endless) {
     const ci = cyclePos(n);
@@ -661,8 +659,8 @@ function startWave(n) {
   else if (st.kind === 'brush') S.banner = { text: `WAVE ${n}`, sub: n === 3 ? '포격 순양함이 다가와요' : '엘리트 전함이 다가와요', color: '#ff5a6a', t: 0, life: 2.4 };
   else S.banner = { text: `WAVE ${n}`, sub: lastW ? '마지막 총공세! 버텨내세요' : n === 2 ? '적 본대가 도착했어요' : n === 3 ? (st.n >= 2 ? '공격형 함선이 합류했어요' : '적의 공세가 거세져요') : '적이 점점 거세져요', color: lastW ? '#ff5a6a' : '#ffd966', t: 0, life: 2.4 };
 }
-// 튜토리얼: 1 캡슐 탭하기, 2 같은 기체 합체하기, 3 붉은 칸 피하기. 끝나야 첫 웨이브가 시작된다
-const TUT_STEPS = ['캡슐 누르기', '같은 기체 겹치기', '붉은 칸에서 빼기', '부품으로 소환', '위로 끌어 해체', '정비소에서 칸 강화', '강화 고르기', '정지장으로 재정비', '사령관 스킬 쓰기'];
+// 튜토리얼: 훈련장에서 한 단계씩 직접 해 본다
+const TUT_STEPS = ['캡슐 누르기', '같은 기체 겹치기', '부품으로 소환', '위로 끌어 해체', '강화 고르기', '사령관 스킬 쓰기'];
 function updateTut(dt) {
   const T = S.tut;
   T.t += dt;
@@ -676,39 +674,18 @@ function updateTut(dt) {
   } else if (T.step === 2) {
     if (!pairOnGrid()) { const u = gridUnits()[0]; if (u) giveUnit(u.type, u.lv, W / 2, 420, '#8dff9a'); }
     if (T.merged) { T.step = 3; T.t = 0; tutOk(); }
-  } else if (T.step === 3) {
-    if (!T.e) {
-      T.unit = gridUnits().filter(u => uSize(u) === 1).sort((a, b) => a.cells[0] - b.cells[0])[0];
-      T.cell = T.unit.cells[0];
-      T.e = spawnEnemy('sniper', cellPos(T.cell).x, -50);
-      T.e.hp *= 30; T.e.maxHp *= 30; T.e.atkT = 999; T.e.hoverY = 300;
-    }
-    if (!T.atk && T.e.y >= T.e.hoverY - 4) { T.atk = { kind: 'snipe', cells: [T.cell], src: T.e, dmg: 1, t: 0, warn: 4.5 }; S.attacks.push(T.atk); }
-    if (T.atk && T.unit.cells && !T.unit.cells.includes(T.cell)) T.dodged = true;
-    if (T.atk && (T.atk.done || T.atk.cancelled || T.e.dead)) {
-      if (!T.e.dead) T.e.dead = true;   // 훈련장: 저격함은 물러난다
-      if (T.dodged) { T.step = 4; T.t = 0; tutOk(); }
-      else { addText(W / 2, 420, '붉은 칸에서 빼 주세요', '#ffb08a', 24, 1.6); play('deny', 0.5); T.e = null; T.atk = null; }   // 다시 한 번
-    }
-  } else if (T.step === 4) {   // 소환: 부품을 채워 주고 소환 버튼
+  } else if (T.step === 3) {   // 소환: 부품을 채워 주고 소환 버튼
     if (T.sum0 == null) { T.sum0 = S.summons || 0; const need = summonCost() - S.gear; if (need > 0) addGear(need, W / 2, 420); }
-    if ((S.summons || 0) > T.sum0) { T.step = 5; T.t = 0; tutOk(); }
-  } else if (T.step === 5) {   // 해체: 부품 얻기
+    if ((S.summons || 0) > T.sum0) { T.step = 4; T.t = 0; tutOk(); }
+  } else if (T.step === 4) {   // 해체: 부품 얻기
     if (!T.s4) { T.s4 = true; if (!allUnits().some(u => u.lv === 1 && uSize(u) === 1)) giveUnit(PROG.deck[0] || 'f', 1, W / 2, 420, '#8dff9a'); }
-    if (T.scrapped) { T.step = 6; T.t = 0; tutOk(); }
-  } else if (T.step === 6) {   // 정비소: 칸 강화
-    if (!T.s5 && T.t > 0.8) { T.s5 = true; const need = cellNewCost() - S.gear; if (need > 0) addGear(need, W / 2, 420); }
-    if (S.cellFx.some(Boolean)) { T.step = 7; T.t = 0; tutOk(); }
-  } else if (T.step === 7) {   // 강화 고르기: 일반, 고급, 전설 한 장씩
-    if (!T.s7 && T.t > 0.6 && !UI.shop) { T.s7 = true; S.mode = 'perk'; S.perkChoices = ['dmg', 'hunt', 'oc'].map(id => PERKS.find(p => p.id === id)); S.perkT0 = performance.now() / 1000; }
-    if (S.perks.length) { T.step = 8; T.t = 0; tutOk(); }
-  } else if (T.step === 8) {   // 정지장: 적이 다가오면 멈추고 재정비
-    if (!T.s8) { T.s8 = true; S.holdLeft = 1; for (let k = 0; k < 4; k++) { const e = spawnEnemy('grunt', 120 + k * 100, -40 - k * 30); e.hp = e.maxHp = 9999; e.speed *= 0.6; } }
-    if (S.holdLeft === 0) T.held = true;   // 정지장이 켜진 동안은 이 함수가 멈추니 남은 횟수로 확인
-    if (T.held && !(S.holdT > 0)) { T.step = 9; T.t = 0; tutOk(); }
-  } else if (T.step === 9) {   // 사령관 스킬: 게이지를 채워 주고 궤도 포격
+    if (T.scrapped) { T.step = 5; T.t = 0; tutOk(); }
+  } else if (T.step === 5) {   // 강화 고르기: 일반, 고급, 전설 한 장씩
+    if (!T.s7 && T.t > 0.6) { T.s7 = true; S.mode = 'perk'; S.perkChoices = ['dmg', 'hunt', 'oc'].map(id => PERKS.find(p => p.id === id)); S.perkT0 = performance.now() / 1000; }
+    if (S.perks.length) { T.step = 6; T.t = 0; tutOk(); }
+  } else if (T.step === 6) {   // 사령관 스킬: 게이지를 채워 주고 궤도 포격
     if (!T.s9) { T.s9 = true; S.cmd = 100; S.cmdTut = {}; for (const e of S.enemies) e.dead = true; for (let k = 0; k < 5; k++) { const e = spawnEnemy('grunt', W / 2 + (k - 2) * 46, 190 + (k % 2) * 40); e.speed *= 0.3; } }   // 한데 모인 적 다섯
-    if (S.cmdTut && S.cmdTut.done) { T.step = 10; T.t = 0; }
+    if (S.cmdTut && S.cmdTut.done) { T.step = 7; T.t = 0; }
   } else if (T.t > 1.6 && !T.end) {
     T.end = true;
     for (const e of S.enemies) e.dead = true;
@@ -787,17 +764,11 @@ function drawTut() {
     const us = allUnits();
     for (const a of us) { const b = us.find(o => o !== a && o.type === a.type && o.lv === a.lv); if (b && a.cells && b.cells) { dragDemo(unitPos(a), unitPos(b), a); break; } }
   }
-  if (T.step === 3 && T.atk && T.unit && T.unit.cells && T.unit.cells.includes(T.cell)) {
-    const c = T.cell, r = Math.floor(c / COLS), free = [c + 1, c - 1, c + COLS, c - COLS].find(i => i >= 0 && i < COLS * openRows() && Math.floor(i / COLS) === r + (i === c + COLS ? 1 : i === c - COLS ? -1 : 0) && !S.slots[i]);
-    if (free != null) dragDemo(unitPos(T.unit), cellPos(free), T.unit);
-  }
-  if (T.step === 4) tapDemo(W - 77, LINE_Y - 26);   // 소환 버튼
-  if (T.step === 5) {
+  if (T.step === 3) tapDemo(W - 77, LINE_Y - 26);   // 소환 버튼
+  if (T.step === 4) {
     const u = allUnits().filter(q => uSize(q) === 1 && q.cells).sort((a, b) => a.lv - b.lv)[0];
     if (u) { const p = unitPos(u); dragDemo(p, { x: p.x, y: SCRAP_Y - 110 }, u); }
   }
-  if (T.step === 6 && !UI.shop) tapDemo(SHOP_BX + 53, LINE_Y - 24);
-  if (T.step === 8 && !T.held) tapDemo(W - 44, 566);   // 정지장 버튼
   button(12, 74, 92, 32, '건너뛰기', 'tutskip', 'ghost');
 }
 function hint(msg) {

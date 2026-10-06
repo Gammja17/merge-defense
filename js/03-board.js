@@ -81,15 +81,6 @@ function findSpot(u) {
   for (let i = 0; i < COLS * ROWS; i++) { const cells = cellsFor(u, i); if (canPlace(u, cells)) return cells; }
   return null;
 }
-// ── 칸 강화: 정비소에서 칸마다 효과 하나를 골라 3단계까지. 기체는 올라선 칸들의 효과를 더해 받는다 (이번 전투에서만) ──
-const CELL_FX = {
-  atk: { name: '공격력', key: 'ATK', col: '#ffb347', v: [0.15, 0.28, 0.45], txt: v => `공격력 +${Math.round(v * 100)}%` },
-  spd: { name: '공속', key: 'SPD', col: '#48ffd8', v: [0.1, 0.2, 0.32], txt: v => `공격 속도 +${Math.round(v * 100)}%` },
-  def: { name: '방어', key: 'DEF', col: '#6ad0ff', v: [0.15, 0.25, 0.35], txt: v => `받는 피해 -${Math.round(v * 100)}%` },
-  rng: { name: '사거리', key: 'RNG', col: '#c89bff', v: [50, 90, 130], txt: v => `사거리 +${v}` },
-};
-const FX_KEYS = ['atk', 'spd', 'def', 'rng'];
-const CELL_UP = [5, 8];              // 2단계, 3단계로 올리는 값
 const START_ROWS = 2, ROW_ADD = [20, 45];   // 3줄, 4줄로 늘리는 값 (주인: 초반에 다 열리지 않게)
 const RES_ADD = [12, 20, 30];   // 대기함 4, 5, 6칸째 (정비소에서 산다)
 const SHOP_BX = 286;   // 판 위 줄의 정비소 버튼 왼쪽 끝
@@ -97,15 +88,7 @@ const summonCost = () => Math.max(1, Math.round((3 + (S.summons || 0)) * Math.po
 // 소환할수록 비싸지지만 더 좋은 기체가 나온다: 0~2번째 Lv1, 3~5번째 Lv2, 6~9번째 Lv3, 10번째부터 Lv4. 정예 소환 강화마다 +1 (Lv5까지)
 const SUMMON_LV = [3, 6, 10];
 const summonLv = () => Math.min(5, 1 + SUMMON_LV.filter(n => (S.summons || 0) >= n).length + (S.pk.summonLv || 0));
-const cellNewCost = () => 3 + S.cellFx.filter(Boolean).length;   // 새로 찍을수록 조금씩 비싸진다
 const openRows = () => S.rowsOpen || START_ROWS;
-const cellVal = (i, k) => { const f = S.cellFx && S.cellFx[i]; return f && f.k === k ? CELL_FX[k].v[f.lv - 1] * (k === 'atk' ? 1 + S.pk.front : 1) : 0; };
-const cellSum = (u, k) => u.cells ? u.cells.reduce((a, c) => a + cellVal(c, k), 0) : 0;
-const cellAtk = u => 1 + cellSum(u, 'atk');
-const cellSpd = u => 1 + cellSum(u, 'spd');
-const cellRange = u => Math.min(200, cellSum(u, 'rng'));
-const cellDef = u => Math.min(0.6, cellSum(u, 'def'));
-const fxLabel = f => { const d = CELL_FX[f.k], v = d.v[f.lv - 1]; return d.key + (f.k === 'def' ? ' -' : ' +') + (f.k === 'rng' ? v : Math.round(v * 100) + '%'); };
 // 부품: 해체, 엘리트와 보스 격추, 웨이브 돌파로 얻는다. 해체 칸으로 날아가 쌓인다
 function addGear(n, x, y) {
   S.gear += n;

@@ -312,7 +312,7 @@ function updateDrones(u, dt) {
   const n = (u.type === 'y' ? [3, 4, 6, 6, 8] : [1, 2, 4, 4, 8])[lvIdx(u.lv)], p = unitPos(u);
   while (u.drones.length < n) u.drones.push({ x: p.x, y: p.y, cd: Math.random() * 0.4, a: Math.random() * 6, gone: 0 });
   u.drones.length = n;
-  const dmg = UNIT.d.dmg * LV_MUL[u.lv - 1] * [1, 0.8, 0.6, 0.6, 0.5][lvIdx(u.lv)] * (1 + u.buffDmg) * cellAtk(u) * mkMul('d') * pkDmg(u);
+  const dmg = UNIT.d.dmg * LV_MUL[u.lv - 1] * [1, 0.8, 0.6, 0.6, 0.5][lvIdx(u.lv)] * (1 + u.buffDmg) * mkMul('d') * pkDmg(u);
   // 적이 가까이 오지 않았을 때만 캡슐을 먼저 노린다
   let capT = null;
   const safe = !S.enemies.some(e => shootable(e) && e.y > LINE_Y - 260);
@@ -337,7 +337,7 @@ function updateDrones(u, dt) {
     const tx = tgt ? tgt.x + ox : p.x + Math.cos(d.a + i) * 30, ty = tgt ? tgt.y + oy : p.y - 40 + Math.sin(d.a + i) * 10;
     const dx = tx - d.x, dy = ty - d.y, dist = Math.hypot(dx, dy), sp = 320;
     if (dist > 2) { d.x += dx / dist * Math.min(dist, sp * dt); d.y += dy / dist * Math.min(dist, sp * dt); }
-    d.cd -= dt * (1 + u.buffSpd) * cellSpd(u);
+    d.cd -= dt * (1 + u.buffSpd);
     if (tgt && d.cd <= 0 && Math.hypot(tgt.x - d.x, tgt.y - d.y) < 150) {
       d.cd = 0.45 * Math.pow(0.8, tier(u));
       if (tgt.maxHits) hitCap(tgt, capPow(u.lv)); else hitEnemy(tgt, dmg, 'laser', true);
@@ -381,12 +381,6 @@ function update(dt) {
   S.whiteFlash = Math.max(0, S.whiteFlash - dt * 1.5);
 
   if (S.mode === 'win' || S.mode === 'lose' || S.mode === 'perk') return;
-  if (S.holdT > 0) {   // 정지장: 적, 적 공격, 캡슐, 아군 사격이 멈춘다. 기체를 옮기고 합치는 것만 된다
-    S.holdT -= dt;
-    for (const u of allUnits()) u.pop = Math.max(0, u.pop - dt);
-    if (S.holdT <= 0) { play('open', 0.35, 1.2); S.fx.push({ kind: 'ring', x: W / 2, y: 380, t: 0, life: 0.5, color: '#7fd4ff' }); }
-    return;
-  }
   if (S.debuff) for (const k in S.debuff) S.debuff[k] = Math.max(0, S.debuff[k] - dt);
   if (S.later && S.later.length) { for (const l of S.later) l.t -= dt; const due = S.later.filter(l => l.t <= 0); S.later = S.later.filter(l => l.t > 0); for (const l of due) l.fn(); }
 
@@ -479,8 +473,8 @@ function update(dt) {
       if (!u.jamBy || u.jamBy.dead || u.jamBy.hacked > 0) { u.jam = 0; const p = unitPos(u); addText(p.x, p.y - 24, '교란 해제', '#e8ff6a', 16, 0.8); }
       else { u.jam -= dt; continue; }
     }
-    RANGE_Y = FIRE_Y - cellRange(u);
-    u.cd -= dt * (1 + u.buffSpd) * pkSpd() * cellSpd(u);
+    RANGE_Y = FIRE_Y;
+    u.cd -= dt * (1 + u.buffSpd) * pkSpd();
     if (u.cd <= 0) {
       const cd = u.type === 'k' ? [7, 6, 5, 4.5, 4][lvIdx(u.lv)] * Math.pow(0.75, tier(u)) : u.type === 'n' ? [2.5, 2.5, 2.2, 2, 1.8][lvIdx(u.lv)] : UNIT[u.type].cd;
       u.cd = fireUnit(u) ? cd : Math.min(0.1, cd);

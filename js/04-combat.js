@@ -41,9 +41,7 @@ function pickCells(kind) {
 function launchAttack(kind, src, dmg) {
   const cells = pickCells(kind);
   if (!cells) return false;
-  const warn = kind === 'meteor' || kind === 'freeze' || kind === 'barrage' ? 1.8 : kind === 'row' || kind === 'cross' ? 1.9 : kind === 'jam' ? 1.3 : 1.5;
-  S.attacks.push({ kind, cells, src, dmg, t: 0, warn });
-  if (src && !src.boss) hintOnce('atkfocus', '공격하는 적을 누르면 먼저 격추');
+  S.attacks.push({ kind, cells, src, dmg, t: 0, warn: 0.3 });   // 피할 틈 없이 바로 맞는다 (주인: 피하기는 잡일)
   return true;
 }
 function cellsCenter(cells) {
@@ -112,7 +110,7 @@ function resolveAttack(a) {
 function damageUnit(u, dmg) {
   if (!u.cells && u.res == null) return;   // 이미 파괴된 기체
   const p = unitPos(u);
-  let red = cellDef(u);
+  let red = 0;
   if (u.type === 'w') red = 1 - (1 - red) * (0.5 - 0.05 * tier(u));
   else if (u.cells && gridUnits().some(o => o.type === 'w' && o.lv >= 3 && crossOf(o).has(u))) red = 1 - (1 - red) * 0.75;
   if (u.cells && gridUnits().some(o => o.fuse === 'aegis' && neighborsOf(o).has(u))) red = 1 - (1 - red) * 0.5;   // 이지스: 주변 기체 피해 절반
@@ -289,7 +287,7 @@ function pkDmg(u) {
 const pkSpd = () => S.pk.spd * (S.heatT > 0 ? 1 + S.pk.heat : 1) * (S.ocT > 0 ? 2 : 1) * (S.killRushT > 0 ? 1 + S.pk.killRush : 1) * (S.pk.adversity && S.hp <= 3 ? 1 + S.pk.adversity : 1);
 function fireUnit(u) {
   const p = unitPos(u), L = Math.min(u.lv, 5), def = UNIT[u.type];
-  const base = def.dmg * LV_MUL[u.lv - 1] * cellAtk(u) * (1 + u.buffDmg) * mkMul(u.type) * pkDmg(u);
+  const base = def.dmg * LV_MUL[u.lv - 1] * (1 + u.buffDmg) * mkMul(u.type) * pkDmg(u);
   let ok = null;
   switch (u.type) {
     case 'f': {
@@ -576,7 +574,7 @@ const CMD = [
   { k: 'orbit', name: '궤도 포격', cost: 50, col: '#ff7a3a' },
   { k: 'freeze', name: '전체 빙결', cost: 70, col: '#8fe6ff' },
 ];
-const cmdOpen = () => S.stage && (!S.tut || S.tut.step >= 9) && (S.stage.endless || S.stage.n >= 3 || S.stage.training);
+const cmdOpen = () => S.stage && (!S.tut || S.tut.step >= 6) && (S.stage.endless || S.stage.n >= 3 || S.stage.training);
 function useCmd(k, x, y) {
   const c = CMD.find(q => q.k === k);
   if (!c || (S.cmd || 0) < c.cost || S.mode !== 'play') return denied();

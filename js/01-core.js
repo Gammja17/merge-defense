@@ -3,7 +3,7 @@
 const W = 540, H = 960;
 let LINE_Y = 584;                 // 방어선
 const FIRE_Y = 190;                 // 이 아래로 들어와야 사격 가능 (사거리)
-const COLS = 6, ROWS = 4, CW = 86, CH = 86, GRID_X = 12;
+const COLS = 5, ROWS = 4, CW = 103, CH = 86, GRID_X = 12;
 let GRID_Y = 606;
 const RES_X = 12, RES_N = 3;    // 대기함: 판 위 줄 왼쪽의 작은 칸, 처음 셋 (정비소에서 6칸까지 늘림)
 let RES_W = 46;   // 칸이 6개면 정비소 버튼에 닿지 않게 조금 줄어든다
