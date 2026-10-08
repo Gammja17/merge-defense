@@ -622,7 +622,7 @@ function update(dt) {
     S.hp = Math.min(S.maxHp, S.hp + S.pk.regen);
     const gg = S.crisis ? 3 : 2;
     addGear(gg + (S.pk.interest ? Math.min(5 * S.pk.interest, S.pk.interest * Math.floor(S.gear / 10)) : 0), W / 2, LINE_Y - 80);   // 부품 이자
-    S.banner = { text: 'CLEAR', sub: `웨이브 ${S.wave} 방어 성공, 부품 +${gg}`, color: '#8dff9a', t: 0, life: 2 };
+    S.banner = { text: 'CLEAR', color: '#8dff9a', t: 0, life: 2 };
     S.crisis = false;
     if (st.endless && S.wave >= 10) ach('endless_10');
     if (st.endless && S.wave >= 30) ach('endless_30');
@@ -707,6 +707,7 @@ function endStage(win) {
     return;
   }
   gainXp(win ? S.stage.waves * 10 + 50 : (S.wave - 1) * 10);   // 캠페인: 깬 웨이브 × 10, 이기면 +50
+  PROG.run = win && !S.stage.training && S.stage.i < 4 ? { s: S.stage.s, n: S.stage.n, perks: S.perks.slice() } : null;   // 구역 런: 이기면 강화를 기억, 지거나 구역 보스를 깨면 지움
   if (!win) { save(); play('vo_fail', 0.7); S.glitch = 0.6; return; }
   S.stars = S.hp >= 8 ? 3 : S.hp >= 4 ? 2 : 1;
   const n = S.stage.n, first = !PROG.stars[n];

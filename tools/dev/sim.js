@@ -77,7 +77,9 @@ if (cfg.growth) ENDLESS_GROWTH = cfg.growth;
 if (cfg.endless) { for (let k = 0; k < cfg.endless; k++) console.log('endless', runEndless('smart')); console.log('RUNTIME_OK'); return; }
 PROG.deck = cfg.deck || ['f', 't', 's', 'g', 'm'];
 for (const bot of (cfg.bots || ['smart', 'nododge', 'idle'])) {
-  const row = []; for (let n = (cfg.from || 1); n <= (cfg.to || 20); n++) { const r = []; for (let k = 0; k < (cfg.reps || 2); k++) r.push(run(n, bot)); row.push(n + ':' + r.join(',')); }
+  // 구역 런: 반복마다 스테이지를 차례로 깨서 강화가 구역 보스까지 이어지게 한다
+  const res = {}; for (let k = 0; k < (cfg.reps || 2); k++) { PROG.run = null; for (let n = (cfg.from || 1); n <= (cfg.to || 20); n++) (res[n] = res[n] || []).push(run(n, bot)); }
+  const row = Object.keys(res).map(n => n + ':' + res[n].join(','));
   console.log(bot.padEnd(8), row.join(' '));
 }
 console.log('frames spent clearing:', clearSeen, 'fill', (FILL.f / FILL.n).toFixed(2), 'avgRows', (FILL.rows / FILL.n).toFixed(2), 'caps', JSON.stringify(CS), 'gear/run', JSON.stringify(Object.fromEntries(Object.entries(GS).map(([k, v]) => [k, k === 'runs' ? v : +(v / GS.runs).toFixed(1)]))));

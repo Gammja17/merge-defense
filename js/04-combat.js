@@ -657,7 +657,7 @@ function killEnemy(e) {
     addText(e.x, e.y - 60, '고급 보급 캡슐!', '#ffd24a', 22); shake(0.6);
   }
   if (e.boss) {
-    S.legendNext = true;   // 보스를 잡으면 다음 강화 첫 칸은 전설
+    S.legendNext = true;   // 보스를 잡으면 다음 강화는 셋 다 전설
     S.shake = 1.2; S.whiteFlash = 0.25; S.glitch = 0.5; S.slowmo = 1.3; S.bossDown = { t: 0 };   // 하얀 번쩍임은 짧고 옅게 (주인: 너무 하얘서 안 보임)
     const g = S;
     setTimeout(() => { if (S === g) { boom(e.x, e.y, 2.4, '#ffb347'); shockwave(e.x, e.y, 620); blastFx(e.x, e.y, 3); play('boom_big', 0.8, 0.8); play('kaboom', 0.8, 0.7); S.whiteFlash = Math.max(S.whiteFlash, 0.18); shake(1); } }, 1150);

@@ -282,8 +282,8 @@ const kindName = st => st.boss && st.kind === 'base' ? '보스' : STAGE_KINDS[st
 // 이 웨이브를 기본 5웨이브 흐름의 어디쯤으로 볼지 (적 체력과 구성). 장기전은 7웨이브에 걸쳐 천천히, 러시는 중반부터 시작
 const wavePw = (st, w) => st.kind === 'long' ? 1 + (w - 1) * 4 / 6 : st.kind === 'rush' ? [1, 2, 3.4][w - 1] || 3.4 : w;
 const twistWave = st => st.kind === 'long' ? 5 : st.kind === 'rush' || st.kind === 'brush' ? 0 : 4;
-let WAVE_GROWTH = 0.4, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
-let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8, 5.0, 6.4].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75, 1.8, 1.85][i]);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게
+let WAVE_BASE = 0.7, WAVE_GROWTH = 0.475, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
+let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8, 5.0, 6.4].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75, 1.8, 1.85][i] * 1.2);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게. ×1.2: 강화가 구역 끝까지 이어지는 만큼
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
 const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2], [3, 3, 3, 3], [4, 3, 3, 3]];
 
@@ -308,12 +308,7 @@ function rollReward(n, w, avoid) {
 }
 // 한 판 = 5웨이브. 기(정찰) 승(본대) 승(공격형 합류) 전(반전 이벤트) 결(총공세 또는 보스)
 const TWISTS = ['elite', 'ambush', 'meteors', 'supply'];
-const TWIST_TEXT = {
-  elite:   ['ELITE', '엘리트 전함이 나타났어요. 격추하면 고급 캡슐을 떨궈요'],
-  ambush:  ['AMBUSH', '측면 기습! 돌격기가 양옆에서 파고들어요'],
-  meteors: ['METEOR STORM', '운석우가 쏟아져요. 그림자를 피하세요'],
-  supply:  ['SUPPLY RUN', '보급 캡슐이 쏟아져요. 욕심낼 때와 버틸 때를 가리세요'],
-};
+const TWIST_TEXT = { elite: 'ELITE', ambush: 'AMBUSH', meteors: 'METEOR STORM', supply: 'SUPPLY RUN' };
 const twistOf = st => st.twist || TWISTS[(st.n - 1) % TWISTS.length];
 const midWave = st => Math.ceil(st.waves / 2);   // 5웨이브는 3, 7웨이브는 4, 3웨이브는 2
 let MID_HP = [0.3, 0.32, 0.34, 0.36, 0.38];   // 중간 보스 체력 = 이 구역 보스의 몇 배 (구역 안 몇 번째 스테이지인지에 따라)
@@ -397,7 +392,6 @@ const cyclePos = w => (w - 1) % 10 + 1;
 // 한 주기: 1 숨 돌리기, 2~4 오름, 5 미니보스, 6 숨 돌리기(변이), 7~8 오름, 9 위기, 10 보스
 const PACE = [0.75, 0.9, 1, 1.1, 1.35, 0.75, 0.95, 1.05, 1.15, 1];
 const LULL = ci => ci === 1 || ci === 6;
-const ENDLESS_CYCLE_TEXT = ['이제 엘리트 전함이 졸병처럼 섞여 나와요', '포격 순양함과 교란함이 섞여 나와요', '중간 보스가 더 단단해져요'];
 // 무한 방어선: 주기마다 적의 공격 간격이 8%씩 짧아진다
 const endlessAtkMul = () => S.stage && S.stage.endless ? Math.pow(0.92, Math.floor((S.wave - 1) / 10)) : 1;
 function buildEndlessWave(w) {
@@ -516,7 +510,7 @@ if (PROG.xp == null) {
 const catCount = cat => S.perks.filter(id => { const p = PERKS.find(q => q.id === id); return p && p.cat === cat; }).length;
 
 const PERK_CAT = { atk: ['공격', '#ff8a4a'], def: ['방어', '#5affc8'], sup: ['보급', '#ffd84a'], sp: ['특수', '#b88aff'] };
-// 등급: 일반(1), 희귀(2), 전설(3). 보스를 잡은 뒤 첫 선택은 첫 칸이 전설
+// 등급: 일반(1), 고급(2), 전설(3). 한 번 고를 때 셋 다 같은 등급, 보스를 잡은 뒤 첫 선택은 셋 다 전설
 // 빌드: 서로 잘 어울리는 강화 묶음. 카드에 빌드 이름표, 가진 강화와 빌드가 겹치면 그 색으로 빛난다
 const BUILD = { gear: ['부품', '#ffc24a'], cap: ['캡슐', '#7fe0ff'], merge: ['합체', '#b88aff'], kill: ['연쇄', '#ff6a4a'], risk: ['위기', '#ff4a7a'], place: ['배치', '#5affc8'] };
 const PERK_BUILD = {
@@ -550,19 +544,19 @@ const PERK_TIER = {
 };
 function rollPerks() {
   const can = p => (!p.ok || p.ok()) && !(p.once && S.perks.includes(p.id)) && (PROG.lvl || 1) >= (p.need || 0);   // need: 계정 레벨로 풀리는 강화
-  const out = [];
-  for (let i = 0; i < 3; i++) {
-    const r = R(), want = i === 0 && S.legendNext ? 3 : r < 0.07 ? 3 : r < 0.37 ? 2 : 1;
-    for (let tier = want; tier >= 1 && out.length === i; tier--) {
+  // 한 번에 등급 하나 (롤체 증강처럼): 셋 다 같은 등급, 효과만 다르다. 보스를 잡은 뒤엔 셋 다 전설
+  const r = R(), want = S.legendNext ? 3 : r < 0.1 ? 3 : r < 0.45 ? 2 : 1, out = [];
+  for (let tier = want; tier >= 1 && out.length < 3; tier--) {   // 그 등급이 모자라면 아래 등급으로 채운다
+    while (out.length < 3) {
       const bag = PERKS.filter(p => p.tier === tier && can(p) && !out.includes(p));
+      if (!bag.length) break;
       const fresh = bag.filter(p => !out.some(q => q.cat === p.cat));
       const pick = fresh.length ? fresh : bag;
-      if (pick.length) {   // 이미 가진 강화는 가진 개수만큼 확률이 절반씩 (운이 좋으면 겹친다)
-        const wt = p => Math.pow(0.5, S.perks.filter(q => q === p.id).length), tot = pick.reduce((a, p) => a + wt(p), 0);
-        let r = R() * tot, sel = pick[pick.length - 1];
-        for (const p of pick) { r -= wt(p); if (r <= 0) { sel = p; break; } }
-        out.push(sel);
-      }
+      // 이미 가진 강화는 가진 개수만큼 확률이 절반씩 (운이 좋으면 겹친다)
+      const wt = p => Math.pow(0.5, S.perks.filter(q => q === p.id).length), tot = pick.reduce((a, p) => a + wt(p), 0);
+      let r2 = R() * tot, sel = pick[pick.length - 1];
+      for (const p of pick) { r2 -= wt(p); if (r2 <= 0) { sel = p; break; } }
+      out.push(sel);
     }
   }
   S.legendNext = false;
@@ -604,6 +598,9 @@ function startStage(n, endless = false, daily = false) {
   if (st.training) S.tut = { step: 1, t: 0 };
   if (!SHOT && !PROG.seen.cmdTut && cmdOpen() && !st.training) S.cmdTut = {};
   if (S.daily && S.daily.rule && S.daily.rule.start) S.daily.rule.start();   // 이번 주 규칙
+  // 구역 런: 바로 앞 스테이지를 깨고 이어서 왔으면 그때 강화를 다시 건다 (한 번 쓰고 끝나는 강화는 빼고)
+  const run = PROG.run;
+  if (!endless && !st.training && run && run.s === st.s && run.n === st.n - 1) for (const id of run.perks) { const p = PERKS.find(q => q.id === id); if (p && id !== 'gift' && id !== 'fixall') { p.apply(); S.perks.push(id); } }
   startWave(1);
   if (!SHOT) play('vo_welcome', 0.6);   // 전투 시작 음성
 }
@@ -637,27 +634,26 @@ function startWave(n) {
     if (S.daily) S.rng = mulberry(seedOf('wave' + S.daily.day + n));
     S.events = buildEndlessWave(n);
     S.rng = null;
-    S.warnText = null;
-    if (ci === 10) { S.warning = 3; S.banner = null; play('drums', 0.7); if (n >= 20) S.warnText = '격노한 보스 두 척이 한꺼번에 접근하고 있어요'; }
-    else if (mut) { S.banner = { text: 'MUTATION', sub: `${mut.name}: ${mut.desc}`, color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.55, 1.1); S.glitch = 0.5; }
-    else if (ci === 9) { S.banner = { text: 'CRISIS', sub: '보스 전 총공세! 공격형 함선이 몰려와요', color: '#ff3a4a', t: 0, life: 2.8 }; play('drums', 0.7); shake(0.5); }
-    else if (ci === 5) { S.banner = { text: 'MID BOSS', sub: '중간 보스가 나타났어요. 잡으면 전설 강화를 골라요', color: '#ffb347', t: 0, life: 2.8 }; play('drums', 0.6); }
-    else if (ci === 1 && n > 10) { const cy = Math.floor((n - 1) / 10); S.banner = { text: `CYCLE ${cy + 1}`, sub: ENDLESS_CYCLE_TEXT[Math.min(cy, 3) - 1] + ', 적 공격도 더 잦아져요', color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.6, 0.9); }
-    else if (LULL(ci) && !(ci === 1 && n > 10)) S.banner = { text: 'LULL', sub: '잠시 잠잠해요. 캡슐을 모으고 기체를 합칠 때예요', color: '#5affc8', t: 0, life: 2.6 };
-    else if (ci === 4 || (ci === 1 && n > 10)) { const [tt, sub] = TWIST_TEXT[ci === 4 ? TWISTS[1 + Math.floor((n - 1) / 10) % 2] : 'supply']; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.6 }; }
-    else S.banner = { text: `WAVE ${n}`, sub: `${ci === 4 ? '다음은 중간 보스예요. 대비하세요' : ci === 8 ? '다음은 위기, 그다음은 보스예요. 대비하세요' : '끝없는 방어선'}`, color: ci === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2 };
+    if (ci === 10) { S.warning = 3; S.banner = null; play('drums', 0.7); }
+    else if (mut) { S.banner = { text: 'MUTATION', color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.55, 1.1); S.glitch = 0.5; }
+    else if (ci === 9) { S.banner = { text: 'CRISIS', color: '#ff3a4a', t: 0, life: 2.8 }; play('drums', 0.7); shake(0.5); }
+    else if (ci === 5) { S.banner = { text: 'MID BOSS', color: '#ffb347', t: 0, life: 2.8 }; play('drums', 0.6); }
+    else if (ci === 1 && n > 10) { const cy = Math.floor((n - 1) / 10); S.banner = { text: `CYCLE ${cy + 1}`, color: '#ff5ad8', t: 0, life: 3.2 }; play('drums', 0.6, 0.9); }
+    else if (LULL(ci) && !(ci === 1 && n > 10)) S.banner = { text: 'LULL', color: '#5affc8', t: 0, life: 2.6 };
+    else if (ci === 4 || (ci === 1 && n > 10)) { S.banner = { text: TWIST_TEXT[ci === 4 ? TWISTS[1 + Math.floor((n - 1) / 10) % 2] : 'supply'], color: '#ff8a4a', t: 0, life: 2.6 }; }
+    else S.banner = { text: `WAVE ${n}`, color: ci === 5 ? '#ff5a6a' : '#ffd966', t: 0, life: 2 };
     return;
   }
   S.events = st.training ? [] : buildWave(st, n);   // 훈련장은 튜토리얼이 필요한 적만 꺼낸다
   if (st.sector.rule === 'wreck') { S.broken = S.broken.filter(b => !b.wreck); breakCells(2 + (Math.random() < 0.5 ? 1 : 0), Infinity, true); }   // 폐허 함대: 웨이브마다 부서진 칸이 바뀐다
   const K = STAGE_KINDS[st.kind || 'base'], lastW = n === st.waves;
   if (st.boss && lastW) { S.warning = 3; S.banner = null; play('drums', 0.7); }
-  else if (n === 1 && st.training) S.banner = { text: 'TRAINING', sub: '하나씩 따라 해 봐요. 여기서는 지지 않아요', color: '#5affc8', t: 0, life: 2.6 };
-  else if (n === 1) S.banner = { text: `STAGE ${st.n}`, sub: K.name ? `${K.name}: ${K.sub}` : '정찰대가 방어선을 떠보고 있어요', color: K.col || st.sector.color, t: 0, life: 2.6 };
-  else if (st.n >= 3 && n === midWave(st)) { S.banner = { text: 'MID BOSS', sub: '중간 보스가 나타나요. 잡으면 전설 강화를 골라요', color: '#ff5a6a', t: 0, life: 2.6 }; play('drums', 0.6); }
-  else if (n === twistWave(st)) { const [tt, sub] = TWIST_TEXT[twistOf(st)]; S.banner = { text: tt, sub, color: '#ff8a4a', t: 0, life: 2.8 }; }
-  else if (st.kind === 'brush') S.banner = { text: `WAVE ${n}`, sub: n === 3 ? '포격 순양함이 다가와요' : '엘리트 전함이 다가와요', color: '#ff5a6a', t: 0, life: 2.4 };
-  else S.banner = { text: `WAVE ${n}`, sub: lastW ? '마지막 총공세! 버텨내세요' : n === 2 ? '적 본대가 도착했어요' : n === 3 ? (st.n >= 2 ? '공격형 함선이 합류했어요' : '적의 공세가 거세져요') : '적이 점점 거세져요', color: lastW ? '#ff5a6a' : '#ffd966', t: 0, life: 2.4 };
+  else if (n === 1 && st.training) S.banner = { text: 'TRAINING', color: '#5affc8', t: 0, life: 2.6 };
+  else if (n === 1) S.banner = { text: `STAGE ${st.n}`, color: K.col || st.sector.color, t: 0, life: 2.6 };
+  else if (st.n >= 3 && n === midWave(st)) { S.banner = { text: 'MID BOSS', color: '#ff5a6a', t: 0, life: 2.6 }; play('drums', 0.6); }
+  else if (n === twistWave(st)) { S.banner = { text: TWIST_TEXT[twistOf(st)], color: '#ff8a4a', t: 0, life: 2.8 }; }
+  else if (st.kind === 'brush') S.banner = { text: `WAVE ${n}`, color: '#ff5a6a', t: 0, life: 2.4 };
+  else S.banner = { text: `WAVE ${n}`, color: lastW ? '#ff5a6a' : '#ffd966', t: 0, life: 2.4 };
 }
 // 튜토리얼: 훈련장에서 한 단계씩 직접 해 본다
 const TUT_STEPS = ['캡슐 누르기', '같은 기체 겹치기', '부품으로 소환', '위로 끌어 해체', '강화 고르기', '사령관 스킬 쓰기'];
@@ -680,8 +676,8 @@ function updateTut(dt) {
   } else if (T.step === 4) {   // 해체: 부품 얻기
     if (!T.s4) { T.s4 = true; if (!allUnits().some(u => u.lv === 1 && uSize(u) === 1)) giveUnit(PROG.deck[0] || 'f', 1, W / 2, 420, '#8dff9a'); }
     if (T.scrapped) { T.step = 5; T.t = 0; tutOk(); }
-  } else if (T.step === 5) {   // 강화 고르기: 일반, 고급, 전설 한 장씩
-    if (!T.s7 && T.t > 0.6) { T.s7 = true; S.mode = 'perk'; S.perkChoices = ['dmg', 'hunt', 'oc'].map(id => PERKS.find(p => p.id === id)); S.perkT0 = performance.now() / 1000; }
+  } else if (T.step === 5) {   // 강화 고르기: 같은 등급 세 장
+    if (!T.s7 && T.t > 0.6) { T.s7 = true; S.mode = 'perk'; S.perkChoices = ['dmg', 'spd', 'crit'].map(id => PERKS.find(p => p.id === id)); S.perkT0 = performance.now() / 1000; }
     if (S.perks.length) { T.step = 6; T.t = 0; tutOk(); }
   } else if (T.step === 6) {   // 사령관 스킬: 게이지를 채워 주고 궤도 포격
     if (!T.s9) { T.s9 = true; S.cmd = 100; S.cmdTut = {}; for (const e of S.enemies) e.dead = true; for (let k = 0; k < 5; k++) { const e = spawnEnemy('grunt', W / 2 + (k - 2) * 46, 190 + (k % 2) * 40); e.speed *= 0.3; } }   // 한데 모인 적 다섯
@@ -692,7 +688,7 @@ function updateTut(dt) {
     const first = !PROG.trained; PROG.trained = true; PROG.tut = true; PROG.seen.cmdTut = true;
     if (first) PROG.credits += 200;
     save(); play('clear_fx', 0.6);
-    S.banner = { text: '훈련 완료', sub: first ? '코어 +200, 이제 실전이에요' : '이제 실전이에요', color: '#5affc8', t: 0, life: 2.6 };
+    S.banner = { text: '훈련 완료', color: '#5affc8', t: 0, life: 2.6 };
     setTimeout(() => { if (S.tut === T) { goMap(); UI.prep = { n: 1 }; } }, 2600);   // 1스테이지 출격 준비로
   }
 }

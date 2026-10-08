@@ -128,8 +128,8 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 
 // ── 스폰 ──────────────────────────────────────────────────
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s];
-let ENDLESS_GROWTH = 1.29, ENDLESS_BASE = 1.35, ENDLESS_BOSS = 0.17;   // 초반을 1.5배 세게, 대신 성장을 조금 낮춰 30웨이브쯤은 예전과 비슷. 보스는 그 웨이브 적 체력에 맞춘다
-const hpMul = () => S.stage.endless ? ENDLESS_BASE * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (1 + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();
+let ENDLESS_GROWTH = 1.29, ENDLESS_BASE = 1.1, ENDLESS_BOSS = 0.17;   // 초반 세기 (칸 강화가 빠져 1.35 → 1.1), 성장은 30웨이브쯤이 예전과 비슷하게. 보스는 그 웨이브 적 체력에 맞춘다
+const hpMul = () => S.stage.endless ? ENDLESS_BASE * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (WAVE_BASE + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();
 const AFFIX = { fast: ['가속', '#ff9a3a'], armor: ['장갑', '#7fd4ff'], split: ['분열', '#8dff9a'], bomb: ['자폭', '#ff4a8a'] }, AFFIX_KEYS = Object.keys(AFFIX);
 // 보스 기믹: 칸을 영구 봉쇄 (그 칸의 기체는 사라진다), 기체 분해
 // ── 보스 기믹 (못 피함). 치명적: 칸 봉쇄, 강등, 줄 빙결, 대기함 비우기, (격노) 분해. 짜증: 부품 차단, 화력 감소, 단단한 캡슐, 게이지 깎기 ──

@@ -132,7 +132,7 @@ function doAction(b) {
       pk.apply(); S.perks.push(pk.id);
       S.perkChoices = null; S.mode = S.stage.training ? 'play' : 'break'; S.breakT = 2;
       S.fx.push({ kind: 'ring', x: W / 2, y: 420, t: 0, life: 0.6, color: pk.col }); play('up_fx', 0.5);
-      S.banner = { text: pk.name, sub: pk.desc, color: pk.col, t: 0, life: 1.8 };
+      S.banner = { text: pk.name, color: pk.col, t: 0, life: 1.8 };
       play('shieldUp', 0.4);
       return;
     }

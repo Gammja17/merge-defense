@@ -339,7 +339,7 @@ function drawHud() {
 
   if (S.mode === 'break') {
     ctx.font = FK(19); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    outlineText(`다음 웨이브까지 ${Math.ceil(S.breakT)}초, 지금 합치고 자리를 정리하세요`, W / 2, 480, '#cfe8ff');
+    outlineText(`다음 웨이브 ${Math.ceil(S.breakT)}`, W / 2, 480, '#cfe8ff');
   }
   for (const tx of S.texts) {
     const p = tx.t / tx.life;
@@ -384,8 +384,7 @@ function drawBanner() {
   ctx.globalAlpha = 1;
   drawGlow(b.color, W / 2, y - 10, 150, 0.22, 0.35);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = FT(44, 900); glitchText(b.text, W / 2, y - 10, b.color, 7, amt);
-  ctx.font = FK(19); outlineText(b.sub, W / 2, y + 30, '#e6ecff', 4);
+  ctx.font = FT(44, 900); glitchText(b.text, W / 2, y, b.color, 7, amt);
   ctx.restore();
 }
 // 보스 실루엣: 스프라이트 모양만 남긴 캔버스 (색별로 한 번 만든다)
@@ -485,9 +484,7 @@ function drawWarning() {
   }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.globalAlpha = fade * blink;
-  ctx.font = FT(40, 900); glitchText('WARNING', W / 2, y - 10, '#ff4a5a', 6, 3 + Math.random() * 3);
-  ctx.globalAlpha = fade;
-  ctx.font = FK(17); outlineText(S.warnText || `${ENEMY[S.stage.sector.boss].name}이 접근하고 있어요`, W / 2, y + 23, '#ffd0d4', 4);
+  ctx.font = FT(40, 900); glitchText('WARNING', W / 2, y - 6, '#ff4a5a', 6, 3 + Math.random() * 3);
   ctx.restore();
 }
 // 합칠 수 있는 짝 표시: 같은 종류 같은 레벨 짝이 있으면 초록 ▲, 특수 합체 짝꿍(둘 다 Lv8)은 금빛 선으로 잇는다.
@@ -1367,7 +1364,7 @@ function drawPerk() {
   const e = performance.now() / 1000 - (S.perkT0 || 0);
   ctx.font = FT(26, 900); glitchText('UPGRADE', W / 2, 196, '#ffd24a', 5, e < 0.3 ? 5 : Math.random() < 0.06 ? 4 : 0);
   ctx.font = FK(18); ctx.fillStyle = '#e6ecff'; ctx.fillText(`웨이브 ${S.wave} 돌파! 강화를 하나 고르세요`, W / 2, 232);
-  ctx.font = FK(14); ctx.fillStyle = 'rgba(180,205,240,.75)'; ctx.fillText(S.stage.endless ? '고른 강화는 이번 도전이 끝날 때까지 이어져요' : '고른 강화는 이번 스테이지 동안만 이어져요', W / 2, 258);
+  ctx.font = FK(14); ctx.fillStyle = 'rgba(180,205,240,.75)'; ctx.fillText(S.stage.endless ? '고른 강화는 이번 도전이 끝날 때까지 이어져요' : '고른 강화는 구역 보스까지 이어져요. 지면 사라져요', W / 2, 258);
   (S.perkChoices || []).forEach((pk, i) => {
     const k = Math.max(0, Math.min(1, (e - i * 0.09) / 0.28)), ease = 1 - Math.pow(1 - k, 3);
     const x = 44 + (1 - ease) * 80, y = 284 + i * 140, w = W - 88, h = 124, [cn, cc] = PERK_CAT[pk.cat];
@@ -1558,6 +1555,8 @@ function drawPrep() {
   ctx.font = FK(16); ctx.fillStyle = col; ctx.fillText(st ? `${st.sector.name}${st.boss ? ', 보스' : ''}, ${st.waves}웨이브` : '무한 방어선', W / 2, y + 66);
   if (K) { ctx.font = FK(15); outlineText(`${K.name}: ${K.sub}`, W / 2, y + 90, K.col, 3); }
   else if (st) { ctx.font = FK(13); ctx.fillStyle = 'rgba(200,220,245,.8)'; ctx.fillText(st.sector.info, W / 2, y + 92); }
+  { const run = PROG.run, n = st && run && run.s === st.s && run.n === P.n - 1 ? run.perks.filter(id => id !== 'gift' && id !== 'fixall').length : 0;   // 구역 런: 이어지는 강화
+    if (n) { ctx.font = FK(14); ctx.fillStyle = '#5affc8'; ctx.fillText(`강화 ${n}개 이어짐`, W / 2, y + 110); } }
   ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)';
   ctx.fillText(`// 출격 편성 ${PROG.deck.length}/${DECK_N}`, x + 22, y + 124);
   const sw = 84, g = 8, sx0 = W / 2 - (DECK_N * (sw + g) - g) / 2;
