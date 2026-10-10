@@ -521,6 +521,16 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   }
 }
 
+// 아이템 캡슐 가운데 그림: 부품 톱니, 승급 겹꺾쇠, 폭탄 터지는 별, 과열 번개
+function itemIcon(it, x, y) {
+  ctx.save(); ctx.translate(x, y); ctx.fillStyle = 'rgba(4,8,22,.75)'; ctx.beginPath(); ctx.arc(0, 0, 19, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = ctx.fillStyle = '#ffffff'; ctx.lineWidth = 3.2; ctx.lineCap = ctx.lineJoin = 'round';
+  if (it === 'gear') drawGearIcon(0, 0, 7, '#ffffff');
+  else if (it === 'up') for (const k of [0, 1]) { ctx.beginPath(); ctx.moveTo(-9, 4 + k * 8 - 6); ctx.lineTo(0, -5 + k * 8 - 6); ctx.lineTo(9, 4 + k * 8 - 6); ctx.stroke(); }
+  else if (it === 'bomb') { ctx.beginPath(); for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, r = k % 2 ? 6 : 13; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.closePath(); ctx.fill(); }
+  else if (it === 'rush') { ctx.beginPath(); ctx.moveTo(3, -13); ctx.lineTo(-7, 2); ctx.lineTo(1, 2); ctx.lineTo(-3, 13); ctx.lineTo(8, -3); ctx.lineTo(0, -3); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+}
 function drawCap(c) {
   const rw = c.rw, look = capLook(rw), col = look.col;
   const jx = c.jit > 0 ? (Math.random() - .5) * 7 : 0, jy = c.jit > 0 ? (Math.random() - .5) * 5 : 0;
@@ -549,7 +559,8 @@ function drawCap(c) {
   }
   ctx.save(); ctx.translate(x, y); ctx.rotate(c.tilt || 0); ctx.scale(1 + sq * 0.45, 1 - sq * 0.3); ctx.translate(-x, -y);
   spr(look.cap, x, y, 58 * s, 56 * s);
-  if (!rw.heal) {
+  if (!rw.type) { if (look.item !== 'heal') itemIcon(look.item, x, y + 2); }
+  else {
     const def = UNIT[rw.type], k = Math.min(40 / def.iw, 40 / def.ih);
     ctx.fillStyle = def.col + '50'; ctx.beginPath(); ctx.arc(x, y + 2, 21, 0, Math.PI * 2); ctx.fill();   // 캡슐 속도 기체 고유색
     drawUnitArt(rw.type, rw.lv, x, y + 2, k, 1, null);

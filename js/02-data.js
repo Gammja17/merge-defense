@@ -291,7 +291,7 @@ const kindName = st => st.boss && st.kind === 'base' ? '보스' : STAGE_KINDS[st
 const wavePw = (st, w) => st.kind === 'long' ? 1 + (w - 1) * 4 / 6 : st.kind === 'rush' ? [1, 2, 3.4][w - 1] || 3.4 : w;
 const twistWave = st => st.kind === 'long' ? 5 : st.kind === 'rush' || st.kind === 'brush' ? 0 : 4;
 let WAVE_BASE = 0.7, WAVE_GROWTH = 0.475, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
-let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8, 5.0, 6.4, 6.6, 9.4].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75, 1.8, 1.85, 1.9, 1.95][i] * 1.2);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게. ×1.2: 강화가 구역 끝까지 이어지는 만큼
+let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8, 5.0, 6.4, 6.6, 9.4].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75, 1.8, 1.85, 1.9, 1.95][i] * 0.85);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게. ×1.2: 강화가 구역 끝까지 이어지는 만큼
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
 const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2], [3, 3, 3, 3], [4, 3, 3, 3], [4, 4, 3, 3], [4, 4, 4, 3]];
 
@@ -301,12 +301,25 @@ function pickWeighted(pool, fresh) {
   return bag[Math.floor(R() * bag.length)];
 }
 // 캡슐 내용: 편성한 5종에서만 나온다
+// 캡슐 보상: 기체 말고 아이템도 나온다. 수리, 부품, 승급(짝 없는 낮은 기체 한 단계), 폭탄(주변 적 쓸기), 과열(6초 공격 속도)
+const CAP_ITEMS = {
+  heal: { name: '수리', col: '#6dff8a' },
+  gear: { name: '부품', col: '#ffb347' },
+  up:   { name: '승급', col: '#c89bff' },
+  bomb: { name: '폭탄', col: '#ff5a3a' },
+  rush: { name: '과열', col: '#48ffd8' },
+};
+function rollItem(n) {
+  const r = R();
+  return r < 0.22 ? { item: 'heal', heal: 2 } : r < 0.5 ? { item: 'gear', n: 3 + Math.floor(n / 10) } : r < 0.68 ? { item: 'up' } : r < 0.86 ? { item: 'bomb' } : { item: 'rush' };
+}
 function rollReward(n, w, avoid) {
-  if (R() < 0.05 + 0.01 * Math.floor((n - 1) / 5)) return { heal: 2 };
+  if (n <= 1) { if (R() < 0.05) return { item: 'heal', heal: 2 }; }
+  else if (R() < 0.24 && !(avoid && avoid.item)) return rollItem(n);   // 묶인 캡슐 둘이 모두 아이템이진 않게
   const deck = battleDeck();
   let type, guard = 0;
   do { type = deck[Math.floor(R() * deck.length)]; } while (avoid && type === avoid.type && guard++ < 8);
-  const r = R() + 0.035 * (n - 1) + 0.12 * (w - 1);
+  const r = R() + 0.035 * (n - 1) + 0.12 * (w - 1) + 0.25;   // 캡슐이 드문 만큼 하나하나 넉넉하게
   let lv = 1, cnt = 1;
   if (UNIT[type].shape !== 1) { lv = 1; cnt = 1; }
   else if (r < 0.55) cnt = type === 'f' ? 1 + Math.floor(R() * 2) : 1;
@@ -373,15 +386,15 @@ function buildWave(st, w) {
     for (let k = 0; k < n; k++) ev.push({ t: t0 + 0.4 + k * 0.3, k: k % 4 === 3 && st.s >= 1 ? 'rusher' : 'grunt', surge: true });
   }
   if (st.n >= 2 && w >= 2 && !bossWave && R() < 0.3) ev.push({ t: 6 + R() * 10, k: 'gold' });
-  let capT = bossWave ? [6, 14, 24, 32, 40] : last ? [3, 8, 13, 18, 22, 26] : [3, 7.5, 12, 16.5, 21];   // 판이 작게 시작하니 기체가 자주 와야 한다
-  if ((kind === 'long' || kind === 'rush') && !bossWave) capT = capT.concat([5.5, 14.5]);   // 장기전: 캡슐이 많아 오래 키운다. 러시: 짧은 만큼 빨리 채운다
+  let capT = bossWave ? [6, 16, 26, 36] : last ? [3, 9, 15, 21, 26] : [3, 8.5, 14, 19.5];   // 캡슐은 웨이브에 넷 (마지막 다섯), 넷 중 하나쯤은 아이템. 너무 자주 얻지 않게
+  if ((kind === 'long' || kind === 'rush') && !bossWave) capT = capT.concat([6.5]);   // 장기전: 캡슐이 많아 오래 키운다. 러시: 짧은 만큼 빨리 채운다
   if (twist === 'supply') {
-    capT = [2, 5, 8, 11, 14, 17, 20];
+    capT = [2, 6, 10, 14, 18];
     for (let k = 0; k < 2; k++) ev.push({ t: 6 + k * 7, k: st.s >= 3 ? 'thief' : st.s >= 1 ? 'rusher' : 'grunt' });
   }
   const rich = st.sector.rule === 'rich' && !st.endless;   // 귀한 캡슐: 절반만, 한 단계 높게, 황금 캡슐은 꼭
   if (rich) { capT = capT.filter((_, k) => k % 2 === 0); if (w >= 2 && !bossWave && !ev.some(e => e.k === 'gold')) ev.push({ t: 6 + R() * 8, k: 'gold' }); }
-  const richUp = r => { if (rich && !r.heal && UNIT[r.type].shape === 1) r.lv = Math.min(3, r.lv + 1); return r; };
+  const richUp = r => { if (rich && r.type && UNIT[r.type].shape === 1) r.lv = Math.min(3, r.lv + 1); return r; };
   capT.forEach((t, k) => {
     const a = richUp(rollReward(st.n, Math.min(lw, 3)));
     ev.push({ t, k: 'cap', r: k % 2 ? [a, richUp(rollReward(st.n, Math.min(lw, 3), a))] : a });

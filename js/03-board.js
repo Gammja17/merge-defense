@@ -243,7 +243,7 @@ function runEvent(ev) {
         hintOnce('pair', '묶인 캡슐은 하나만 얻어요');
         if (stageRule() === 'side') { sideCap(a); sideCap(b); }
       } else {
-        const rw = ((S.pk.goldCap && Math.random() < S.pk.goldCap) || (S.pk.lastStand && S.hp <= 3)) && !ev.r.heal ?   // 황금 손, 배수진
+        const rw = ((S.pk.goldCap && Math.random() < S.pk.goldCap) || (S.pk.lastStand && S.hp <= 3)) && ev.r.type ?   // 황금 손, 배수진
            (() => { const d = battleDeck().filter(t => UNIT[t].shape === 1); return { type: d[Math.floor(Math.random() * d.length)] || 'f', lv: 3, n: 1, gold: true }; })() : ev.r;   // 황금 손
         const c = makeCap(rw, rx(), mul); if (stageRule() === 'side') sideCap(c);
       }
@@ -273,7 +273,7 @@ function runEvent(ev) {
 }
 function makeCap(rw, x, mul) {
   if (S.debuff && S.debuff.hardcap > 0) mul *= 1.5;   // 단단한 캡슐 기믹
-  let hits = Math.max(1, rw.heal ? Math.round(12 * mul * S.pk.cap) : Math.round(UNIT[rw.type].cost * rw.n * [1, 3.2, 5.5][Math.min(rw.lv, 3) - 1] * mul * S.pk.cap));
+  let hits = Math.max(1, !rw.type ? Math.round((rw.item === 'bomb' || rw.item === 'up' ? 16 : 12) * mul * S.pk.cap) : Math.round(UNIT[rw.type].cost * rw.n * [1, 3.2, 5.5][Math.min(rw.lv, 3) - 1] * mul * S.pk.cap));
   const mh = hits;
   const c = { rw, x, y: -40, hits, maxHits: mh, pending: 0, r: 34, speed: 34, pair: null, bob: Math.random() * 6, carrier: null };
   S.caps.push(c);
@@ -281,7 +281,7 @@ function makeCap(rw, x, mul) {
 }
 // 캡슐 색 = 안에 든 기체의 색 (격납고에서 고른 색 포함). 종류는 위 글자로 구분
 function capLook(rw) {
-  if (rw.heal) return { cap: 'cap_heal', col: '#6dff8a', label: '수리' };
+  if (!rw.type) { const it = rw.item || 'heal', d = CAP_ITEMS[it]; return { cap: it === 'heal' ? 'cap_heal' : capTint(d.col), col: d.col, label: d.name, item: it }; }   // 아이템 캡슐
   const col = UNIT[rw.type].col, cap = capTint(col);
   if (rw.gold) return { cap, col, label: '황금', gold: true };
   if (UNIT[rw.type].shape !== 1) return { cap, col, label: '대형' };

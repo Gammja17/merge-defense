@@ -284,7 +284,7 @@ function pkDmg(u) {
   return m;
 }
 // 공격 속도 배율 (강화): 냉각, 합체 열기, 과충전
-const pkSpd = () => S.pk.spd * (S.heatT > 0 ? 1 + S.pk.heat : 1) * (S.ocT > 0 ? 2 : 1) * (S.killRushT > 0 ? 1 + S.pk.killRush : 1) * (S.pk.adversity && S.hp <= 3 ? 1 + S.pk.adversity : 1);
+const pkSpd = () => S.pk.spd * (S.itemRushT > 0 ? 1.6 : 1) * (S.heatT > 0 ? 1 + S.pk.heat : 1) * (S.ocT > 0 ? 2 : 1) * (S.killRushT > 0 ? 1 + S.pk.killRush : 1) * (S.pk.adversity && S.hp <= 3 ? 1 + S.pk.adversity : 1);
 function fireUnit(u) {
   const p = unitPos(u), L = Math.min(u.lv, 5), def = UNIT[u.type];
   const base = def.dmg * LV_MUL[u.lv - 1] * (1 + u.buffDmg) * mkMul(u.type) * pkDmg(u);
@@ -652,7 +652,7 @@ function killEnemy(e) {
   if (S.pk.chain && !e.boss && S.mode === 'play' && S.chainQ.length < 12) S.chainQ.push({ x: e.x, y: e.y, d: e.maxHp * S.pk.chain });
   if (e.k === 'split') for (const vx of [-90, 0, 90]) { const c = spawnEnemy('splitS', e.x + vx * 0.2, e.y); c.vx = vx; }
   if (e.k === 'elite') {
-    const rw = rollReward(S.stage.n, 3); if (!rw.heal && UNIT[rw.type].shape === 1) rw.lv = Math.max(rw.lv, 2);
+    const rw = rollReward(S.stage.n, 3); if (rw.type && UNIT[rw.type].shape === 1) rw.lv = Math.max(rw.lv, 2);
     const c = makeCap(rw, Math.max(60, Math.min(W - 60, e.x)), 0.6); c.y = Math.max(FIRE_Y + 30, e.y); c.speed = 26;
     addText(e.x, e.y - 60, '고급 보급 캡슐!', '#ffd24a', 22); shake(0.6);
   }
@@ -720,12 +720,13 @@ function claimCap(c) {
   sparks(c.x, c.y, col, 20, 280);
   if (S.pk.capRush) S.capRushT = 3;
   if (S.pk.capSlow) for (const e of S.enemies) if (shootable(e) && Math.hypot(e.x - c.x, e.y - c.y) < 220) { e.slow = Math.max(e.slow, 0.5); e.slowT = Math.max(e.slowT, 3); }   // 냉각 캡슐
-  if (S.pk.gamble && !rw.heal) {   // 도박사
+  if (S.pk.gamble && rw.type) {   // 도박사
     const r = Math.random();
     if (r < 0.3 && UNIT[rw.type].shape === 1) { c.rw = rw = { ...rw, lv: Math.min(5, rw.lv + 1) }; addText(c.x, c.y - 52, '대박!', '#ffd24a', 22); }
     else if (r < 0.5) { addText(c.x, c.y - 30, '꽝!', '#aaaaaa', 24); play('deny', 0.4); if (c.pair && !c.pair.dead) c.pair.dead = true; return; }
   }
-  if (rw.heal) {
+  if (!rw.type && rw.item && rw.item !== 'heal') useItem(c, rw);
+  else if (!rw.type) {
     const before = S.hp;
     S.hp = Math.min(S.maxHp, S.hp + rw.heal);
     for (const u of allUnits()) u.hp = Math.min(u.maxHp, u.hp + 1);
@@ -754,6 +755,28 @@ function claimCap(c) {
     addText(c.pair.x, c.pair.y - 20, '소멸', '#aaa', 20);
   }
   if (S.focus === c || (c.pair && S.focus === c.pair)) S.focus = null;
+}
+// 아이템 캡슐
+function useItem(c, rw) {
+  const col = CAP_ITEMS[rw.item].col;
+  if (rw.item === 'gear') { addGear(rw.n, c.x, c.y); return; }
+  if (rw.item === 'up') {   // 짝이 없는 기체 중 레벨이 낮은 것부터 한 단계 (짝 있는 건 합치면 되니까)
+    const cnt = {}; for (const u of allUnits()) cnt[u.type + u.lv] = (cnt[u.type + u.lv] || 0) + 1;
+    const u = gridUnits().filter(u => u.lv < 5).sort((a, b) => (cnt[a.type + a.lv] > 1) - (cnt[b.type + b.lv] > 1) || a.lv - b.lv)[0];
+    if (!u) { addGear(4, c.x, c.y); return; }
+    const p = unitPos(u);
+    S.fx.push({ kind: 'fly', x: c.x, y: c.y, tx: p.x, ty: p.y, t: 0, life: 0.45, color: col }, { kind: 'ring', x: p.x, y: p.y, t: -0.4, life: 0.5, color: col });
+    later(0.42, () => { if (!u.cells) return; mergeInto(u, null); const q = unitPos(u); sparks(q.x, q.y, col, 18, 260); play('up_fx', 0.5); });
+    addText(c.x, c.y - 30, '승급!', col, 24);
+    return;
+  }
+  if (rw.item === 'bomb') {   // 주변 적을 크게 쓸어낸다
+    DMG_BY = null; boom(c.x, c.y, 2.4, col); blastFx(c.x, c.y, 2); shockwave(c.x, c.y, 320); shake(0.5); punch(0.6);
+    blast(c.x, c.y, 190, ENEMY.grunt.hp * hpMul() * 8, null);
+    play('kaboom', 0.7, 0.9); play('boom_big', 0.5);
+    return;
+  }
+  if (rw.item === 'rush') { S.itemRushT = 6; addText(c.x, c.y - 30, '과열! 6초', col, 24); play('up_fx', 0.5, 1.2); S.fx.push({ kind: 'ring', x: W / 2, y: GRID_Y + CH, t: 0, life: 0.6, color: col }); }
 }
 function checkMergeHint() {
   const seen = {};
