@@ -37,7 +37,8 @@ const IMG_NAMES = ['f1','f2','f3','tbase','t1','t2','t3','laser','hit','missile'
   'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b',
   ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl','ex1','ex2','ex3','ex4'].map(n => 'fx/' + n),
   ...[...'ftsgmedcabrhnxvkwlqy'].flatMap(t => [1, 2, 3, 4, 5, 6, 7, 8].map(k => 'units/' + t + k)),
-  ...['grunt','tank','rusher','shield','minion','heal','thief','sniper','gunship','bomber','elite','rock1','rock2','split','splitS','boss1','boss2','boss3','boss4','phase','grav','boss5','boss6'].map(n => 'enemies/' + n)];
+  ...['grunt','tank','rusher','shield','minion','heal','thief','sniper','gunship','bomber','elite','rock1','rock2','split','splitS','boss1','boss2','boss3','boss4','phase','grav','boss5','boss6',
+    'artillery','jammer','mother','wreck','rift','boss7','boss8','boss9'].map(n => 'enemies/' + n)];
 const IMG = {};
 function loadImages() {
   return Promise.all(IMG_NAMES.map(n => new Promise(res => {
@@ -70,15 +71,16 @@ function fitEnemySizes() {
 function buildTints() {
   const enemyImgs = [...new Set(Object.values(ENEMY).map(d => d.img).concat(['enemies/rock2']))];
   setTimeout(() => { for (const n of enemyImgs) makeTint(n, '#000000', n + '_sh', 1); }, 0);
-  // 새 적 임시 그림: 기존 그림에 색을 입힌다
-  makeTint('enemies/gunship', '#ff8a2a', 'enemies/artillery', 0.42);
-  makeTint('enemies/heal', '#e0ff3a', 'enemies/jammer', 0.5);
-  makeTint('enemies/boss1', '#3affc0', 'enemies/mother', 0.4);
-  makeTint('enemies/tank', '#c8925a', 'enemies/wreck', 0.5);
-  makeTint('enemies/phase', '#ff4ad8', 'enemies/rift', 0.5);
-  makeTint('enemies/boss4', '#9ab8d8', 'enemies/boss7', 0.55);
-  makeTint('enemies/boss6', '#ff4ad8', 'enemies/boss8', 0.45);
-  makeTint('enemies/boss2', '#ffd24a', 'enemies/boss9', 0.5);
+  // 새 적 그림(VARCO)이 아직 없으면 기존 그림에 색을 입혀 대신 쓴다. 그림이 들어오면 지울 것
+  const tmp = (src, col, key, amt) => { if (!IMG[key] || !IMG[key].width) makeTint(src, col, key, amt); };
+  tmp('enemies/gunship', '#ff8a2a', 'enemies/artillery', 0.42);
+  tmp('enemies/heal', '#e0ff3a', 'enemies/jammer', 0.5);
+  tmp('enemies/boss1', '#3affc0', 'enemies/mother', 0.4);
+  tmp('enemies/tank', '#c8925a', 'enemies/wreck', 0.5);
+  tmp('enemies/phase', '#ff4ad8', 'enemies/rift', 0.5);
+  tmp('enemies/boss4', '#9ab8d8', 'enemies/boss7', 0.55);
+  tmp('enemies/boss6', '#ff4ad8', 'enemies/boss8', 0.45);
+  tmp('enemies/boss2', '#ffd24a', 'enemies/boss9', 0.5);
   makeTint('u_b', '#4ab8ff', 'u_b2', 0.3, true);
   makeTint('u_c', '#6af0ff', 'u_c2', 0.45);
   makeTint('u_v', '#b86bff', 'u_v2', 0.45);
