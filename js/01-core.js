@@ -71,16 +71,6 @@ function fitEnemySizes() {
 function buildTints() {
   const enemyImgs = [...new Set(Object.values(ENEMY).map(d => d.img).concat(['enemies/rock2']))];
   setTimeout(() => { for (const n of enemyImgs) makeTint(n, '#000000', n + '_sh', 1); }, 0);
-  // 새 적 그림(VARCO)이 아직 없으면 기존 그림에 색을 입혀 대신 쓴다. 그림이 들어오면 지울 것
-  const tmp = (src, col, key, amt) => { if (!IMG[key] || !IMG[key].width) makeTint(src, col, key, amt); };
-  tmp('enemies/gunship', '#ff8a2a', 'enemies/artillery', 0.42);
-  tmp('enemies/heal', '#e0ff3a', 'enemies/jammer', 0.5);
-  tmp('enemies/boss1', '#3affc0', 'enemies/mother', 0.4);
-  tmp('enemies/tank', '#c8925a', 'enemies/wreck', 0.5);
-  tmp('enemies/phase', '#ff4ad8', 'enemies/rift', 0.5);
-  tmp('enemies/boss4', '#9ab8d8', 'enemies/boss7', 0.55);
-  tmp('enemies/boss6', '#ff4ad8', 'enemies/boss8', 0.45);
-  tmp('enemies/boss2', '#ffd24a', 'enemies/boss9', 0.5);
   makeTint('u_b', '#4ab8ff', 'u_b2', 0.3, true);
   makeTint('u_c', '#6af0ff', 'u_c2', 0.45);
   makeTint('u_v', '#b86bff', 'u_v2', 0.45);

@@ -31,6 +31,13 @@ objs = ndimage.find_objects(lab)
 areas = [(int((lab[o] == i + 1).sum()), i, o) for i, o in enumerate(objs)]
 areas.sort(reverse=True)
 keep = sorted(areas[:len(names)], key=lambda t: t[2][1].start)
+# smaller blobs (debris, shards) join the kept sprite whose x center is nearest
+cx = lambda o: (o[1].start + o[1].stop) / 2
+for area, i, o in areas[len(names):]:
+    if area < 500: continue
+    k_ = min(keep, key=lambda t: abs(cx(t[2]) - cx(o)))
+    lab[lab == i + 1] = k_[1] + 1
+keep = [(ar, i, ndimage.find_objects((lab == i + 1).astype(int))[0]) for ar, i, o in keep]
 rgba = np.dstack([out_rgb, a * 255]).clip(0, 255).astype(np.uint8)
 for (area, i, o), name, L in zip(keep, names, sizes):
     sub = rgba[o].copy()

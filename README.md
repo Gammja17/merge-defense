@@ -23,4 +23,4 @@
 - 음악: OpenGameArt의 CC0 곡 — MintoDog, wipics, Deva. 곡별 출처는 `assets/bgm/CREDITS.txt`.
 - 폰트: Orbitron, Chakra Petch, Do Hyeon, IBM Plex Sans KR (SIL OFL, Google Fonts). IBM Plex Sans KR은 게임에 쓰는 글자만 남겨 줄였어요.
 - 폭발 애니메이션: [Sinestesia, 2D Explosion Animations](https://opengameart.org/content/2d-explosion-animations-frame-by-frame) (CC0). 게임용으로 잘라 줄였어요.
-- 기체, 적, 보스 그림: 이 게임을 위해 VARCO(gpt-image-2.5)로 만들었어요. 포격 순양함, 교란함, 침공 모함, 난파선, 균열함, 폐허 기함, 균열 군주는 아직 기존 그림에 색을 입힌 임시 그림이에요.
+- 기체, 적, 보스 그림: 이 게임을 위해 VARCO(gpt-image-2.5)로 만들었어요.
