@@ -78,6 +78,7 @@ function buildTints() {
   makeTint('enemies/phase', '#ff4ad8', 'enemies/rift', 0.5);
   makeTint('enemies/boss4', '#9ab8d8', 'enemies/boss7', 0.55);
   makeTint('enemies/boss6', '#ff4ad8', 'enemies/boss8', 0.45);
+  makeTint('enemies/boss2', '#ffd24a', 'enemies/boss9', 0.5);
   makeTint('u_b', '#4ab8ff', 'u_b2', 0.3, true);
   makeTint('u_c', '#6af0ff', 'u_c2', 0.45);
   makeTint('u_v', '#b86bff', 'u_v2', 0.45);

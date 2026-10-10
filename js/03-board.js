@@ -253,9 +253,10 @@ function runEvent(ev) {
       if (ENEMY[ev.k].boss) {
         const b = spawnEnemy(ev.k, ev.x || W / 2, -120);
         if (ev.x) b.cx = ev.x;
+        if (ev.hpMul) for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) b[k] *= ev.hpMul;   // 보스 둘이 함께 나올 때
         if (ev.mini) { const f = ev.mini === true ? 0.4 : ev.mini; for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) b[k] *= f; b.mini = true; }   // 중간 보스로 나온 보스 (체력을 줄여서)
         if (ev.rage) bossRage(b);
-        if (!SHOT && !S.tut) later(2.6, () => { if (!b.dead && S.mode === 'play') bossGimmick(b, b.mini ? 'mini' : 'spawn'); });   // 보스, 중간 보스: 나타나면 기믹
+        if (!SHOT && !S.tut && !ev.quiet) later(2.6, () => { if (!b.dead && S.mode === 'play') bossGimmick(b, b.mini ? 'mini' : 'spawn'); });   // 보스, 중간 보스: 나타나면 기믹
         if (!S.boss || S.boss.dead) S.boss = b;
         if (!S.bossCine && !S.tut && !SHOT) { S.bossCine = { k: ev.k, t: 0 }; play('vo_hostile', 0.8); play('drums', 0.5, 0.8); }
         if (ev.k === 'boss3') hintOnce('b3', '모선 보호막은 폭발이나 번개로');
@@ -263,6 +264,10 @@ function runEvent(ev) {
         const x = 110 + Math.random() * (W - 220);
         for (const [dx, dy] of [[0, 0], [-46, -40], [46, -40]]) { const g = spawnEnemy('grunt', x + dx, -50 + dy); g.hp = g.maxHp = g.maxHp * 0.45; }
         S.fx.push({ kind: 'warp', x, y: 24, t: 0, life: 0.45 });
+      } else if (stageRule() === 'twin' && ev.k !== 'grunt' && !ENEMY[ev.k].atk && ev.k !== 'mother') {   // 쌍성계: 큰 적이 둘씩 나란히 (하나하나는 조금 약하게)
+        const x = 100 + Math.random() * (W - 200);
+        for (const dx of [-52, 52]) { const e = spawnEnemy(ev.k, x + dx, -50); for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) e[k] *= 0.65; S.fx.push({ kind: 'warp', x: e.x, y: 24, t: 0, life: 0.35 }); }
+        hintOnce('twin', '큰 적이 둘씩 와요');
       } else { const e = spawnEnemy(ev.k, rx(), -50); S.fx.push({ kind: 'warp', x: e.x, y: 24, t: 0, life: 0.35 }); }
   }
 }

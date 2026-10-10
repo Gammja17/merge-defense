@@ -67,6 +67,11 @@ function setupShot(k) {
     const big = army.map(([t, lv, c]) => [t, Math.min(6, lv + 2), c]);
     startStage(k === 'wreck' ? 32 : 37); shotArmy(big); S.wave = 1; startWave(2); shotRun(60 * (k === 'wreck' ? 6 : 4), 6);
     if (k === 'rift') { const c = S.caps.find(q => q.side) || S.caps[0]; if (!c) { const n = makeCap({ type: 'f', lv: 2, n: 1 }, 150, 1); sideCap(n); n.x = 70; } }
+  } else if (k === 'gold9' || k === 'twin10' || k === 'boss9' || k === 'boss10') {   // 구역 9 귀한 캡슐, 구역 10 쌍둥이 적, 두 구역 보스
+    PROG.deck = ['f', 't', 's', 'b', 'e']; for (let n = 1; n <= 49; n++) PROG.stars[n] = 3;
+    const boss = k === 'boss9' || k === 'boss10';
+    startStage({ gold9: 42, twin10: 47, boss9: 45, boss10: 50 }[k]); shotArmy([['f', 6, 2], ['f', 5, 3], ['t', 5, 8], ['s', 5, 0], ['b', 4, 13], ['e', 5, 5], ['t', 4, 10], ['f', 4, 15]]);
+    if (boss) { S.wave = 4; startWave(5); shotRun(60 * 5, 6); S.bossCine = null; } else { S.wave = 1; startWave(2); shotRun(60 * 9, 6); }
   } else if (k === 'boss7' || k === 'boss8') {
     PROG.deck = ['f', 't', 's', 'b', 'e']; for (let n = 1; n <= 39; n++) PROG.stars[n] = 3;
     startStage(k === 'boss7' ? 35 : 40); shotArmy([['f', 6, 2], ['f', 5, 3], ['t', 5, 8], ['s', 5, 0], ['b', 4, 13], ['e', 5, 5], ['t', 4, 10], ['f', 4, 15]]);
@@ -75,7 +80,7 @@ function setupShot(k) {
     PROG.deck = ['g', 'x', 'f', 'e', 't'];
     startStage(12); shotArmy([['g', 8, 1], ['x', 8, 4], ['f', 8, 7], ['e', 8, 10], ['f', 5, 0], ['f', 5, 2], ['t', 4, 12], ['t', 3, 15]]); S.wave = 2; startWave(3); shotRun(60 * 4, 1);
     if (k === 'fused') { const a = S.slots[1], b = S.slots[4]; doFuse(a, b, fuseOf(a, b)); shotRun(50, 1); }
-  } else if (k === 'map2') { for (let n = 1; n <= 33; n++) PROG.stars[n] = 3; S = { mode: 'map' }; UI.mapPage = 1; }
+  } else if (k === 'map2') { for (let n = 1; n <= 33; n++) PROG.stars[n] = 3; S = { mode: 'map' }; UI.mapS = 99999; }
   else if (k === 'map') S = { mode: 'map' };
   if (SHOT_RAW && S.stage) {
     // 연출용 한 순간: 빔, 폭격, 폭발, 탄환을 동시에 띄우고 멈춘다

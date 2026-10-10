@@ -16,7 +16,7 @@ function setSlider(b, px) {
   if (b.key === 'sfxVol') play('coin', 0.4, 1.2);
 }
 function toast(text) { UI.toast = { text, until: performance.now() / 1000 + 1.8 }; }
-function goMap() { S = { mode: 'map' }; UI.mapPage = null; UI.card = null; UI.shop = false; UI.enemyIntro = null; UI.introQ = null; }
+function goMap() { S = { mode: 'map' }; UI.mapS = null; UI.mapV = 0; UI.card = null; UI.shop = false; UI.enemyIntro = null; UI.introQ = null; }
 function doAction(b) {
   const now = performance.now() / 1000;
   switch (b.act) {
@@ -148,7 +148,6 @@ function doAction(b) {
     case 'settings': UI.settings = true; UI.resetArm = 0; UI.credits = UI.saveCode = false; return;
     case 'closesettings': UI.settings = false; return;
     case 'credits': UI.credits = true; return;
-    case 'mapPage': UI.mapPage = ((UI.mapPage || 0) + 1) % MAP_PAGES; return;
     case 'closecredits': UI.credits = false; return;
     case 'privacy': window.open('https://gammja17.github.io/merge-defense/privacy.html', '_blank'); return;
     case 'savecode': UI.saveCode = true; UI.saveMsg = null; return;
@@ -185,6 +184,11 @@ cv.addEventListener('pointerdown', ev => {
   loadSfx();
   if (S.mode === 'title') { if (!PROG.tut && !SHOT) startStage('train'); else goMap(); return; }   // 처음이면 훈련장부터
   const b = hitButton(p);
+  if (mapScrollable() && p.y > MAP_TOP && p.y < MAP_BOT) {   // 지도: 끌면 스크롤, 안 움직이고 떼면 누른 스테이지로
+    UI.mapDrag = { id: ev.pointerId, y0: p.y, s0: UI.mapS || 0, b: b && b.act === 'stage' ? b : null, moved: false, ly: p.y, lt: performance.now() }; UI.mapV = 0;
+    cv.setPointerCapture(ev.pointerId);
+    return;
+  }
   if (b && b.act === 'prepToggle') {   // 출격 준비 칸: 짧게 누르면 넣고 빼기, 꾹 누르면 기체 정보
     const hold = UI.hold = { b, id: ev.pointerId };
     setTimeout(() => { if (UI.hold === hold) { UI.hold = null; doAction({ act: 'card', type: b.type }); } }, 450);
@@ -223,6 +227,14 @@ cv.addEventListener('contextmenu', ev => {
 cv.addEventListener('pointermove', ev => {
   if (UI.aim) UI.hoverP = toLocal(ev);
   if (UI.sliding && ev.buttons) { setSlider(UI.sliding, toLocal(ev).x); return; }
+  const M = UI.mapDrag;
+  if (M && ev.pointerId === M.id) {
+    const p = toLocal(ev), now = performance.now();
+    if (!M.moved && Math.abs(p.y - M.y0) > 8) M.moved = true;
+    if (M.moved) { UI.mapS = mapClamp(M.s0 - (p.y - M.y0)); const dtm = Math.max(1, now - M.lt); UI.mapV = 0.6 * UI.mapV + 0.4 * (-(p.y - M.ly) / dtm * 1000); }
+    M.ly = p.y; M.lt = now;
+    return;
+  }
   if (!drag || ev.pointerId !== drag.id) return;
   const p = toLocal(ev);
   drag.x = p.x; drag.y = p.y;
@@ -325,12 +337,25 @@ function endDrag(ev) {
   const p = toLocal(ev);
   dropUnit(d.unit, p.x, p.y);
 }
+const mapScrollable = () => S.mode === 'map' && !UI.prep && !UI.card && !UI.settings && !UI.reveal && !UI.enemyIntro;
+function endMapDrag(ev, tap) {
+  const M = UI.mapDrag; if (!M || ev.pointerId !== M.id) return false;
+  UI.mapDrag = null;
+  if (!M.moved) { UI.mapV = 0; if (tap && M.b) { play('click', 0.35); doAction(M.b); } }
+  else if (performance.now() - M.lt > 80) UI.mapV = 0;   // 멈췄다 떼면 미끄러지지 않게
+  return true;
+}
+cv.addEventListener('wheel', ev => {
+  if (!mapScrollable()) return;
+  ev.preventDefault(); UI.mapV = 0; UI.mapS = mapClamp((UI.mapS || 0) + ev.deltaY * (ev.deltaMode === 1 ? 30 : 1));
+}, { passive: false });
 cv.addEventListener('pointerup', ev => {
+  if (endMapDrag(ev, true)) return;
   UI.sliding = null;
   if (UI.hold && UI.hold.id === ev.pointerId) { const h = UI.hold; UI.hold = null; play('click', 0.35); doAction(h.b); }
   endDrag(ev);
 });
-cv.addEventListener('pointercancel', ev => { UI.hold = null; endDrag(ev); });
+cv.addEventListener('pointercancel', ev => { endMapDrag(ev, false); UI.hold = null; endDrag(ev); });
 
 // ── 루프 ──────────────────────────────────────────────────
 let last = performance.now();

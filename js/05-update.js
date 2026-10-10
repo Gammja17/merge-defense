@@ -173,6 +173,16 @@ function updateEnemy(e, dt) {
         addText(e.x, e.y + 100, '핵이 갈라져요!', '#ffb347', 24);
       }
       break;
+    case 'boss9':   // 황금 운석 핵: 운석을 뿌리고, 4분의 1씩 깎일 때마다 황금 캡슐을 떨군다
+      e.x = (e.cx || W / 2) + Math.sin(S.time * 0.4) * 50 * (e.cx ? 0.4 : 1);
+      e.spawnT += dt;
+      if (e.spawnT > 3.6 && e.y > 40) { e.spawnT = 0; for (let i = 0; i < 4; i++) spawnEnemy('rock', e.x + (Math.random() - .5) * 170, e.y + 70); }
+      if (e.phase < 3 && e.hp < e.maxHp * (0.75 - e.phase * 0.25)) {
+        e.phase++; shake(0.6); boom(e.x, e.y + 60, 1.8, '#ffd24a');
+        runEvent({ k: 'gold' });
+        for (const vx of [-100, 100]) { const c = spawnEnemy('split', e.x + vx * 0.5, e.y + 60); c.vx = vx * 0.5; }
+      }
+      break;
     case 'boss3':
       e.x = (e.cx || W / 2) + Math.sin(S.time * 0.7) * 80 * (e.cx ? 0.4 : 1);
       e.spawnT += dt;
@@ -613,7 +623,7 @@ function update(dt) {
   }
   if (S.hp <= 0) { S.hp = 0; endStage(false); return; }
   const st = S.stage;
-  if (bossDead) { S.boss = S.enemies.find(e => e.boss) || null; if (!st.endless && !midDead) { beginClear(); return; } }   // 중간 보스를 잡으면 판은 이어진다
+  if (bossDead) { S.boss = S.enemies.find(e => e.boss) || null; if (!st.endless && !midDead && !S.enemies.some(e => e.boss && !e.mini) && !S.events.some(e => ENEMY[e.k] && ENEMY[e.k].boss && !e.mini)) { beginClear(); return; } }   // 중간 보스를 잡으면, 보스가 아직 남았으면 판은 이어진다   // 중간 보스를 잡으면 판은 이어진다
   const cleared = !S.events.length && !S.enemies.some(e => !(e.hacked > 0));
   if (S.mode === 'play' && !st.boss && !st.training && S.wave === st.waves && cleared) { beginClear(); return; }
   if (S.mode === 'play' && S.wave < st.waves && cleared) {

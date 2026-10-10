@@ -741,11 +741,14 @@ function drawEnd() {
 }
 
 // ── 지도 ──────────────────────────────────────────────────
-const MAP_PER = 6, MAP_BAND = Math.floor((838 - 108) / MAP_PER), MAP_PAGES = Math.ceil(SECTORS.length / MAP_PER);   // 한 쪽에 여섯 구역, 넘치면 다음 쪽
+// 구역 띠를 위아래로 이어 붙이고 손가락으로 끌어 내린다 (휠도 됨). 위아래 머리와 바닥 줄은 고정
+const MAP_TOP = 108, MAP_BOT = 838, MAP_BAND = 150;
+const mapMax = () => Math.max(0, SECTORS.length * MAP_BAND + 12 - (MAP_BOT - MAP_TOP));
+const mapClamp = v => Math.max(0, Math.min(mapMax(), v));
 function mapNodePos(n) {
   const s = Math.floor((n - 1) / 5), i = (n - 1) % 5;
-  const bandY = 108 + (s % MAP_PER) * MAP_BAND;
-  return { x: [78, 176, 274, 372, 468][i], y: bandY + 72 + (i === 4 ? -2 : i % 2 ? -6 : 6), r: i === 4 ? 25 : 19 };
+  const bandY = MAP_TOP + s * MAP_BAND - (UI.mapS || 0);
+  return { x: [70, 168, 266, 364, 466][i], y: bandY + 96 + (i === 4 ? -4 : i % 2 ? -9 : 9), r: i === 4 ? 27 : 20 };
 }
 function drawMap() {
   const t = performance.now() / 1000;
@@ -777,42 +780,38 @@ function drawMap() {
     BUTTONS.push({ x: tx, y: ty, w: 72, h: 40, act: 'train' }); }
   let next = 1;
   while (next < STAGE_COUNT && PROG.stars[next]) next++;
-  if (UI.mapPage == null) UI.mapPage = Math.min(MAP_PAGES - 1, Math.floor((next - 1) / (MAP_PER * 5)));
-  const pg = UI.mapPage, s0 = pg * MAP_PER, s1 = Math.min(SECTORS.length, s0 + MAP_PER), inPage = n => n > s0 * 5 && n <= s1 * 5;
-  if (MAP_PAGES > 1) {   // 쪽 넘기기: 왼쪽 위 버튼 (지금 쪽 / 전체)
-    ctx.fillStyle = 'rgba(90,210,255,.12)'; chamfer(14, 20, 66, 44, 8); ctx.fill();
-    ctx.strokeStyle = 'rgba(120,220,255,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.font = FT(13, 900); ctx.textAlign = 'center'; ctx.fillStyle = '#bfefff'; ctx.fillText(`${pg + 1}/${MAP_PAGES}`, 38, 42);
-    ctx.fillStyle = '#bfefff'; ctx.beginPath(); ctx.moveTo(62, 35); ctx.lineTo(72, 42); ctx.lineTo(62, 49); ctx.closePath(); ctx.fill();
-    BUTTONS.push({ x: 10, y: 14, w: 76, h: 56, act: 'mapPage' });
-    if (pg < MAP_PAGES - 1 && PROG.stars[s1 * 5]) { const pu = 0.6 + 0.4 * Math.sin(t * 5); drawGlow('#5affc8', 76, 22, 14, pu * 0.7); ctx.fillStyle = '#5affc8'; ctx.beginPath(); ctx.arc(76, 22, 5, 0, Math.PI * 2); ctx.fill(); }   // 다음 쪽이 열렸어요
-  }
-
+  { const now = performance.now() / 1000, dt = Math.min(0.05, now - (UI.mapT || now)); UI.mapT = now;   // 처음 열면 지금 할 구역이 가운데 오게, 놓으면 미끄러지다 멈춘다
+    if (UI.mapS == null) UI.mapS = mapClamp(Math.floor((next - 1) / 5) * MAP_BAND - (MAP_BOT - MAP_TOP - MAP_BAND) / 2);
+    UI.mapS = mapClamp(UI.mapS);
+    if (!UI.mapDrag && UI.mapV) { UI.mapS = mapClamp(UI.mapS + UI.mapV * dt); UI.mapV *= Math.pow(0.03, dt); if (Math.abs(UI.mapV) < 8 || UI.mapS <= 0 || UI.mapS >= mapMax()) UI.mapV = 0; } }
+  const vis = y => y > MAP_TOP - 40 && y < MAP_BOT + 40;
+  ctx.save(); ctx.beginPath(); ctx.rect(0, MAP_TOP - 6, W, MAP_BOT - MAP_TOP + 6); ctx.clip();
   SECTORS.forEach((sec, s) => {
-    if (s < s0 || s >= s1) return;
-    const y = 108 + (s - s0) * MAP_BAND;
-    const g = ctx.createLinearGradient(0, y, W, y + MAP_BAND - 6);
-    g.addColorStop(0, sec.color + '26'); g.addColorStop(1, 'rgba(6,8,26,.45)');
-    ctx.fillStyle = g; chamfer(16, y, W - 32, MAP_BAND - 6, 14); ctx.fill();
-    ctx.strokeStyle = sec.color + '77'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.globalAlpha = 0.3; ctx.drawImage(PLANETS[s], W - 110, y + 4, 84, 84); ctx.globalAlpha = 1;
+    const y = MAP_TOP + s * MAP_BAND - UI.mapS;
+    if (y > MAP_BOT || y + MAP_BAND < MAP_TOP) return;
+    const open = unlocked(s * 5 + 1), g = ctx.createLinearGradient(0, y, W, y + MAP_BAND - 8);
+    g.addColorStop(0, sec.color + (open ? '2e' : '14')); g.addColorStop(1, 'rgba(6,8,26,.5)');
+    ctx.fillStyle = g; chamfer(14, y, W - 28, MAP_BAND - 10, 14); ctx.fill();
+    ctx.strokeStyle = sec.color + (open ? '88' : '33'); ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.globalAlpha = open ? 0.42 : 0.18; ctx.drawImage(PLANETS[s], W - 132, y - 4, 112, 112); ctx.globalAlpha = 1;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.font = FU(10); ctx.fillStyle = sec.color;
-    ctx.fillText(`// SECTOR ${String(s + 1).padStart(2, '0')}`, 30, y + 14);
-    ctx.font = FK(18); outlineText(sec.name, 30, y + 32, '#fff', 4);
-    ctx.font = FK(12); ctx.fillStyle = 'rgba(220,230,255,.8)';
-    ctx.fillText(sec.info, 132, y + 14);   // 윗줄: 스테이지 종류 이름표와 안 겹치게
+    ctx.font = FT(26, 900); ctx.fillStyle = sec.color; ctx.globalAlpha = open ? 0.9 : 0.4; ctx.fillText(String(s + 1).padStart(2, '0'), 30, y + 30); ctx.globalAlpha = 1;
+    ctx.font = FK(20); outlineText(sec.name, 76, y + 31, open ? '#fff' : 'rgba(255,255,255,.5)', 4);
+    if (sec.ruleName) { const nw = (ctx.font = FK(20), ctx.measureText(sec.name).width); ctx.font = FK(13); const rw = ctx.measureText(sec.ruleName).width + 16;
+      ctx.fillStyle = sec.color + '30'; chamfer(86 + nw, y + 20, rw, 22, 6); ctx.fill(); ctx.fillStyle = sec.color; ctx.fillText(sec.ruleName, 94 + nw, y + 32); }
   });
   ctx.lineWidth = 2.5; ctx.setLineDash([6, 8]); ctx.lineDashOffset = -t * 20;
   for (let n = 1; n < STAGE_COUNT; n++) {
-    if (n % 5 === 0 || !inPage(n)) continue;   // 구역 사이는 띠를 가로지르지 않고 아래 화살표로
+    if (n % 5 === 0) continue;   // 구역 사이는 띠를 가로지르지 않고 아래 꺾쇠로
     const a = mapNodePos(n), b = mapNodePos(n + 1);
+    if (!vis(a.y)) continue;
     ctx.strokeStyle = PROG.stars[n] ? 'rgba(90,255,200,.6)' : 'rgba(255,255,255,.15)';
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
   ctx.setLineDash([]);
-  for (let s = s0 + 1; s < s1; s++) {   // 구역 끝 → 다음 구역: 띠 사이 (4, 5번 칸 사이)에 아래로 꺾쇠 두 개
-    const ax = 420, y = 108 + (s - s0) * MAP_BAND - 3, on = PROG.stars[s * 5], c = on ? '#5affc8' : 'rgba(255,255,255,.3)';
+  for (let s = 1; s < SECTORS.length; s++) {   // 구역 끝 → 다음 구역: 띠 사이에 아래로 꺾쇠 두 개
+    const ax = 415, y = MAP_TOP + s * MAP_BAND - UI.mapS - 5, on = PROG.stars[s * 5], c = on ? '#5affc8' : 'rgba(255,255,255,.3)';
+    if (!vis(y)) continue;
     ctx.strokeStyle = 'rgba(4,8,24,.9)'; ctx.lineWidth = 6; ctx.lineCap = ctx.lineJoin = 'round';
     for (const k of [0, 1]) { ctx.beginPath(); ctx.moveTo(ax - 12, y - 8 + k * 7); ctx.lineTo(ax, y + k * 7); ctx.lineTo(ax + 12, y - 8 + k * 7); ctx.stroke(); }
     ctx.strokeStyle = c; ctx.lineWidth = 2.5;
@@ -820,9 +819,9 @@ function drawMap() {
     ctx.globalAlpha = 1; ctx.lineCap = ctx.lineJoin = 'miter';
   }
   for (let n = 1; n <= STAGE_COUNT; n++) {
-    if (!inPage(n)) continue;
     const p = mapNodePos(n), st = stageInfo(n), col = st.sector.color;
     const open = unlocked(n), stars = PROG.stars[n] || 0;
+    if (!vis(p.y)) continue;
     if (n === next && open) {
       drawGlow(col, p.x, p.y, p.r * 2.4, 0.45 + 0.25 * Math.sin(t * 4));
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(t);
@@ -850,8 +849,13 @@ function drawMap() {
       ctx.beginPath(); ctx.arc(lx + 6, ly, 4, Math.PI, 0); ctx.stroke();
     }
     for (let k = 0; k < 3; k++) drawStar(p.x + (k - 1) * 12, p.y + p.r + 11, 5, k < stars ? '#ffd24a' : 'rgba(255,255,255,.14)');
-    BUTTONS.push({ x: p.x - p.r - 8, y: p.y - p.r - 8, w: p.r * 2 + 16, h: p.r * 2 + 24, act: 'stage', n });
+    if (p.y > MAP_TOP && p.y < MAP_BOT) BUTTONS.push({ x: p.x - p.r - 8, y: p.y - p.r - 8, w: p.r * 2 + 16, h: p.r * 2 + 24, act: 'stage', n });
   }
+  ctx.restore();
+  { // 위아래 가장자리를 배경 쪽으로 흐리게, 오른쪽에 얇은 스크롤 막대
+    for (const [y0, y1] of [[MAP_TOP - 6, MAP_TOP + 22], [MAP_BOT, MAP_BOT - 28]]) { const fg = ctx.createLinearGradient(0, y0, 0, y1); fg.addColorStop(0, 'rgba(7,6,22,.95)'); fg.addColorStop(1, 'rgba(7,6,22,0)'); ctx.fillStyle = fg; ctx.fillRect(0, Math.min(y0, y1), W, Math.abs(y1 - y0)); }
+    const vh = MAP_BOT - MAP_TOP, ch = vh + mapMax(), bh = Math.max(40, vh * vh / ch), by = MAP_TOP + (vh - bh) * (UI.mapS / (mapMax() || 1));
+    ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(W - 7, MAP_TOP, 3, vh); ctx.fillStyle = 'rgba(160,225,255,.6)'; ctx.fillRect(W - 7, by, 3, bh); }
   // 편성 요약 + 격납고
   const deckOk = PROG.deck.length >= 1;
   ctx.font = FU(10); ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(140,220,255,.7)'; ctx.fillText('// SQUADRON', 22, 858);
@@ -1554,7 +1558,7 @@ function drawPrep() {
   const K = st && st.kind !== 'base' ? STAGE_KINDS[st.kind] : null;
   ctx.font = FK(16); ctx.fillStyle = col; ctx.fillText(st ? `${st.sector.name}${st.boss ? ', 보스' : ''}, ${st.waves}웨이브` : '무한 방어선', W / 2, y + 66);
   if (K) { ctx.font = FK(15); outlineText(`${K.name}: ${K.sub}`, W / 2, y + 90, K.col, 3); }
-  else if (st) { ctx.font = FK(13); ctx.fillStyle = 'rgba(200,220,245,.8)'; ctx.fillText(st.sector.info, W / 2, y + 92); }
+  else if (st && st.sector.ruleName) { ctx.font = FK(15); outlineText(`규칙: ${st.sector.ruleName}`, W / 2, y + 90, st.sector.color, 3); }
   { const run = PROG.run, n = st && run && run.s === st.s && run.n === P.n - 1 ? run.perks.filter(id => id !== 'gift' && id !== 'fixall').length : 0;   // 구역 런: 이어지는 강화
     if (n) { ctx.font = FK(14); ctx.fillStyle = '#5affc8'; ctx.fillText(`강화 ${n}개 이어짐`, W / 2, y + 110); } }
   ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)';

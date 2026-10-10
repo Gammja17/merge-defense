@@ -1,7 +1,7 @@
 'use strict';
 // ── 배경음악: 상황별 곡, 교차 페이드 ──
 const MUS = { tracks: {} };
-const BOSS_TRACK = { boss1: 'boss1', boss2: 'boss1', boss3: 'boss2', boss4: 'boss3', boss5: 'boss2', boss6: 'boss3', boss7: 'boss3', boss8: 'boss2' };
+const BOSS_TRACK = { boss1: 'boss1', boss2: 'boss1', boss3: 'boss2', boss4: 'boss3', boss5: 'boss2', boss6: 'boss3', boss7: 'boss3', boss8: 'boss2', boss9: 'boss1' };
 function musicTrack(k) {
   if (!MUS.tracks[k]) {
     const a = new Audio('assets/bgm/' + k + '.mp3');
@@ -193,6 +193,7 @@ const ENEMY = {
   boss6:   { img: 'enemies/boss6', hp: 17000, speed: 8, r: 104, dmg: 99, w: 250, h: 230, boss: true, name: '블랙홀 모함', regen: 8, atk: 'cross', atkCd: 7, atkDmg: 3 },
   boss7:   { img: 'enemies/boss7', hp: 17000, speed: 8, r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '폐허 기함', shield: 0.2, atk: 'barrage', atkCd: 6, atkDmg: 3 },
   boss8:   { img: 'enemies/boss8', hp: 24000, speed: 8, r: 104, dmg: 99, w: 250, h: 230, boss: true, name: '균열 군주', regen: 8, atk: 'cross', atkCd: 6.5, atkDmg: 3 },
+  boss9:   { img: 'enemies/boss9', hp: 30000, speed: 8, r: 100, dmg: 99, w: 236, h: 232, boss: true, name: '황금 운석 핵', spin: 0.3, shield: 0.15, atk: 'meteor', atkCd: 5.5, atkDmg: 3 },
   boss4:   { img: 'enemies/boss4', hp: 12000, speed: 9,  r: 104, dmg: 99, w: 252, h: 216, boss: true, name: '최종 기함', shield: 0.25, regen: 8, atk: 'cross', atkCd: 8, atkDmg: 3 },
 };
 // ── 특수 합체: 짝꿍 두 기체가 둘 다 최종 단계(Lv8)면 하나를 다른 하나에 겹쳐 합친다 ──
@@ -248,10 +249,15 @@ const SECTORS = [
   { name: '블랙홀', color: '#ffc46a', planet: ['#fff0c8', '#c07a2a', '#1a0f06'],
     info: '새 적: 중력함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['grav'], boss: 'boss6' },
   // 구역마다 판 규칙 하나 (rule): 폐허 함대는 부서진 칸, 차원 균열은 옆에서 오는 캡슐
-  { name: '폐허 함대', color: '#9ab8d8', planet: ['#dfe8f2', '#5a6a80', '#121822'], rule: 'wreck',
+  { name: '폐허 함대', color: '#9ab8d8', planet: ['#dfe8f2', '#5a6a80', '#121822'], rule: 'wreck', ruleName: '부서진 칸',
     info: '규칙: 부서진 칸, 새 적: 난파선', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav', 'wreck'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['wreck'], boss: 'boss7' },
-  { name: '차원 균열', color: '#ff6ad8', planet: ['#ffd0f4', '#a83a90', '#1e0a1a'], rule: 'side',
-    info: '규칙: 옆에서 오는 캡슐, 새 적: 균열함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav', 'wreck', 'rift'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['rift'], boss: 'boss8' },
+  { name: '차원 균열', color: '#ff6ad8', planet: ['#ffd0f4', '#a83a90', '#1e0a1a'], rule: 'side', ruleName: '옆에서 오는 캡슐',
+    info: '규칙: 옆에서 오는 캡슐, 새 적: 균열함', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav', 'wreck', 'rift'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['rift'], boss: 'boss8' },  // 9 황금 성단: 캡슐이 절반이지만 한 단계 높고 황금 캡슐이 꼭 나온다. 보스는 맞을수록 황금 캡슐을 떨군다
+  { name: '황금 성단', color: '#ffe066', planet: ['#fff6c8', '#d8a020', '#2a1a04'], rule: 'rich', ruleName: '귀한 캡슐',
+    info: '', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav', 'wreck'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['thief'], boss: 'boss9' },
+  // 10 쌍성계: 큰 적이 둘씩 나란히 온다. 마지막엔 폐허 기함과 균열 군주가 함께
+  { name: '쌍성계', color: '#5affc8', planet: ['#d8fff0', '#2a9a7a', '#06201a'], rule: 'twin', ruleName: '쌍둥이 적',
+    info: '', pool: ['tank', 'rocks', 'split', 'rusher', 'shield', 'healer', 'thief', 'mother', 'phase', 'grav', 'wreck', 'rift'], atk: ['sniper', 'gunship', 'bomber', 'jammer', 'meteor', 'freeze'], fresh: ['rift'], boss: 'boss7', duo: 'boss8' },
 ];
 const ENDLESS_SECTORS = 6;   // 무한 방어선은 1~6구역 보스와 배율만 쓴다 (밸런스 유지)
 const STAGE_COUNT = SECTORS.length * 5;
@@ -273,6 +279,8 @@ const STAGE_PLAN = [
   ['rush', 'long', 'siege', 'base', 'brush'],
   ['base', 'long', 'rush', 'siege', 'brush'],
   ['rush', 'siege', 'long', 'base', 'brush'],
+  ['long', 'rush', 'siege', 'base', 'base'],
+  ['rush', 'long', 'siege', 'brush', 'base'],
 ];
 function stageInfo(n) {
   const s = Math.floor((n - 1) / 5), i = (n - 1) % 5, kind = STAGE_PLAN[s][i];
@@ -283,9 +291,9 @@ const kindName = st => st.boss && st.kind === 'base' ? '보스' : STAGE_KINDS[st
 const wavePw = (st, w) => st.kind === 'long' ? 1 + (w - 1) * 4 / 6 : st.kind === 'rush' ? [1, 2, 3.4][w - 1] || 3.4 : w;
 const twistWave = st => st.kind === 'long' ? 5 : st.kind === 'rush' || st.kind === 'brush' ? 0 : 4;
 let WAVE_BASE = 0.7, WAVE_GROWTH = 0.475, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
-let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8, 5.0, 6.4].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75, 1.8, 1.85][i] * 1.2);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게. ×1.2: 강화가 구역 끝까지 이어지는 만큼
+let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8, 5.0, 6.4, 6.6, 9.4].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75, 1.8, 1.85, 1.9, 1.95][i] * 1.2);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게. ×1.2: 강화가 구역 끝까지 이어지는 만큼
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
-const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2], [3, 3, 3, 3], [4, 3, 3, 3]];
+const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2], [3, 3, 3, 3], [4, 3, 3, 3], [4, 4, 3, 3], [4, 4, 4, 3]];
 
 function pickWeighted(pool, fresh) {
   const bag = [];
@@ -355,7 +363,8 @@ function buildWave(st, w) {
   }
   if (twist === 'ambush') for (let k = 0; k < 4; k++) ev.push({ t: 4 + k * 4.5, k: 'ambush' });
   if (twist === 'meteors') for (let k = 0; k < 3; k++) { ev.push({ t: 5 + k * 5.5, k: 'meteor' }); ev.push({ t: 3 + k * 6, k: 'rocks' }); }
-  if (bossWave) ev.push({ t: 1.5, k: st.sector.boss });
+  if (bossWave && st.sector.duo) ev.push({ t: 1.5, k: st.sector.boss, x: 150, hpMul: 0.62 }, { t: 2.6, k: st.sector.duo, x: W - 150, hpMul: 0.62, quiet: true });   // 보스 둘
+  else if (bossWave) ev.push({ t: 1.5, k: st.sector.boss });
   // 몰아치기: 웨이브 중간에 잠깐 조용하다가 몇 초 동안 적이 확 몰려오고, 다시 잠잠해진다 (오르내림)
   if (st.n >= 2 && w >= 2 && !bossWave) {
     const t0 = 8 + R() * (dur - 16), n = 3 + Math.min(3, lw) + (kind === 'rush' ? 2 : 0);
@@ -370,9 +379,12 @@ function buildWave(st, w) {
     capT = [2, 5, 8, 11, 14, 17, 20];
     for (let k = 0; k < 2; k++) ev.push({ t: 6 + k * 7, k: st.s >= 3 ? 'thief' : st.s >= 1 ? 'rusher' : 'grunt' });
   }
+  const rich = st.sector.rule === 'rich' && !st.endless;   // 귀한 캡슐: 절반만, 한 단계 높게, 황금 캡슐은 꼭
+  if (rich) { capT = capT.filter((_, k) => k % 2 === 0); if (w >= 2 && !bossWave && !ev.some(e => e.k === 'gold')) ev.push({ t: 6 + R() * 8, k: 'gold' }); }
+  const richUp = r => { if (rich && !r.heal && UNIT[r.type].shape === 1) r.lv = Math.min(3, r.lv + 1); return r; };
   capT.forEach((t, k) => {
-    const a = rollReward(st.n, Math.min(lw, 3));
-    ev.push({ t, k: 'cap', r: k % 2 ? [a, rollReward(st.n, Math.min(lw, 3), a)] : a });
+    const a = richUp(rollReward(st.n, Math.min(lw, 3)));
+    ev.push({ t, k: 'cap', r: k % 2 ? [a, richUp(rollReward(st.n, Math.min(lw, 3), a))] : a });
   });
   return ev.sort((a, b) => a.t - b.t);
 }
