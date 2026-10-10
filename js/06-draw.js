@@ -532,7 +532,7 @@ function itemIcon(it, x, y) {
   ctx.restore();
 }
 function drawCap(c) {
-  const rw = c.rw, look = capLook(rw), col = look.col;
+  const rw = c.rw.spin ? { ...c.rw, type: spinType(c) } : c.rw, look = capLook(rw), col = look.col;
   const jx = c.jit > 0 ? (Math.random() - .5) * 7 : 0, jy = c.jit > 0 ? (Math.random() - .5) * 5 : 0;
   const x = c.x + jx, y = c.y + jy + (c.carrier ? 0 : Math.sin(S.time * 3 + c.bob) * 3);
   const s = 1, sq = c.sq || 0;
@@ -548,7 +548,7 @@ function drawCap(c) {
     ctx.restore();
     if (c.y <= FIRE_Y) { ctx.font = FK(14); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('사거리 밖, 들어오면 쏴요', x, y + 66, '#ffb0b0', 3); }
   }
-  const ratio = Math.max(0, c.hits / c.maxHits);
+  const ratio = c.grow ? (growMax(c) ? 1 : c.gp / growNeed(c)) : Math.max(0, c.hits / c.maxHits);   // 성장 캡슐은 다음 단계까지 찬 만큼
   ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 6;
   ctx.beginPath(); ctx.arc(x, y, 41, 0, Math.PI * 2); ctx.stroke();
   const segs = 24, on = Math.ceil(segs * ratio);
@@ -569,11 +569,15 @@ function drawCap(c) {
   ctx.restore();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = /[가-힣]/.test(look.label) ? FK(22) : FT(19, 900);
-  outlineText(look.label, x, y - 58, look.gold ? '#ffd24a' : '#fff');
+  if (c.grow) {   // 성장: 큰 숫자가 오를 때마다 톡 튀고, 옆에 위 화살표
+    const ps = 1 + (c.pop || 0) * 1.6;
+    ctx.save(); ctx.translate(x, y - 60); ctx.scale(ps, ps); ctx.font = FT(24, 900); outlineText(look.label, 0, 0, '#5affc8', 5); ctx.restore();
+    if (!growMax(c)) { const ax = x + ctx.measureText(look.label).width / 2 * ps + 12, ay = y - 60 - ((S.time * 1.5 + c.bob) % 1) * 5; ctx.fillStyle = '#5affc8'; ctx.beginPath(); ctx.moveTo(ax, ay - 7); ctx.lineTo(ax + 6, ay + 2); ctx.lineTo(ax - 6, ay + 2); ctx.closePath(); ctx.fill(); }
+  } else outlineText(look.label, x, y - 58, look.gold ? '#ffd24a' : '#fff');
   ctx.fillStyle = 'rgba(4,8,22,.92)'; chamfer(x - 22, y + 31, 44, 20, 5); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.font = FT(12, 900); ctx.fillStyle = '#fff';
-  ctx.fillText(String(Math.max(0, c.hits)), x, y + 42);
+  ctx.fillText(c.grow ? (growMax(c) ? 'MAX' : String(growNeed(c) - c.gp)) : String(Math.max(0, c.hits)), x, y + 42);
 }
 
 // 맞고 튕긴 만큼 위로 밀어 그린다 (실제 위치는 그대로)

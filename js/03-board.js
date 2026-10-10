@@ -275,15 +275,24 @@ function makeCap(rw, x, mul) {
   if (S.debuff && S.debuff.hardcap > 0) mul *= 1.5;   // 단단한 캡슐 기믹
   let hits = Math.max(1, !rw.type ? Math.round((rw.item === 'bomb' || rw.item === 'up' ? 16 : 12) * mul * S.pk.cap) : Math.round(UNIT[rw.type].cost * rw.n * [1, 3.2, 5.5][Math.min(rw.lv, 3) - 1] * mul * S.pk.cap));
   const mh = hits;
-  const c = { rw, x, y: -40, hits, maxHits: mh, pending: 0, r: 34, speed: 34, pair: null, bob: Math.random() * 6, carrier: null };
+  const c = { rw: { ...rw }, x, y: -40, hits, maxHits: mh, pending: 0, r: 34, speed: 34, pair: null, bob: Math.random() * 6, carrier: null };
+  if (rw.grow) { c.grow = rw.grow; c.step = Math.max(3, Math.round(UNIT[rw.type].cost * (rw.grow === 'lv' ? 1.5 : 0.75) * mul * S.pk.cap)); c.gp = 0; c.gk = 0; c.hits = c.maxHits = 9999; c.speed = 30; hintOnce('grow', '쏠수록 늘어나는 캡슐'); }
+  if (rw.spin) hintOnce('spin', '깨는 순간의 기체가 나와요');
   S.caps.push(c);
   return c;
 }
 // 캡슐 색 = 안에 든 기체의 색 (격납고에서 고른 색 포함). 종류는 위 글자로 구분
+// 성장 캡슐: 다음 단계까지 필요한 타수, 끝까지 올랐는지
+const growMax = c => c.grow === 'n' ? c.rw.n >= 5 : c.rw.lv >= 4;
+const growNeed = c => Math.round(c.step * (1 + 0.5 * c.gk));
+// 룰렛 캡슐: 편성한 1칸 기체가 돌아가며 보이고, 깨는 순간 보이던 기체가 나온다
+function spinType(c) { const d = battleDeck().filter(t => UNIT[t].shape === 1); return d.length ? d[Math.floor(S.time / 0.6 + c.bob) % d.length] : c.rw.type; }
 function capLook(rw) {
   if (!rw.type) { const it = rw.item || 'heal', d = CAP_ITEMS[it]; return { cap: it === 'heal' ? 'cap_heal' : capTint(d.col), col: d.col, label: d.name, item: it }; }   // 아이템 캡슐
   const col = UNIT[rw.type].col, cap = capTint(col);
   if (rw.gold) return { cap, col, label: '황금', gold: true };
+  if (rw.grow) return { cap, col, label: rw.grow === 'n' ? '+' + rw.n : 'Lv' + rw.lv, grow: true };
+  if (rw.spin) return { cap, col, label: '?', spin: true };
   if (UNIT[rw.type].shape !== 1) return { cap, col, label: '대형' };
   if (rw.lv >= 2) return { cap, col, label: 'Lv' + rw.lv };
   return { cap, col, label: '+' + rw.n };

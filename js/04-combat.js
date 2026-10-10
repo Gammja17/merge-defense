@@ -164,7 +164,7 @@ function pickTarget() {
   // 방어선 가까이 온 적이 없으면 캡슐부터 알아서 쏜다. 묶인 캡슐과 황금 캡슐은 직접 골라야 한다
   if (!S.enemies.some(e => shootable(e) && e.y > LINE_Y - 230)) {
     let bc = null, cy = -1e9;
-    for (const c of S.caps) if (c.y > RANGE_Y && c.pending < c.hits && !c.lock && !c.carrier && !(c.pair && S.caps.includes(c.pair)) && c.y > cy) { cy = c.y; bc = c; }
+    for (const c of S.caps) if (c.y > RANGE_Y && c.pending < c.hits && !c.lock && !c.grow && !c.carrier && !(c.pair && S.caps.includes(c.pair)) && c.y > cy) { cy = c.y; bc = c; }
     if (bc) return bc;
   }
   let best = null, by = -1e9;
@@ -176,7 +176,7 @@ function pickTarget() {
   if (fOk) return S.focus;
   for (const e of S.enemies) if (shootable(e) && (e.y > RANGE_Y || (e.carry && e.y > 70)) && e.y > by) { by = e.y; best = e; }
   if (best) return best;
-  for (const c of S.caps) if (c.y > RANGE_Y && c.pending < c.hits && c.y > by && !c.lock) { by = c.y; best = c; }
+  for (const c of S.caps) if (c.y > RANGE_Y && c.pending < c.hits && c.y > by && !c.lock && !c.grow) { by = c.y; best = c; }
   return best;
 }
 function pickHeavy() {
@@ -679,6 +679,18 @@ function blast(x, y, r, dmg, main, extra) {
 const capGhost = c => !!(c.pair && !c.pair.dead && S.focus === c.pair);
 function hitCap(c, n = 1) {
   if (c.dead || capGhost(c)) return;
+  if (c.grow) {   // 성장 캡슐: 깨지지 않고, 맞힌 만큼 보상이 커진다
+    c.flash = 0.1; c.jit = 0.12; c.sq = Math.min(0.35, (c.sq || 0) + 0.1 * n);
+    if (growMax(c)) return;
+    c.gp += n; play('caphit', 0.16, 1.1 + 0.08 * c.gk);
+    if (c.gp >= growNeed(c)) {
+      c.gp = 0; c.gk++; if (c.grow === 'n') c.rw.n++; else c.rw.lv++;
+      const col = UNIT[c.rw.type].col; c.pop = 0.35;
+      S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.4, color: col, r0: 34 }); sparks(c.x, c.y - 40, col, 12, 240);
+      play('up_fx', 0.4, 1 + 0.1 * c.gk); shake(0.08);
+    }
+    return;
+  }
   const before = c.hits / c.maxHits;
   c.hits -= n; c.flash = 0.1; c.jit = 0.12;
   c.sq = Math.min(0.35, (c.sq || 0) + 0.12 * n); c.tilt = (Math.random() - .5) * 0.4;
@@ -713,6 +725,7 @@ function giveUnit(type, lv, fromX, fromY, col) {
 }
 function claimCap(c) {
   c.dead = true; c.claimed = true;
+  if (c.rw.spin) c.rw = { ...c.rw, type: spinType(c), spin: false };   // 룰렛: 깨는 순간 멈춘다
   let rw = c.rw; const look = capLook(rw), col = look.col;
   play('capbreak', 0.5);
   boom(c.x, c.y, 0.8, col);

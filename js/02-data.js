@@ -291,7 +291,7 @@ const kindName = st => st.boss && st.kind === 'base' ? '보스' : STAGE_KINDS[st
 const wavePw = (st, w) => st.kind === 'long' ? 1 + (w - 1) * 4 / 6 : st.kind === 'rush' ? [1, 2, 3.4][w - 1] || 3.4 : w;
 const twistWave = st => st.kind === 'long' ? 5 : st.kind === 'rush' || st.kind === 'brush' ? 0 : 4;
 let WAVE_BASE = 0.7, WAVE_GROWTH = 0.475, IN_SECTOR = 0.05, BOSS_MUL = 1.0;   // 보스 약점(피해 2배) 몫만큼 올림
-let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8, 5.0, 6.4, 6.6, 9.4].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75, 1.8, 1.85, 1.9, 1.95][i] * 0.85);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게. ×1.2: 강화가 구역 끝까지 이어지는 만큼
+let SECTOR_MUL = [0.95, 1.35, 1.6, 3.0, 3.9, 4.8, 5.0, 6.4, 6.6, 10.4].map((v, i) => v * 1.12 * [1.05, 1.1, 1.3, 1.5, 1.6, 1.75, 1.8, 1.85, 1.9, 1.95][i] * 1.08);   // 부품이 넉넉해진 만큼, 그리고 센 기체가 캡슐을 빨리 까는 만큼 뒤 구역일수록 적도 튼튼하게. ×1.2: 강화가 구역 끝까지 이어지는 만큼
 // 구역이 올라갈수록 기지가 보강된 상태로 시작한다 (편성 앞쪽 공격 기체부터)
 const START_LV = [[1, 1, 1, 1], [2, 1, 1, 1], [2, 2, 2, 1], [3, 2, 2, 2], [3, 3, 2, 2], [3, 3, 3, 2], [3, 3, 3, 3], [4, 3, 3, 3], [4, 4, 3, 3], [4, 4, 4, 3]];
 
@@ -315,7 +315,7 @@ function rollItem(n) {
 }
 function rollReward(n, w, avoid) {
   if (n <= 1) { if (R() < 0.05) return { item: 'heal', heal: 2 }; }
-  else if (R() < 0.24 && !(avoid && avoid.item)) return rollItem(n);   // 묶인 캡슐 둘이 모두 아이템이진 않게
+  else if (R() < 0.12 && !(avoid && avoid.item)) return rollItem(n);   // 묶인 캡슐 둘이 모두 아이템이진 않게
   const deck = battleDeck();
   let type, guard = 0;
   do { type = deck[Math.floor(R() * deck.length)]; } while (avoid && type === avoid.type && guard++ < 8);
@@ -395,9 +395,12 @@ function buildWave(st, w) {
   const rich = st.sector.rule === 'rich' && !st.endless;   // 귀한 캡슐: 절반만, 한 단계 높게, 황금 캡슐은 꼭
   if (rich) { capT = capT.filter((_, k) => k % 2 === 0); if (w >= 2 && !bossWave && !ev.some(e => e.k === 'gold')) ev.push({ t: 6 + R() * 8, k: 'gold' }); }
   const richUp = r => { if (rich && r.type && UNIT[r.type].shape === 1) r.lv = Math.min(3, r.lv + 1); return r; };
+  // 기체 캡슐 종류: 그냥, 둘 중 하나(OR), 성장(쏠수록 +1 또는 레벨이 오르다가 방어선 앞에서 열린다), 룰렛(깨는 순간 보이던 기체)
   capT.forEach((t, k) => {
-    const a = richUp(rollReward(st.n, Math.min(lw, 3)));
-    ev.push({ t, k: 'cap', r: k % 2 ? [a, richUp(rollReward(st.n, Math.min(lw, 3), a))] : a });
+    const a = richUp(rollReward(st.n, Math.min(lw, 3))), q = R();
+    if (a.type && st.n >= 2 && UNIT[a.type].shape === 1 && q < 0.24) { a.grow = R() < 0.6 ? 'n' : 'lv'; a.n = 1; a.lv = a.grow === 'lv' ? 1 : Math.min(a.lv, 2); }
+    else if (a.type && st.n >= 2 && q < 0.36) a.spin = true;
+    ev.push({ t, k: 'cap', r: k % 2 && !a.grow && !a.spin ? [a, richUp(rollReward(st.n, Math.min(lw, 3), a))] : a });
   });
   return ev.sort((a, b) => a.t - b.t);
 }
