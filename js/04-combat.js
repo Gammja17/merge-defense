@@ -682,12 +682,13 @@ function hitCap(c, n = 1) {
   if (c.grow) {   // 성장 캡슐: 깨지지 않고, 맞힌 만큼 보상이 커진다
     c.flash = 0.1; c.jit = 0.12; c.sq = Math.min(0.35, (c.sq || 0) + 0.1 * n);
     if (growMax(c)) return;
-    c.gp += n; play('caphit', 0.16, 1.1 + 0.08 * c.gk);
-    if (c.gp >= growNeed(c)) {
-      c.gp = 0; c.gk++; if (c.grow === 'n') c.rw.n++; else c.rw.lv++;
+    c.gh += n; c.hitPop = 0.12; play('caphit', 0.16, 1.05 + Math.min(0.5, c.gh * 0.008));   // 타수가 오를수록 소리도 조금씩 높게
+    const v = growVal(c), cur = c.grow === 'n' ? c.rw.n : c.rw.lv;
+    if (v > cur) {
+      if (c.grow === 'n') c.rw.n = v; else c.rw.lv = v;
       const col = UNIT[c.rw.type].col; c.pop = 0.35;
       S.fx.push({ kind: 'ring', x: c.x, y: c.y, t: 0, life: 0.4, color: col, r0: 34 }); sparks(c.x, c.y - 40, col, 12, 240);
-      play('up_fx', 0.4, 1 + 0.1 * c.gk); shake(0.08);
+      play('up_fx', 0.4, 1 + 0.06 * (v - c.base)); shake(0.08);
     }
     return;
   }

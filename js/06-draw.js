@@ -548,7 +548,7 @@ function drawCap(c) {
     ctx.restore();
     if (c.y <= FIRE_Y) { ctx.font = FK(14); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('사거리 밖, 들어오면 쏴요', x, y + 66, '#ffb0b0', 3); }
   }
-  const ratio = c.grow ? (growMax(c) ? 1 : c.gp / growNeed(c)) : Math.max(0, c.hits / c.maxHits);   // 성장 캡슐은 다음 단계까지 찬 만큼
+  const ratio = c.grow ? (growMax(c) ? 1 : (c.gh % c.step) / c.step) : Math.max(0, c.hits / c.maxHits);   // 성장 캡슐은 다음 단계까지 찬 만큼
   ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 6;
   ctx.beginPath(); ctx.arc(x, y, 41, 0, Math.PI * 2); ctx.stroke();
   const segs = 24, on = Math.ceil(segs * ratio);
@@ -574,10 +574,19 @@ function drawCap(c) {
     ctx.save(); ctx.translate(x, y - 60); ctx.scale(ps, ps); ctx.font = FT(24, 900); outlineText(look.label, 0, 0, '#5affc8', 5); ctx.restore();
     if (!growMax(c)) { const ax = x + ctx.measureText(look.label).width / 2 * ps + 12, ay = y - 60 - ((S.time * 1.5 + c.bob) % 1) * 5; ctx.fillStyle = '#5affc8'; ctx.beginPath(); ctx.moveTo(ax, ay - 7); ctx.lineTo(ax + 6, ay + 2); ctx.lineTo(ax - 6, ay + 2); ctx.closePath(); ctx.fill(); }
   } else outlineText(look.label, x, y - 58, look.gold ? '#ffd24a' : '#fff');
+  if (c.grow) {   // 성장: 맞힌 타수가 다다닥 올라간다 (맞을 때마다 톡)
+    const hp = 1 + (c.hitPop || 0) * 2.2, txt = String(c.gh);
+    ctx.save(); ctx.translate(x, y + 44); ctx.scale(hp, hp);
+    ctx.fillStyle = 'rgba(4,8,22,.94)'; chamfer(-34, -13, 68, 26, 6); ctx.fill(); ctx.strokeStyle = '#5affc8'; ctx.lineWidth = 1.8; ctx.stroke();
+    ctx.font = FT(16, 900); ctx.textAlign = 'right'; ctx.fillStyle = growMax(c) ? '#ffd24a' : '#fff'; ctx.fillText(txt, 12, 1);
+    ctx.font = FU(10); ctx.textAlign = 'left'; ctx.fillStyle = '#5affc8'; ctx.fillText('HIT', 15, 2);
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = 'rgba(4,8,22,.92)'; chamfer(x - 22, y + 31, 44, 20, 5); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.font = FT(12, 900); ctx.fillStyle = '#fff';
-  ctx.fillText(c.grow ? (growMax(c) ? 'MAX' : String(growNeed(c) - c.gp)) : String(Math.max(0, c.hits)), x, y + 42);
+  ctx.fillText(String(Math.max(0, c.hits)), x, y + 42);
 }
 
 // 맞고 튕긴 만큼 위로 밀어 그린다 (실제 위치는 그대로)

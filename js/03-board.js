@@ -276,15 +276,16 @@ function makeCap(rw, x, mul) {
   let hits = Math.max(1, !rw.type ? Math.round((rw.item === 'bomb' || rw.item === 'up' ? 16 : 12) * mul * S.pk.cap) : Math.round(UNIT[rw.type].cost * rw.n * [1, 3.2, 5.5][Math.min(rw.lv, 3) - 1] * mul * S.pk.cap));
   const mh = hits;
   const c = { rw: { ...rw }, x, y: -40, hits, maxHits: mh, pending: 0, r: 34, speed: 34, pair: null, bob: Math.random() * 6, carrier: null };
-  if (rw.grow) { c.grow = rw.grow; c.step = Math.max(3, Math.round(UNIT[rw.type].cost * (rw.grow === 'lv' ? 1.5 : 0.75) * mul * S.pk.cap)); c.gp = 0; c.gk = 0; c.hits = c.maxHits = 9999; c.speed = 30; hintOnce('grow', '쏠수록 늘어나는 캡슐'); }
+  if (rw.grow) { c.grow = rw.grow; c.step = Math.max(3, Math.round(UNIT[rw.type].cost * (rw.grow === 'lv' ? 2 : 1) * mul * S.pk.cap)); c.gh = 0; c.base = rw.grow === 'n' ? rw.n : rw.lv; c.hits = c.maxHits = 9999; c.speed = 30; hintOnce('grow', '쏠수록 늘어나는 캡슐'); }
   if (rw.spin) hintOnce('spin', '깨는 순간의 기체가 나와요');
   S.caps.push(c);
   return c;
 }
 // 캡슐 색 = 안에 든 기체의 색 (격납고에서 고른 색 포함). 종류는 위 글자로 구분
 // 성장 캡슐: 다음 단계까지 필요한 타수, 끝까지 올랐는지
-const growMax = c => c.grow === 'n' ? c.rw.n >= 5 : c.rw.lv >= 4;
-const growNeed = c => Math.round(c.step * (1 + 0.5 * c.gk));
+// 맞힌 타수에 그대로 비례: step 타마다 +1 (기체 수는 8까지, 레벨은 4까지)
+const growMax = c => c.grow === 'n' ? c.rw.n >= 8 : c.rw.lv >= 4;
+const growVal = c => Math.min(c.grow === 'n' ? 8 : 4, c.base + Math.floor(c.gh / c.step));
 // 룰렛 캡슐: 편성한 1칸 기체가 돌아가며 보이고, 깨는 순간 보이던 기체가 나온다
 function spinType(c) { const d = battleDeck().filter(t => UNIT[t].shape === 1); return d.length ? d[Math.floor(S.time / 0.6 + c.bob) % d.length] : c.rw.type; }
 function capLook(rw) {

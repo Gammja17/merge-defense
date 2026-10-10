@@ -460,7 +460,7 @@ function update(dt) {
     if (c.side) { const d = c.tx - c.x, mv = 320 * dt; if (Math.abs(d) <= mv) { c.x = c.tx; c.side = 0; c.speed = c.sp0; } else c.x += Math.sign(d) * mv; }   // 옆에서 날아오는 캡슐
     c.y += c.speed * dt;
     if (c.vx) { c.x += c.vx * dt; if (!c.dead && (c.x < -70 || c.x > W + 70)) { c.dead = true; if (S.focus === c) S.focus = null; } }
-    c.pop = Math.max(0, (c.pop || 0) - dt);
+    c.pop = Math.max(0, (c.pop || 0) - dt); c.hitPop = Math.max(0, (c.hitPop || 0) - dt);
     if (c.grow && !c.dead && !c.carrier && c.y > LINE_Y - 110) { claimCap(c); continue; }   // 성장 캡슐은 방어선 앞에서 열린다
     if (c.y > LINE_Y + 10 && !c.dead) {
       c.dead = true;
