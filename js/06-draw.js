@@ -408,6 +408,8 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
   const col = def.col;
   let tier = Math.min(lv, 8), NI = IMG['units/' + type + tier];
   while (tier > 1 && !(NI && NI.width)) NI = IMG['units/' + type + --tier];   // 그 레벨 그림이 없으면 아래 단계 그림
+  const FZ = u && u.fuse && IMG['units/fz_' + u.fuse];   // 특수 합체: 전용 그림
+  if (FZ && FZ.width) NI = FZ;
   if (NI && NI.width) {
     // 배율은 종류마다 Lv5 본체가 칸에 맞는 크기로 고정. 모든 단계 그림이 같은 배율로 저장돼 있어서
     // 낮은 단계는 작게, Lv6~8은 본체 크기 그대로 홀로그램 날개만 칸 밖으로 퍼진다
