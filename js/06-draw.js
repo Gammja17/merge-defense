@@ -416,7 +416,8 @@ function drawUnitArt(type, lv, x, y, s, alpha, u) {
     const dm = shapeDims(type), RI = IMG['units/' + type + '5'] && IMG['units/' + type + '5'].width ? IMG['units/' + type + '5'] : NI;
     const [bw, bh] = def.shape === 'h2' ? [150, 76] : def.shape === 'v2' ? [74, 152] : def.shape === 1 ? [70, 78] : def.shape === 'h3' ? [dm.w * CW - 10, CH * 1.25] : [dm.w * CW - 10, dm.h * CH - 8];   // 가로 3칸은 위아래로 살짝 넘쳐도 폭을 채운다
     const k = u ? s / U_SCALE / (1 + (lv - 1) * 0.05) : s * Math.max(def.iw, def.ih) / Math.max(bw, bh);
-    const sc = Math.min(bw * k / RI.width, bh * k / RI.height, 1.3 * bw * k / NI.width, 1.3 * bh * k / NI.height), dw = NI.width * sc, dh = NI.height * sc, ky = kick * 30;   // 날개가 칸의 1.3배를 넘을 때만 줄인다
+    const fz = FZ && FZ.width, fit = fz ? 1 : 1.3;   // 합체 그림은 날개까지 칸 안쪽으로
+    const sc = Math.min(fz ? Infinity : bw * k / RI.width, fz ? Infinity : bh * k / RI.height, fit * bw * k / NI.width, fit * bh * k / NI.height), dw = NI.width * sc, dh = NI.height * sc, ky = kick * 30;   // 날개가 칸의 1.3배를 넘을 때만 줄인다
     const turns = def.rot || type === 't', rot = turns ? ang + Math.PI / 2 : 0;
     if (type === 'x') {
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha *= alpha * 0.35;
