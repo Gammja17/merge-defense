@@ -254,7 +254,7 @@ const ENEMY = {
   bomber:  { img: 'enemies/bomber',  hp: 130, speed: 48,  r: 30, dmg: 1, w: 76,  h: 62, atk: 'diag',   atkCd: 5.5, atkDmg: 2, name: '폭격기' },
   phase:   { img: 'enemies/phase',   hp: 90,  speed: 58,  r: 28, dmg: 1, w: 64,  h: 66,  name: '위상함' },
   grav:    { img: 'enemies/grav',    hp: 190, speed: 30,  r: 34, dmg: 2, w: 78,  h: 78,  name: '중력함' },
-  // 새 적 (그림은 기존 그림에 색을 입힌 임시 그림)
+  // 새 적
   artillery: { img: 'enemies/artillery', hp: 900, speed: 26, r: 50, dmg: 3, w: 118, h: 140, shield: 0.2, atk: 'barrage', atkCd: 5.5, atkDmg: 2, atkN: 6, hover: [200, 290], name: '포격 순양함' },
   jammer:  { img: 'enemies/jammer',  hp: 150, speed: 42,  r: 32, dmg: 1, w: 72,  h: 72,  atk: 'jam',    atkCd: 6,   atkDmg: 0, atkN: 4, name: '교란함' },
   mother:  { img: 'enemies/mother',  hp: 1000, speed: 13, r: 62, dmg: 3, w: 160, h: 158, name: '침공 모함' },
