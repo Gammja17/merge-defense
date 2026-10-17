@@ -2,7 +2,7 @@
 //   python tools/bundle.py js /tmp/game.js
 //   node tools/dev/sim.js /tmp/game.js '{"bots":["smart"],"reps":2,"from":1,"to":30}'   캠페인: 스테이지별 결과 (숫자 = 이긴 판의 남은 방어막, L3 = 웨이브 3에서 짐)
 //   node tools/dev/sim.js /tmp/game.js '{"endless":4}'                                   무한 방어선: 몇 웨이브까지 버티는지
-// 설정: bots(smart, idle; 피하기는 없어서 nododge는 smart와 같다), reps, from, to, deck, endless, growth, mk(연구 단계), nofocus
+// 설정: bots(smart, idle; 피하기는 없어서 nododge는 smart와 같다), reps, from, to, deck, endless, growth, mk(연구 단계), nofocus, fleetDeck(함대 성격에 맞춰 편성), only(스테이지 번호 목록)
 // 스테이지 1은 튜토리얼 때문에 늘 L1로 나오니 무시한다
 const fs = require('fs');
 const any = () => new Proxy(function () {}, { get: (t, k) => k === Symbol.toPrimitive ? () => 0 : (k === 'width' || k === 'height' ? 64 : k === 'measureText' ? () => ({ width: 40 }) : any()), apply: () => any(), set: () => true });
@@ -43,7 +43,13 @@ function botShop() { for (let g = 0; g < 30; g++) {
   if (rows < ROWS && S.gear >= ROW_ADD[rows - START_ROWS] && S.mode === 'break') { doAction({ act: 'addrow' }); continue; }   // 정비소는 웨이브 사이에만
   return; } }
 let clearSeen = 0; const FILL = { n: 0, f: 0, rows: 0 };
+// fleetDeck: 사람이 함대 성격을 보고 편성을 고르듯, 그 스테이지까지 풀린 기체(기본, 스테이지 해금) 중 우선순위대로 다섯
+// 기본 편성(f t s g m)에서 한두 자리를 바꾸는 식 (시뮬로 고른 것: 대형 레일, 물량 방공, 고속 빙결, 보호막 전자전기)
+const FLEET_DECK = { heavy: ['f', 't', 's', 'g', 'l', 'b', 'm'], swarm: ['f', 't', 's', 'g', 'a', 'e', 'm'], fast: ['f', 't', 'c', 'g', 'a', 's', 'm'],
+  shield: ['e', 't', 's', 'g', 'a', 'f', 'm'], barrage: ['f', 't', 's', 'g', 'a', 'm'], none: ['f', 't', 's', 'g', 'm'] };
+function fleetDeck(n) { const st = stageInfo(n), ok = t => UNIT[t].unlock === 'base' || (UNIT[t].unlock.stage && UNIT[t].unlock.stage < n); return FLEET_DECK[st.fleet || 'none'].filter(ok).slice(0, 5); }
 function run(n, bot) {
+  if (cfg.fleetDeck) PROG.deck = fleetDeck(n);
   startStage(n); GS.runs++;
   for (let i = 0; i < 60 * 480 && S.mode !== 'win' && S.mode !== 'lose'; i++) {
     fakeNow += 16.7;
@@ -78,7 +84,7 @@ if (cfg.endless) { for (let k = 0; k < cfg.endless; k++) console.log('endless', 
 PROG.deck = cfg.deck || ['f', 't', 's', 'g', 'm'];
 for (const bot of (cfg.bots || ['smart', 'nododge', 'idle'])) {
   // 구역 런: 반복마다 스테이지를 차례로 깨서 강화가 구역 보스까지 이어지게 한다
-  const res = {}; for (let k = 0; k < (cfg.reps || 2); k++) { PROG.run = null; for (let n = (cfg.from || 1); n <= (cfg.to || 20); n++) (res[n] = res[n] || []).push(run(n, bot)); }
+  const res = {}; for (let k = 0; k < (cfg.reps || 2); k++) { PROG.run = null; for (const n of cfg.only || Array.from({ length: (cfg.to || 20) - (cfg.from || 1) + 1 }, (_, i) => (cfg.from || 1) + i)) (res[n] = res[n] || []).push(run(n, bot)); }
   const row = Object.keys(res).map(n => n + ':' + res[n].join(','));
   console.log(bot.padEnd(8), row.join(' '));
 }

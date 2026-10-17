@@ -877,6 +877,7 @@ function drawMap() {
       ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(lx + 6, ly, 4, Math.PI, 0); ctx.stroke();
     }
+    if (st.fleet) drawFleetIcon(st.fleet, p.x - p.r * 0.95, p.y + p.r * 0.6, 7, open ? 1 : 0.4);   // 함대 성격
     for (let k = 0; k < 3; k++) drawStar(p.x + (k - 1) * 12, p.y + p.r + 11, 5, k < stars ? '#ffd24a' : 'rgba(255,255,255,.14)');
     if (p.y > MAP_TOP && p.y < MAP_BOT) BUTTONS.push({ x: p.x - p.r - 8, y: p.y - p.r - 8, w: p.r * 2 + 16, h: p.r * 2 + 24, act: 'stage', n });
   }
@@ -1167,6 +1168,9 @@ function drawCard() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FK(32); outlineText(def.name + (mkOf(t2) ? `  Mk.${mkOf(t2)}` : ''), W / 2, y + 232, mkOf(t2) ? '#ffe9a8' : '#fff', 5);
   ctx.font = FK(16); ctx.fillStyle = def.col; ctx.fillText(def.role + (def.shape === 1 ? ', 1칸' : ''), W / 2, y + 262);
+  { ctx.font = FK(12); const tags = UNIT_TRAIT[t2] || [], ws = tags.map(k => ctx.measureText(TRAIT[k][0]).width + 16);   // 특성 꼬리표: 역할 줄 오른쪽 위
+    let tx = x + 24; const ty = y + 52 + 34;
+    tags.forEach((k, i) => { const [nm, tc] = TRAIT[k]; ctx.fillStyle = 'rgba(4,10,24,.92)'; chamfer(tx, ty, ws[i], 20, 5); ctx.fill(); ctx.strokeStyle = tc; ctx.lineWidth = 1; ctx.stroke(); ctx.textAlign = 'center'; ctx.fillStyle = tc; ctx.fillText(nm, tx + ws[i] / 2, ty + 11); tx += ws[i] + 5; }); }
   { const R0 = rarityOf(t2); ctx.font = FK(14); const rw = ctx.measureText(R0.name).width + 18, rx = x + w - 24 - rw, ry = y + 50;   // 등급
     ctx.fillStyle = 'rgba(4,10,24,.95)'; chamfer(rx, ry, rw, 24, 6); ctx.fill(); ctx.strokeStyle = R0.col; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.textAlign = 'center'; ctx.fillStyle = R0.col; ctx.fillText(R0.name, rx + rw / 2, ry + 13); }
@@ -1762,8 +1766,10 @@ function drawPrep() {
   ctx.font = FK(16); ctx.fillStyle = col; ctx.fillText(st ? `${st.sector.name}${st.boss ? ', 보스' : ''}, ${st.waves}웨이브` : '무한 방어선', W / 2, y + 66);
   if (K) { ctx.font = FK(15); outlineText(`${K.name}: ${K.sub}`, W / 2, y + 90, K.col, 3); }
   else if (st && st.sector.ruleName) { ctx.font = FK(15); outlineText(`규칙: ${st.sector.ruleName}`, W / 2, y + 90, st.sector.color, 3); }
+  const FL = st && st.fleet ? FLEETS[st.fleet] : null;   // 함대 성격: 기호와 한 줄 (어떤 기체가 맞는지는 말하지 않는다)
+  if (FL) { ctx.font = FK(15); const txt = `${FL.name}: ${FL.desc}`, tw = ctx.measureText(txt).width; drawFleetIcon(st.fleet, W / 2 - tw / 2 - 14, y + 112, 8); ctx.textAlign = 'left'; outlineText(txt, W / 2 - tw / 2, y + 113, FL.col, 3); ctx.textAlign = 'center'; }
   { const run = PROG.run, n = st && run && run.s === st.s && run.n === P.n - 1 ? run.perks.filter(id => id !== 'gift' && id !== 'fixall').length : 0;   // 구역 런: 이어지는 강화
-    if (n) { ctx.font = FK(14); ctx.fillStyle = '#5affc8'; ctx.fillText(`강화 ${n}개 이어짐`, W / 2, y + 110); } }
+    if (n) { ctx.font = FK(13); ctx.textAlign = 'right'; ctx.fillStyle = '#5affc8'; ctx.fillText(`강화 ${n}개 이어짐`, x + w - 22, y + 124); ctx.textAlign = 'center'; } }
   ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.8)';
   ctx.fillText(`// 출격 편성 ${PROG.deck.length}/${DECK_N}`, x + 22, y + 124);
   const sw = 84, g = 8, sx0 = W / 2 - (DECK_N * (sw + g) - g) / 2;

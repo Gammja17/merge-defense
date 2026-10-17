@@ -521,7 +521,7 @@ const SKILL_CD = { f: 4, b: 5, t: 6, r: 9, s: 5, e: 6, c: 7, n: 9, l: 6, q: 8, y
 // ── 피해 ──────────────────────────────────────────────────
 function hitEnemy(e, dmg, src = 'laser', quiet = false) {
   if (e.dead || e.ph > 0) return;
-  if (e.frozen > 0 && S.shatter) dmg *= 2;
+  if (e.frozen > 0 && S.shatter) { dmg *= 2; if (!quiet && (e.shatterT || 0) < S.time) { e.shatterT = S.time + 1.2; addText(e.x, e.y - 24, '파쇄!', '#bff4ff', 16, 0.6); } }   // 냉각 깨기: 얼어붙은 적은 두 배
   if (e.guarded) dmg *= 0.7;
   if (e.boss && e.weak > 0) dmg *= 2;
   let crit = false;

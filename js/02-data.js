@@ -353,10 +353,61 @@ const STAGE_PLAN = [
   ['long', 'rush', 'siege', 'base', 'base'],
   ['rush', 'long', 'siege', 'brush', 'base'],
 ];
+// 함대 성격: 웨이브 전체 체력은 그대로 두고, 나눠 오는 모양만 바꾼다. 어떤 기체가 잘 맞는지는 기체 특성대로 자연스럽게 갈린다
+// 대형: 튼튼한 적이 적게 (한 방이 센 기체), 물량: 약한 적이 떼로 (범위 공격), 고속: 빠른 적 (발 묶기), 보호막: 모든 적이 보호막 (번개, 폭발), 포격: 멀리서 쏘는 적 (방어, 요격)
+const FLEETS = {
+  heavy:   { name: '대형 함대', desc: '튼튼한 적이 적게 와요', col: '#ff9a5a' },
+  swarm:   { name: '물량 함대', desc: '약한 적이 떼로 몰려와요', col: '#7dff7a' },
+  fast:    { name: '고속 함대', desc: '빠른 적이 파고들어요', col: '#5ae8ff' },
+  shield:  { name: '보호막 함대', desc: '모든 적이 보호막을 둘러요', col: '#6ad0ff' },
+  barrage: { name: '포격 함대', desc: '멀리서 쏘는 적이 많아요', col: '#e0ff5a' },
+};
+// STAGE_PLAN과 같은 모양. 보스 스테이지는 섞어서 (null). 포위 스테이지는 원래 포격 함대
+const FLEET_PLAN = [
+  [null, 'heavy', 'swarm', null, null],
+  ['swarm', 'heavy', 'fast', 'barrage', null],
+  ['heavy', 'swarm', 'barrage', 'shield', null],
+  ['fast', 'barrage', 'shield', 'heavy', null],
+  ['barrage', 'swarm', 'fast', 'shield', null],
+  ['swarm', 'heavy', 'barrage', 'shield', null],
+  ['heavy', 'shield', 'fast', 'barrage', null],
+  ['fast', 'barrage', 'heavy', 'swarm', null],
+  ['shield', 'swarm', 'barrage', 'heavy', null],
+  ['swarm', 'heavy', 'barrage', 'fast', null],
+];
 function stageInfo(n) {
   const s = Math.floor((n - 1) / 5), i = (n - 1) % 5, kind = STAGE_PLAN[s][i];
-  return { n, s, i, sector: SECTORS[s], boss: i === 4, kind, waves: STAGE_KINDS[kind].waves || 5 };
+  return { n, s, i, sector: SECTORS[s], boss: i === 4, kind, waves: STAGE_KINDS[kind].waves || 5, fleet: FLEET_PLAN[s][i] };
 }
+// 기체 특성 꼬리표 (기체 카드에 보인다). 고르는 건 플레이어 몫
+const TRAIT = { one: ['한 방', '#ff9a5a'], area: ['범위', '#7dff7a'], hold: ['발 묶기', '#5ae8ff'], pierce: ['보호막 파괴', '#6ad0ff'], guard: ['방어', '#e0ff5a'], aid: ['지원', '#c89bff'] };
+const UNIT_TRAIT = { f: ['one'], t: ['area', 'pierce'], s: ['one', 'pierce'], g: ['guard'], m: ['guard', 'aid'], e: ['area', 'pierce'], d: ['aid'], c: ['hold'], a: ['area', 'guard'],
+  b: ['one', 'area'], r: ['one', 'area'], h: ['area'], n: ['area', 'hold'], x: ['aid'], v: ['hold', 'area'], w: ['guard'], l: ['one', 'pierce'], q: ['area', 'pierce'], y: ['area', 'aid'], k: ['aid'] };
+// 함대 성격을 웨이브에 입힌다 (빠진 잔챙이 체력만큼 다른 적으로 채운다)
+function applyFleet(ev, st, w) {
+  const f = st.fleet; if (!f || f === 'barrage') return;
+  const has = k => st.sector.pool.includes(k);
+  const grunts = ev.filter(e => e.k === 'grunt');
+  if (f === 'heavy') {   // 잔챙이 열에 일곱을 빼고 그만큼 튼튼한 적
+    const out = grunts.filter(() => R() < 0.7), big = ['tank'].concat(has('shield') ? ['shield'] : [], has('wreck') ? ['wreck'] : [], has('mother') && w >= 3 ? ['mother'] : []);
+    let budget = out.length * ENEMY.grunt.hp;
+    for (const e of out) ev.splice(ev.indexOf(e), 1);
+    const t0 = ev.length ? 3 : 2;
+    for (let k = 0; budget > 0; k++) { const b = big[Math.floor(R() * big.length)]; budget -= ENEMY[b].hp; ev.push({ t: t0 + R() * 16, k: b }); }
+  } else if (f === 'swarm') {   // 잔챙이 하나를 작은 적 둘로, 큰 적 절반은 분열 운석으로
+    for (const e of grunts) { e.k = 'minion'; ev.push({ t: e.t + 0.4, k: 'minion', surge: e.surge }); }
+    for (const e of ev) if (['tank', 'shield', 'mother', 'wreck', 'healer'].includes(e.k) && R() < 0.5) e.k = 'split';
+    ev.push({ t: 6 + R() * 10, k: 'rocks' });
+  } else if (f === 'fast') {   // 잔챙이 열에 넷을 돌격기로, 큰 적은 위상함이나 균열함
+    for (const e of grunts) if (R() < 0.4) e.k = 'rusher';
+    const quick = (has('phase') ? ['phase'] : []).concat(has('rift') ? ['rift'] : []);
+    for (const e of ev) if (['tank', 'wreck', 'mother'].includes(e.k)) { if (quick.length) e.k = quick[Math.floor(R() * quick.length)]; else { e.k = 'rusher'; ev.push({ t: e.t + 0.6, k: 'rusher' }, { t: e.t + 1.2, k: 'rusher' }); } }
+  } else if (f === 'shield') {   // 모든 적이 보호막 (startStage에서 변이). 그만큼 잔챙이를 열에 넷 줄이고, 큰 적 절반은 보호막함
+    for (const e of grunts) if (R() < 0.4) ev.splice(ev.indexOf(e), 1);
+    for (const e of ev) if (['tank', 'split', 'wreck'].includes(e.k) && R() < 0.5) e.k = 'shield';
+  }
+}
+
 const kindName = st => st.boss && st.kind === 'base' ? '보스' : STAGE_KINDS[st.kind || 'base'].name;
 // 이 웨이브를 기본 5웨이브 흐름의 어디쯤으로 볼지 (적 체력과 구성). 장기전은 7웨이브에 걸쳐 천천히, 러시는 중반부터 시작
 const wavePw = (st, w) => st.kind === 'long' ? 1 + (w - 1) * 4 / 6 : st.kind === 'rush' ? [1, 2, 3.4][w - 1] || 3.4 : w;
@@ -474,6 +525,7 @@ function buildWave(st, w) {
     else if (a.type && st.n >= 2 && q < 0.36) a.spin = true;
     ev.push({ t, k: 'cap', r: k % 2 && !a.grow && !a.spin ? [a, richUp(rollReward(st.n, Math.min(lw, 3), a))] : a });
   });
+  if (!st.endless && !st.training) applyFleet(ev, st, w);
   return ev.sort((a, b) => a.t - b.t);
 }
 
@@ -698,6 +750,7 @@ function startStage(n, endless = false, daily = false) {
   if (st.training) S.tut = { step: 1, t: 0 };
   if (!SHOT && !PROG.seen.cmdTut && cmdOpen() && !st.training) S.cmdTut = {};
   if (S.daily && S.daily.rule && S.daily.rule.start) S.daily.rule.start();   // 이번 주 규칙
+  if (st.fleet === 'shield') S.mut.push('shield');   // 보호막 함대: 모든 적이 보호막
   // 구역 런: 바로 앞 스테이지를 깨고 이어서 왔으면 그때 강화를 다시 건다 (한 번 쓰고 끝나는 강화는 빼고)
   const run = PROG.run;
   if (!endless && !st.training && run && run.s === st.s && run.n === st.n - 1) for (const id of run.perks) { const p = PERKS.find(q => q.id === id); if (p && id !== 'gift' && id !== 'fixall') { p.apply(); S.perks.push(id); } }

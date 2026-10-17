@@ -128,7 +128,7 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 
 // ── 스폰 ──────────────────────────────────────────────────
 // 구역마다 기대 Mk: 그쯤이면 이만큼 강화했으리라 보고 적 체력을 그만큼 올린다 (Mk가 너무 부풀지 않게. 강화를 덜 했으면 그 구역이 벽이 된다)
-const MK_EXPECT = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+const MK_EXPECT = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5];   // 절반만: 나머지는 함대에 맞춘 편성(전략)으로 메꾼다
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s] * (1 + mkAtk(MK_EXPECT[S.stage.s] || 0));
 let ENDLESS_GROWTH = 1.29, ENDLESS_BASE = 1.1, ENDLESS_BOSS = 0.17;   // 초반 세기 (칸 강화가 빠져 1.35 → 1.1), 성장은 30웨이브쯤이 예전과 비슷하게. 보스는 그 웨이브 적 체력에 맞춘다
 const hpMul = () => S.stage.endless ? ENDLESS_BASE * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (WAVE_BASE + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();

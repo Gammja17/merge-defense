@@ -143,6 +143,19 @@ function coreLabel(x, y, value, size = 16, align = 'left', color = '#bff6ff') {
   else outlineText(txt, x0 + r * 2 + gap, y + 1, color, 3);
 }
 
+// 함대 성격 기호: 대형 = 꽉 찬 사각, 물량 = 작은 삼각 셋, 고속 = 겹친 꺾쇠, 보호막 = 육각 테, 포격 = 조준선
+function drawFleetIcon(f, x, y, r, alpha = 1) {
+  const col = FLEETS[f].col;
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y);
+  ctx.fillStyle = 'rgba(4,10,24,.92)'; hexPath(0, 0, r * 1.25); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, r * 0.22); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (f === 'heavy') { ctx.fillRect(-r * 0.5, -r * 0.5, r, r); }
+  else if (f === 'swarm') { for (const [dx, dy] of [[-0.45, 0.35], [0.45, 0.35], [0, -0.4]]) { ctx.beginPath(); ctx.moveTo(dx * r, dy * r - r * 0.28); ctx.lineTo(dx * r + r * 0.26, dy * r + r * 0.2); ctx.lineTo(dx * r - r * 0.26, dy * r + r * 0.2); ctx.closePath(); ctx.fill(); } }
+  else if (f === 'fast') { ctx.beginPath(); for (const dx of [-0.35, 0.2]) { ctx.moveTo(dx * r - r * 0.2, -r * 0.5); ctx.lineTo(dx * r + r * 0.25, 0); ctx.lineTo(dx * r - r * 0.2, r * 0.5); } ctx.stroke(); }
+  else if (f === 'shield') { hexPath(0, 0, r * 0.6); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.moveTo(-r * 0.65, 0); ctx.lineTo(-r * 0.25, 0); ctx.moveTo(r * 0.25, 0); ctx.lineTo(r * 0.65, 0); ctx.moveTo(0, -r * 0.65); ctx.lineTo(0, -r * 0.25); ctx.moveTo(0, r * 0.25); ctx.lineTo(0, r * 0.65); ctx.stroke(); hexPath(0, 0, r * 0.12); ctx.fill(); }
+  ctx.restore();
+}
 // 다이아: 위가 넓은 보석 모양
 function drawGem(x, y, r, alpha = 1) {
   ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y);
