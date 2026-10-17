@@ -137,7 +137,8 @@ const SKILLS = {
   y: [['주포', '무거운 포탄을 쏘고 드론 3기를 띄워요.'], ['드론 증원', '드론이 4기로 늘어요.'], ['편대', '드론이 6기로 늘어요.'], ['자폭 드론', '5초마다 드론 하나가 강한 적에게 돌진해 터져요.'], ['함재기 폭격', '8초마다 적이 가장 많은 곳에 폭격을 떨어뜨려요.']],
   k: [['해킹', '7초마다 적 하나를 4초 동안 아군으로 만들어요.'], ['빠른 해킹', '해킹 간격이 짧아져요.'], ['자폭 명령', '해킹이 끝나면 그 적이 자폭해요.'], ['다중 해킹', '한 번에 두 기를 해킹해요.'], ['시스템 장악', '해킹이 6초로 길어지고 간격도 짧아져요.']],
 };
-const unitMaxHp = (type, lv) => Math.round(UNIT[type].hp * (1 + 0.3 * (lv - 1))) + Math.floor(mkNow(type) / 3) + (S && S.pk ? S.pk.hp : 0);
+const mkHp = m => Math.floor(Math.min(m, 10) / 3) + Math.floor(Math.max(0, m - 10) / 5);   // Mk 체력: Mk.10까지 3단계마다 +1, 그 뒤로 5단계마다 +1 (Mk.20이면 +5)
+const unitMaxHp = (type, lv) => Math.round(UNIT[type].hp * (1 + 0.3 * (lv - 1))) + mkHp(mkNow(type)) + (S && S.pk ? S.pk.hp : 0);
 // 레벨별 대표 수치: 공격 기체는 DPS(초당 피해, 단일 대상 기준), 지원 기체는 핵심 효과
 function levelStat(type, lv) {
   const d = UNIT[type], m = LV_MUL[lv - 1];
@@ -157,7 +158,77 @@ function levelStat(type, lv) {
   else dps = d.dmg * m / d.cd;
   return { v: Math.round(dps * mkMul(type) * 10), label: '전투력' };
 }
-const isOwned = t => { const u = UNIT[t].unlock; return u === 'base' || (u.stage && PROG.stars[u.stage] > 0) || PROG.owned.includes(t); };
+// 가짐: 기본 기체, 아니면 제작했거나 스테이지로 받은 기체
+const isOwned = t => UNIT[t].unlock === 'base' || PROG.owned.includes(t);
+
+// ── 등급과 설계도 ───────────────────────────────────────
+// pack: 뽑기 한 번에 오는 설계도, craft: 제작에 드는 설계도 (묶음 하나), rate: 강화 설계도 배율, over: Mk.20 뒤 남는 설계도 한 장당 코어
+const RARITY = [
+  { name: '일반', col: '#b8c4d8', pack: 30, craft: 30, rate: 1, over: 5 },
+  { name: '고급', col: '#5aff9a', pack: 15, craft: 15, rate: 0.375, over: 15 },
+  { name: '희귀', col: '#48a8ff', pack: 8, craft: 8, rate: 0.15, over: 40 },
+  { name: '영웅', col: '#c87bff', pack: 5, craft: 5, rate: 0.08, over: 80 },
+  { name: '전설', col: '#ffb02a', pack: 3, craft: 3, rate: 0.05, over: 150 },
+];
+const UNIT_RARITY = { f: 0, t: 0, s: 0, g: 0, m: 1, e: 1, d: 1, c: 1, a: 1, b: 2, r: 2, h: 2, n: 2, x: 2, v: 3, w: 3, l: 3, q: 4, y: 4, k: 4 };
+const rarityOf = t => RARITY[UNIT_RARITY[t]];
+// Mk m → m+1에 드는 설계도 (일반 기준, 등급 배율을 곱해 올림)
+const BP_UP = [10, 15, 20, 30, 40, 55, 70, 90, 120, 150, 180, 220, 260, 300, 350, 400, 460, 520, 600, 700];
+const bpOf = t => (PROG.bp && PROG.bp[t]) || 0;
+const bpNeed = t => isOwned(t) ? Math.ceil(BP_UP[Math.min(mkOf(t), MK_MAX - 1)] * rarityOf(t).rate) : rarityOf(t).craft;
+const bpReady = t => bpOf(t) >= bpNeed(t) && (!isOwned(t) || mkOf(t) < MK_MAX);
+// 설계도 받기. 이미 Mk.20이면 코어로 바꿔 준다
+function addBp(t, c) {
+  if (isOwned(t) && mkOf(t) >= MK_MAX) { const core = c * rarityOf(t).over; PROG.credits += core; return { t, c, core }; }
+  PROG.bp[t] = bpOf(t) + c; return { t, c, core: 0 };
+}
+// 등급 확률 (%): 일반, 고급, 희귀, 영웅, 전설
+const GACHA_ODDS = [55, 30, 11, 3.2, 0.8];   // 보급 상자
+const STAGE_ODDS = [70, 26, 3.5, 0.45, 0.05];   // 스테이지를 깰 때
+const GOLD_ODDS = [40, 35, 18, 5.5, 1.5];   // 황금 캡슐
+const PITY = 60, GEM_1 = 100, GEM_10 = 900, GOLD_BP = 0.25;   // 천장, 상자 값, 황금 캡슐에서 설계도가 나올 확률
+function rollRarity(odds) { let r = Math.random() * 100, g = 0; while (g < 4 && (r -= odds[g]) > 0) g++; return g; }
+const unitOfRarity = g => { const pool = UNIT_ORDER.filter(t => UNIT_RARITY[t] === g); return pool[Math.floor(Math.random() * pool.length)]; };
+// 보급 상자 n번 (10번이면 희귀 이상 하나는 꼭). 천장: PITY번째까지 전설이 안 나오면 그 번은 전설
+function pullBox(n) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    PROG.pity = (PROG.pity || 0) + 1;
+    let g = PROG.pity >= PITY ? 4 : rollRarity(GACHA_ODDS);
+    if (n === 10 && i === n - 1 && g < 2 && !out.some(r => r.g >= 2)) g = 2;
+    if (g === 4) PROG.pity = 0;
+    const t = unitOfRarity(g), fresh = !isOwned(t) && !bpOf(t), r = addBp(t, RARITY[g].pack);
+    out.push({ ...r, g, fresh, craft: !isOwned(t) && bpOf(t) >= rarityOf(t).craft });
+  }
+  return out;
+}
+// 교환소: 날마다 바뀌는 세 칸 (코어 둘, 다이아 하나). 하루에 한 번씩
+function shopOffers(day) {
+  const rnd = mulberry(seedOf('shop' + day));
+  const pick = g => { const pool = UNIT_ORDER.filter(t => UNIT_RARITY[t] === g); return pool[Math.floor(rnd() * pool.length)]; };
+  const g0 = rnd() < 0.5 ? 0 : 1, g2 = rnd() < 0.25 ? 4 : 3;
+  return [
+    { t: pick(g0), c: RARITY[g0].pack, core: g0 ? 800 : 400 },
+    { t: pick(2), c: RARITY[2].pack, core: 2500 },
+    { t: pick(g2), c: RARITY[g2].pack, gem: g2 === 4 ? 200 : 120 },
+  ];
+}
+// Mk 이정표: 숫자보다 눈에 보이는 변화
+const MK_STONES = [
+  { mk: 5, name: '정예 출고', desc: '캡슐에서 나올 때 15% 확률로 한 단계 높게' },
+  { mk: 10, name: '보급 우선', desc: '캡슐에 이 기체가 더 자주 나와요' },
+  { mk: 15, name: '정예 출고 II', desc: '캡슐에서 나올 때 30% 확률로 한 단계 높게' },
+  { mk: 20, name: '금빛 기체', desc: '판 위에서 금빛으로 빛나요' },
+];
+const eliteChance = t => mkNow(t) >= 15 ? 0.3 : mkNow(t) >= 5 ? 0.15 : 0;
+const nextStone = t => MK_STONES.find(m => m.mk > mkOf(t));
+// 다이아 (지금은 무료로만 얻는다)
+const addGems = n => { PROG.gems = (PROG.gems || 0) + n; S.gemsGot = (S.gemsGot || 0) + n; };
+// 예전 저장 옮기기: 스테이지로 이미 풀린 기체는 등급과 상관없이 가진 것으로. 처음 한 번 다이아 300 (상자 세 번)
+if (!PROG.meta) {
+  for (const t of UNIT_ORDER) { const u = UNIT[t].unlock; if (u.stage && PROG.stars[u.stage] > 0 && !PROG.owned.includes(t)) PROG.owned.push(t); }
+  PROG.bp = PROG.bp || {}; PROG.gems = (PROG.gems || 0) + 300; PROG.meta = 1;
+}
 // 편성은 1~5종. 아직 못 가진 기체가 저장에 남아 있으면 뺀다
 PROG.deck = PROG.deck.filter(t => UNIT[t] && isOwned(t)).slice(0, DECK_N);
 if (!PROG.deck.length) PROG.deck = ['f', 't'];
@@ -318,7 +389,8 @@ function rollReward(n, w, avoid) {
   else if (R() < 0.12 && !(avoid && avoid.item)) return rollItem(n);   // 묶인 캡슐 둘이 모두 아이템이진 않게
   const deck = battleDeck();
   let type, guard = 0;
-  do { type = deck[Math.floor(R() * deck.length)]; } while (avoid && type === avoid.type && guard++ < 8);
+  const wt = deck.map(t => mkNow(t) >= 10 ? 1.3 : 1), sum = wt.reduce((a, b) => a + b, 0);   // Mk.10 보급 우선: 더 자주
+  do { let r = R() * sum, i = 0; while (i < deck.length - 1 && (r -= wt[i]) >= 0) i++; type = deck[i]; } while (avoid && type === avoid.type && guard++ < 8);
   const r = R() + 0.035 * (n - 1) + 0.12 * (w - 1) + 0.25;   // 캡슐이 드문 만큼 하나하나 넉넉하게
   let lv = 1, cnt = 1;
   if (UNIT[type].shape !== 1) { lv = 1; cnt = 1; }
@@ -526,7 +598,7 @@ function gainXp(n) {
   S.xpFrom = PROG.xp || 0; S.xpGain = n; S.lvlUps = [];
   PROG.xp = S.xpFrom + n;
   const L = lvlOf(PROG.xp).lvl;
-  for (let l = (PROG.lvl || 1) + 1; l <= L; l++) { payLevel(l); if (levelReward(l)) S.lvlUps.push(l); }   // 보상 없는 레벨은 막대 반짝임만
+  for (let l = (PROG.lvl || 1) + 1; l <= L; l++) { payLevel(l); addGems(50); if (levelReward(l)) S.lvlUps.push(l); }   // 보상 없는 레벨은 막대 반짝임만. 레벨마다 다이아 50
   PROG.lvl = Math.max(PROG.lvl || 1, L);
 }
 // 레벨이 생기기 전 저장: 깬 스테이지마다 100으로 쳐서 레벨을 맞추고 보상은 조용히 준다
@@ -612,7 +684,7 @@ function startStage(n, endless = false, daily = false) {
     hint: null, hintT: 0, hintQueue: [],
     shake: 0, time: 0, glitch: 0, lost: 0,
     parts: [], shieldHits: [], banner: null, warning: 0, whiteFlash: 0, skillPop: null,
-    score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0, dmgBy: {}, used: {},
+    score: 0, perks: [], perkChoices: null, cores: 0, corePulse: 0, dmgBy: {}, used: {}, bpGot: [], gemsGot: 0,
     pk: { dmg: 1, spd: 1, hp: 0, cap: 1, enemySpd: 1, regen: 0, crit: 0, gear: 1, summonOff: 0, summonLv: 0, cmd: 1, chain: 0, arc: 0, twin: 0, lonely: 0, fin: 0, hunt: 1, capBomb: 0, heat: 0, oc: 0, scrap: 0, revive: 0 }, chainQ: [], heatT: 0, ocT: 0, legendNext: false,
     gear: 0, rowsOpen: START_ROWS, mut: [], crisis: false, punch: 0, broken: [],
   };

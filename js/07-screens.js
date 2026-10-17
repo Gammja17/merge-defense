@@ -12,6 +12,7 @@ function draw(dt) {
   if (S.mode === 'title') { ctx.restore(); drawTitle(); drawOverlays(); return; }
   if (S.mode === 'map') { ctx.restore(); drawMap(); drawOverlays(); return; }
   if (S.mode === 'hangar') { ctx.restore(); drawHangar(); drawOverlays(); return; }
+  if (S.mode === 'gacha') { ctx.restore(); drawGacha(); drawOverlays(); return; }
   if (S.mode === 'records') { ctx.restore(); drawRecords(); drawOverlays(); return; }
 
   ctx.strokeStyle = 'rgba(127,224,255,.2)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 10]);
@@ -618,6 +619,30 @@ function drawEarned(rx, y) {
   ctx.font = FK(12); ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(170,220,255,.75)';
   ctx.fillText(`보상 ${fmt(S.baseEarned)} + 전투 수집 ${fmt(S.cores)}${S.dailyBonus ? ` (${S.dailyBonus})` : ''}`, rx, y + 18);
 }
+// 판 보상 줄: 받은 설계도 (기체 그림, 등급 색 +N)와 다이아. 가운데 정렬
+function drawRewards(cx, y) {
+  const items = (S.bpGot || []).map(r => ({ r })).concat(S.gemsGot ? [{ gem: S.gemsGot }] : []);
+  if (!items.length) return false;
+  ctx.font = FT(14, 900);
+  const ws = items.map(it => it.gem ? 30 + ctx.measureText('+' + fmt(it.gem)).width + 12 : 34 + ctx.measureText(it.r.core ? '+' + fmt(it.r.core) : '+' + it.r.c).width + 14);
+  let x = cx - (ws.reduce((a, b) => a + b, 0) + (items.length - 1) * 6) / 2;
+  items.forEach((it, i) => {
+    const w = ws[i];
+    if (it.gem) {
+      ctx.fillStyle = 'rgba(60,10,60,.7)'; chamfer(x, y - 15, w, 30, 7); ctx.fill(); ctx.strokeStyle = 'rgba(255,106,216,.7)'; ctx.lineWidth = 1.2; ctx.stroke();
+      gemLabel(x + 8, y, '+' + fmt(it.gem), 14, 'left');
+    } else {
+      const t2 = it.r.t, rc = rarityOf(t2).col, def = UNIT[t2];
+      ctx.fillStyle = 'rgba(8,18,44,.9)'; chamfer(x, y - 15, w, 30, 7); ctx.fill(); ctx.strokeStyle = rc; ctx.lineWidth = 1.2; ctx.stroke();
+      drawUnitArt(t2, 1, x + 16, y, Math.min(24 / def.iw, 22 / def.ih), 1, null);
+      drawBp(x + 26, y + 7, 5, rc);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = FT(14, 900);
+      if (it.r.core) { ctx.fillStyle = '#bff6ff'; ctx.fillText('+' + fmt(it.r.core), x + 34, y + 1); } else { ctx.fillStyle = rc; ctx.fillText('+' + it.r.c, x + 34, y + 1); }
+    }
+    x += w + 6;
+  });
+  return true;
+}
 // 계정 경험치 막대: 획득 코어가 다 오른 뒤 1.2초 동안 차오른다. 다 차면 오른 레벨마다 보상 카드를 띄운다
 function drawXp(x, y, w) {
   if (S.xpGain == null) return;
@@ -658,6 +683,8 @@ function drawEndlessEnd() {
   });
   drawEarned(W - 76, top + 260);
   drawXp(76, top + 300, W - 152);
+  if (S.gemsGot && !(S.bpGot || []).length) { ctx.textAlign = 'left'; gemLabel(76, top + 322, '+' + fmt(S.gemsGot), 13, 'left'); }   // 무한, 도전: 다이아만 작게
+  else drawRewards(W / 2, top + 322);
   // 전투 분석: 기체 종류별로 넣은 피해와 1코(Lv1) 기준 투입량
   ctx.textAlign = 'left'; ctx.font = FU(11); ctx.fillStyle = 'rgba(140,220,255,.85)'; ctx.fillText('// 전투 분석: 기체별 피해 비중과 투입량 (1코 = Lv1 한 대)', 62, top + 344);
   types.forEach((t2, i) => {
@@ -711,7 +738,7 @@ function drawEnd() {
   const win = S.mode === 'win', col = win ? '#5affc8' : '#ff5a6a', st = S.stage;
   ctx.fillStyle = 'rgba(2,3,12,.75)'; ctx.fillRect(0, 0, W, H);
   drawGlow(col, W / 2, 420, 220, 0.18);
-  panel(50, 250, W - 100, 470, col);
+  panel(50, 250, W - 100, 470 + ((S.bpGot || []).length || S.gemsGot ? 40 : 0), col);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FU(13); ctx.fillStyle = col;
   ctx.fillText(`// STAGE ${st.n} / ${win ? 'MISSION COMPLETE' : 'MISSION FAILED'}`, W / 2, 286);
@@ -734,10 +761,11 @@ function drawEnd() {
   });
   if (win) drawEarned(W - 90, 500);
   drawXp(90, 548, W - 180);
+  const dy = drawRewards(W / 2, 584) ? 40 : 0;   // 받은 설계도, 다이아가 있으면 한 줄 내린다
   const primary = win ? (st.n < STAGE_COUNT ? ['다음 스테이지', 'next'] : ['지도로', 'map']) : ['다시 하기', 'retry'];
-  button(W / 2 - 110, 590, 220, 50, primary[0], primary[1], 'primary');
-  if (primary[1] !== 'map') button(W / 2 - 110, 654, 105, 38, '지도로', 'map', 'ghost');
-  button(primary[1] !== 'map' ? W / 2 + 5 : W / 2 - 110, 654, primary[1] !== 'map' ? 105 : 220, 38, '격납고', 'hangar', 'ghost');
+  button(W / 2 - 110, 590 + dy, 220, 50, primary[0], primary[1], 'primary');
+  if (primary[1] !== 'map') button(W / 2 - 110, 654 + dy, 105, 38, '지도로', 'map', 'ghost');
+  button(primary[1] !== 'map' ? W / 2 + 5 : W / 2 - 110, 654 + dy, primary[1] !== 'map' ? 105 : 220, 38, '격납고', 'hangar', 'ghost');
 }
 
 // ── 지도 ──────────────────────────────────────────────────
@@ -760,6 +788,7 @@ function drawMap() {
   ctx.font = FT(14); ctx.textAlign = 'left'; ctx.fillStyle = '#ffe9a8';
   ctx.fillText(`${total} / ${STAGE_COUNT * 3}`, 44, 85);
   coreLabel(W - 72, 85, UI.coreShown, 15, 'right');
+  gemLabel(122, 85, PROG.gems || 0, 14, 'left');
   { const L = lvlOf(PROG.xp || 0), tt = titleOf(), bw = 130;   // 계정 레벨과 칭호, 다음 레벨까지 막대
     ctx.textAlign = 'center'; ctx.font = FT(14, 900); ctx.fillStyle = '#ffd24a';
     const lw = ctx.measureText(`Lv ${L.lvl}`).width; ctx.font = FK(13); const tw = tt ? ctx.measureText(tt).width + 8 : 0;
@@ -841,7 +870,7 @@ function drawMap() {
     const gift = UNIT_ORDER.find(k => UNIT[k].unlock.stage === n);
     const kn = st.kind !== 'base' ? STAGE_KINDS[st.kind] : null;   // 스테이지 종류 이름표 (러시, 장기전 ...)
     if (kn) { ctx.font = FK(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = open ? 1 : 0.45; outlineText(kn.name, p.x, p.y - p.r - 9, kn.col, 3); ctx.globalAlpha = 1; }
-    if (gift && !isOwned(gift)) { ctx.font = FU(8); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd24a'; ctx.fillText('NEW', p.x, p.y - p.r - (kn ? 20 : 6)); }
+    if (gift && !isOwned(gift) && !stars) { if (UNIT_RARITY[gift] <= 1) { ctx.font = FU(8); ctx.textAlign = 'center'; ctx.fillStyle = '#ffd24a'; ctx.fillText('NEW', p.x, p.y - p.r - (kn ? 20 : 6)); } else drawBp(p.x + p.r * 0.9, p.y + p.r * 0.6, 7, rarityOf(gift).col); }   // 희귀 이상은 설계도 절반
     if (!open) {
       const lx = p.x + p.r * 0.75, ly = p.y - p.r * 0.75;   // 자물쇠: 오른쪽 위 (종류 이름표와 안 겹치게)
       ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(lx, ly, 12, 10);
@@ -858,12 +887,15 @@ function drawMap() {
     ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(W - 7, MAP_TOP, 3, vh); ctx.fillStyle = 'rgba(160,225,255,.6)'; ctx.fillRect(W - 7, by, 3, bh); }
   // 편성 요약 + 격납고
   const deckOk = PROG.deck.length >= 1;
-  ctx.font = FU(10); ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(140,220,255,.7)'; ctx.fillText('// SQUADRON', 22, 858);
+  { const free = PROG.freeBox !== dayKey();   // 보급 상자: 오늘 무료가 남았으면 빛나는 버튼과 빨간 점
+    button(20, 846, 262, 42, '보급 상자', 'gacha', free ? 'primary' : 'ghost');
+    drawBp(46, 867, 9, '#ffb02a');
+    if (free) { const pu = 0.7 + 0.3 * Math.sin(performance.now() / 150); drawGlow('#ff4a6e', 272, 850, 16, pu * 0.6); ctx.fillStyle = '#ff4a6e'; chamfer(240, 838, 50, 18, 5); ctx.fill(); ctx.font = FK(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.fillText('무료', 265, 848); } }
   PROG.deck.forEach((t2, k) => {
-    const x = 42 + k * 50, y = 896;
-    ctx.fillStyle = 'rgba(10,20,44,.8)'; chamfer(x - 22, y - 22, 44, 44, 7); ctx.fill(); unitTint(x - 22, y - 22, 44, 44, UNIT[t2].col, 7);
+    const x = 40 + k * 48, y = 918;
+    ctx.fillStyle = 'rgba(10,20,44,.8)'; chamfer(x - 19, y - 19, 38, 38, 6); ctx.fill(); unitTint(x - 19, y - 19, 38, 38, UNIT[t2].col, 6);
     ctx.strokeStyle = UNIT[t2].col; ctx.lineWidth = 1.2; ctx.stroke();
-    const def = UNIT[t2], k2 = Math.min(34 / def.iw, 34 / def.ih);
+    const def = UNIT[t2], k2 = Math.min(30 / def.iw, 30 / def.ih);
     drawUnitArt(t2, 1, x, y, k2, 1, null);
   });
   button(296, 846, 226, 42, deckOk ? '격납고 (편성, 강화)' : '편성을 채워 주세요', 'hangar', deckOk ? 'ghost' : 'danger');
@@ -932,14 +964,22 @@ function drawHangar() {
     ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
     ctx.font = FK(16); ctx.fillStyle = own ? '#fff' : 'rgba(255,255,255,.5)'; ctx.fillText(def.name, x + cw / 2, y + 80);
-    ctx.font = FK(12); ctx.fillStyle = own ? 'rgba(235,245,255,.85)' : 'rgba(200,210,230,.45)'; ctx.fillText(def.role, x + cw / 2, y + 96);
+    { const R0 = rarityOf(t2), rn = R0.name + ' ';   // 등급 이름은 역할 앞에 등급 색으로
+      ctx.font = FK(12); const w0 = ctx.measureText(rn).width, w1 = ctx.measureText(def.role).width, k = Math.min(1, (cw - 10) / (w0 + w1)), x0 = x + cw / 2 - (w0 + w1) * k / 2;
+      ctx.save(); ctx.translate(x0, y + 96); ctx.scale(k, 1); ctx.textAlign = 'left';
+      ctx.fillStyle = R0.col; ctx.globalAlpha = own ? 1 : 0.6; ctx.fillText(rn, 0, 0);
+      ctx.fillStyle = own ? 'rgba(235,245,255,.85)' : 'rgba(200,210,230,.45)'; ctx.globalAlpha = 1; ctx.fillText(def.role, w0, 0); ctx.restore(); ctx.textAlign = 'center'; }
     ctx.font = FU(10);
-    if (inDeck) { ctx.fillStyle = '#fff'; ctx.fillText('● DEPLOYED', x + cw / 2, y + 110); }
-    else if (!own) {
-      const u = def.unlock;
-      ctx.fillStyle = u.shop ? '#ffd24a' : 'rgba(255,190,120,.8)';
-      if (u.shop) coreLabel(x + cw / 2, y + 110, u.shop, 11, 'center', '#ffd24a'); else ctx.fillText(`STAGE ${u.stage} 클리어`, x + cw / 2, y + 110);
+    const ready = bpReady(t2) && (!own || PROG.credits >= mkCost(t2));
+    if (ready) { ctx.font = FK(12); ctx.fillStyle = '#5affc8'; ctx.fillText(own ? '▲ 강화 가능' : '▲ 제작 가능', x + cw / 2, y + 110); drawGlow('#5affc8', x + cw / 2, y + 110, 30, 0.2 + 0.15 * Math.sin(performance.now() / 200)); }
+    else if (inDeck) { ctx.fillStyle = '#fff'; ctx.fillText('● DEPLOYED', x + cw / 2, y + 110); }
+    else if (!own) {   // 설계도 막대
+      const rc = rarityOf(t2).col, need = rarityOf(t2).craft, q = Math.min(1, bpOf(t2) / need), bw = 70, bx = x + cw / 2 - bw / 2 + 8;
+      drawBp(bx - 12, y + 110, 6, rc);
+      ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(bx, y + 106, bw, 8); ctx.fillStyle = rc; ctx.fillRect(bx, y + 106, bw * q, 8);
+      ctx.font = FT(9, 900); ctx.fillStyle = '#fff'; ctx.fillText(`${bpOf(t2)}/${need}`, bx + bw / 2, y + 110.5);
     }
+
     if (!own) { ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fillRect(x + cw - 24, y + 12, 12, 10); ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x + cw - 18, y + 12, 4, Math.PI, 0); ctx.stroke(); }
     if (own && mkOf(t2)) { const mk = mkOf(t2); ctx.fillStyle = mk >= 10 ? '#ffd24a' : 'rgba(255,210,74,.2)'; hexPath(x + 20, y + 20, 13); ctx.fill(); ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.font = FT(11, 900); ctx.textAlign = 'center'; ctx.fillStyle = mk >= 10 ? '#2a1600' : '#ffe9a8'; ctx.fillText(String(mk), x + 20, y + 21); }
     if (own) { drawFuseFrame(t2, x, y, cw, ch, 12); drawFuseBadge(t2, x + cw - 18, y + 46, 13); }
@@ -954,6 +994,154 @@ function drawHangar() {
   ctx.font = FK(14); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(200,225,255,.7)';
   ctx.fillText('카드를 누르면 스킬과 성능을 볼 수 있어요', W / 2, 843);
   button(W / 2 - 110, 862, 220, 52, '지도로', 'map', PROG.deck.length >= 1 ? 'primary' : 'danger');
+}
+
+// ── 보급 상자 (뽑기)와 교환소 ─────────────────────────────
+const boxRevealAt = (B, i) => 0.35 + i * (B.res.length > 1 ? 0.2 : 0);
+const boxRevealEnd = B => boxRevealAt(B, B.res.length - 1) + 0.5;
+function drawGacha() {
+  const now = performance.now() / 1000;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = FT(28, 900); glitchText('SUPPLY BOX', W / 2, 40, '#ffe9a8', 6, Math.random() < 0.04 ? 5 : 0);
+  ctx.font = FK(15); ctx.fillStyle = 'rgba(255,230,180,.8)'; ctx.fillText('보급 상자, 교환소', W / 2, 68);
+  coreLabel(W - 20, 30, UI.coreShown, 14, 'right');
+  gemLabel(W - 20, 56, PROG.gems || 0, 14, 'right');
+  // 상자 그림: 천천히 도는 빛줄기 위에 금테 상자
+  const cy = 196, pu = 0.5 + 0.5 * Math.sin(now * 2.4);
+  ctx.save(); ctx.translate(W / 2, cy); ctx.rotate(now * 0.25); ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 12; k++) { ctx.rotate(Math.PI / 6); ctx.fillStyle = RARITY[k % 5].col; ctx.globalAlpha = 0.07; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(230, -18); ctx.lineTo(230, 18); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  drawGlow('#ffb02a', W / 2, cy, 120, 0.25 + pu * 0.15);
+  const bw = 190, bh = 130, bx = W / 2 - bw / 2, by = cy - bh / 2 + Math.sin(now * 1.6) * 4;
+  const g = ctx.createLinearGradient(0, by, 0, by + bh); g.addColorStop(0, '#2a2410'); g.addColorStop(1, '#0c0a04');
+  ctx.fillStyle = g; chamfer(bx, by, bw, bh, 20); ctx.fill();
+  ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,210,74,.4)'; ctx.lineWidth = 1.5; chamfer(bx + 10, by + 10, bw - 20, bh - 20, 14); ctx.stroke();
+  ctx.fillStyle = '#ffd24a'; ctx.fillRect(bx, by + bh * 0.42, bw, 8);
+  drawBp(W / 2, by + bh * 0.46, 26, '#ffb02a');
+  // 확률 보기
+  button(W - 128, 112, 108, 34, '확률 보기', 'boxOdds', 'ghost');
+  // 천장: 전설까지 남은 횟수
+  const left = PITY - (PROG.pity || 0), pw = 300, px = W / 2 - pw / 2, py = 286;
+  ctx.font = FK(14); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`전설 확정까지 ${left}번 (${PITY}번째는 꼭 전설)`, W / 2, py);
+  ctx.fillStyle = 'rgba(255,255,255,.08)'; chamfer(px, py + 14, pw, 10, 3); ctx.fill();
+  ctx.fillStyle = RARITY[4].col; ctx.fillRect(px + 1, py + 15, (pw - 2) * (PROG.pity || 0) / PITY, 8);
+  // 뽑기 버튼 셋: 오늘 무료, 1번, 10번
+  const free = PROG.freeBox !== dayKey(), btns = [
+    { n: 1, free: true, top: '오늘 무료', price: free ? '1번' : '내일 다시', on: free },
+    { n: 1, top: '1번 열기', gem: GEM_1, on: (PROG.gems || 0) >= GEM_1 },
+    { n: 10, top: '10번 열기', gem: GEM_10, on: (PROG.gems || 0) >= GEM_10 },
+  ];
+  btns.forEach((b, i) => {
+    const w = 156, h = 70, x = 24 + i * (w + 12), y = 326;
+    if (b.on) { const g2 = ctx.createLinearGradient(0, y, 0, y + h); g2.addColorStop(0, b.free ? '#7ff0ff' : '#ffe07a'); g2.addColorStop(1, b.free ? '#2a9fd8' : '#e09a20'); ctx.fillStyle = g2; }
+    else ctx.fillStyle = 'rgba(40,40,60,.8)';
+    chamfer(x, y, w, h, 12); ctx.fill();
+    if (b.on && b.free) drawGlow('#48c8ff', x + w / 2, y + h / 2, w * 0.6, 0.2 + pu * 0.2, 0.5);
+    ctx.strokeStyle = b.on ? '#fff6c8' : 'rgba(255,255,255,.2)'; ctx.lineWidth = 1.5; ctx.stroke();
+    const tc = b.on ? (b.free ? '#031a2a' : '#2a1600') : 'rgba(255,255,255,.5)';
+    ctx.font = FK(19); ctx.textAlign = 'center'; ctx.fillStyle = tc; ctx.fillText(b.top, x + w / 2, y + 24);
+    if (b.gem) gemLabel(x + w / 2, y + 50, fmt(b.gem), 14, 'center', b.on ? '#2a1600' : '#ffb0e8');
+    else { ctx.font = FK(14); ctx.fillStyle = tc; ctx.fillText(b.price, x + w / 2, y + 50); }
+    BUTTONS.push({ x, y, w, h, act: 'boxPull', n: b.n, free: b.free });
+  });
+  ctx.font = FK(13); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(200,225,255,.75)';
+  ctx.fillText('10번 열면 희귀 이상 하나는 꼭 나와요', W / 2, 414);
+  // 교환소: 날마다 바뀌는 세 칸
+  const day = dayKey(), offers = shopOffers(day), got = PROG.shopDay === day ? PROG.shopGot || [] : [];
+  ctx.textAlign = 'left'; ctx.font = FU(10); ctx.fillStyle = 'rgba(140,220,255,.8)'; ctx.fillText('// EXCHANGE / 교환소, 매일 0시에 바뀌어요', 24, 446);
+  offers.forEach((o, i) => {
+    const w = 156, h = 300, x = 24 + i * (w + 12), y = 462, def = UNIT[o.t], R0 = rarityOf(o.t), sold = got.includes(i), own = isOwned(o.t);
+    ctx.fillStyle = 'rgba(10,24,54,.9)'; chamfer(x, y, w, h, 12); ctx.fill(); unitTint(x, y, w, h, def.col, 12, 0.6);
+    ctx.strokeStyle = R0.col; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.globalAlpha = sold ? 0.4 : 1;
+    drawGlow(R0.col, x + w / 2, y + 76, 50, 0.2);
+    drawUnitArt(o.t, 1, x + w / 2, y + 76, Math.min(100 / def.iw, 80 / def.ih), 1, null);
+    ctx.textAlign = 'center'; ctx.font = FK(13); ctx.fillStyle = R0.col; ctx.fillText(R0.name, x + w / 2, y + 22);
+    ctx.font = FK(17); ctx.fillStyle = '#fff'; ctx.fillText(def.name, x + w / 2, y + 140);
+    drawBp(x + w / 2 - 30, y + 170, 9, R0.col);
+    ctx.font = FT(18, 900); ctx.textAlign = 'left'; ctx.fillStyle = R0.col; ctx.fillText(`+${o.c}`, x + w / 2 - 16, y + 171);
+    ctx.textAlign = 'center'; ctx.font = FK(12); ctx.fillStyle = 'rgba(210,225,250,.8)';
+    ctx.fillText(own ? `Mk.${mkOf(o.t)}, 설계도 ${fmt(bpOf(o.t))}/${fmt(bpNeed(o.t))}` : `설계도 ${bpOf(o.t)}/${R0.craft}, 제작 전`, x + w / 2, y + 200);
+    ctx.globalAlpha = 1;
+    const bx2 = x + 12, by2 = y + h - 62, bw2 = w - 24, bh2 = 46;
+    if (sold) { ctx.font = FK(16); ctx.textAlign = 'center'; outlineText('구매 완료', x + w / 2, by2 + bh2 / 2, '#9fb4d0', 3); return; }
+    const can = o.core ? PROG.credits >= o.core : (PROG.gems || 0) >= o.gem;
+    ctx.fillStyle = can ? (o.gem ? 'rgba(255,106,216,.25)' : 'rgba(90,232,255,.18)') : 'rgba(40,40,60,.8)'; chamfer(bx2, by2, bw2, bh2, 9); ctx.fill();
+    ctx.strokeStyle = can ? (o.gem ? '#ff6ad8' : '#5ae8ff') : 'rgba(255,255,255,.2)'; ctx.lineWidth = 1.5; ctx.stroke();
+    if (o.core) coreLabel(x + w / 2, by2 + bh2 / 2, o.core, 15, 'center', can ? '#bff6ff' : '#ff9a9a');
+    else gemLabel(x + w / 2, by2 + bh2 / 2, o.gem, 15, 'center', can ? '#ffd6ff' : '#ff9a9a');
+    BUTTONS.push({ x: bx2, y: by2, w: bw2, h: bh2, act: 'shopBuy', i });
+  });
+  button(W / 2 - 110, 790, 220, 48, '격납고', 'hangar', 'ghost');
+  button(W / 2 - 110, 848, 220, 48, '지도로', 'map', 'primary');
+  if (UI.toast && UI.toast.until > now) { ctx.font = FK(16); ctx.textAlign = 'center'; const tw = ctx.measureText(UI.toast.text).width + 28; ctx.fillStyle = 'rgba(30,6,12,.95)'; chamfer(W / 2 - tw / 2, 424, tw, 30, 8); ctx.fill(); outlineText(UI.toast.text, W / 2, 439, '#ffb0b0', 4); }
+  if (UI.odds) drawOdds();
+  if (UI.box) drawBoxResult();
+}
+// 확률 창 (확률형 아이템 확률 공개)
+function drawOdds() {
+  BUTTONS = [];
+  ctx.fillStyle = 'rgba(2,3,12,.85)'; ctx.fillRect(0, 0, W, H);
+  const x = 40, y = 170, w = W - 80, h = 560;
+  panel(x, y, w, h, '#ffd24a');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FK(24); outlineText('보급 상자 확률', W / 2, y + 40, '#fff', 5);
+  ctx.font = FK(14); ctx.fillStyle = 'rgba(220,235,255,.85)'; ctx.fillText('한 번 열면 등급 하나, 그 등급 기체 하나의 설계도 묶음', W / 2, y + 74);
+  RARITY.forEach((R0, g) => {
+    const ry = y + 116 + g * 62, n = UNIT_ORDER.filter(t => UNIT_RARITY[t] === g).length, p = GACHA_ODDS[g];
+    ctx.fillStyle = 'rgba(8,18,44,.9)'; chamfer(x + 24, ry - 26, w - 48, 52, 9); ctx.fill(); ctx.strokeStyle = R0.col; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.textAlign = 'left'; ctx.font = FK(18); ctx.fillStyle = R0.col; ctx.fillText(R0.name, x + 44, ry - 7);
+    ctx.font = FK(12); ctx.fillStyle = 'rgba(200,220,245,.8)'; ctx.fillText(`설계도 ${R0.pack}장, 기체 ${n}종 (하나에 ${(p / n).toFixed(2)}%)`, x + 44, ry + 13);
+    ctx.textAlign = 'right'; ctx.font = FT(20, 900); outlineText(`${p}%`, x + w - 44, ry, '#fff', 3);
+  });
+  ctx.textAlign = 'center'; ctx.font = FK(13); ctx.fillStyle = '#ffe9a8';
+  ctx.fillText(`${PITY}번 안에 전설이 안 나오면 ${PITY}번째는 전설`, W / 2, y + 448);
+  ctx.fillText('10번 열기는 희귀 이상 하나 확정 (그 몫만큼 실제 확률이 조금 올라요)', W / 2, y + 472);
+  ctx.fillStyle = 'rgba(200,220,245,.75)'; ctx.fillText(`Mk.${MK_MAX}인 기체의 설계도는 코어로 바뀌어요`, W / 2, y + 496);
+  ctx.font = FK(14); ctx.fillStyle = 'rgba(200,225,255,.7)'; ctx.fillText('눌러서 닫기', W / 2, y + h - 26);
+  BUTTONS.push({ x: 0, y: 0, w: W, h: H, act: 'boxOdds' });
+}
+// 상자 결과: 카드가 차례로 뒤집힌다. 뒷면 빛은 등급 색이라 뒤집기 전에 설렌다
+function drawBoxResult() {
+  BUTTONS = [];
+  const B = UI.box, now = performance.now() / 1000, e = now - B.t0, n = B.res.length;
+  ctx.fillStyle = 'rgba(2,3,12,.88)'; ctx.fillRect(0, 0, W, H);
+  const cw = n > 1 ? 92 : 200, ch = n > 1 ? 150 : 300, gap = 8, cols = n > 1 ? 5 : 1, rows = Math.ceil(n / cols);
+  const x0 = W / 2 - (cols * cw + (cols - 1) * gap) / 2, y0 = 470 - (rows * ch + (rows - 1) * gap) / 2;
+  const best = Math.max(...B.res.map(r => r.g));
+  B.res.forEach((r, i) => {
+    const x = x0 + (i % cols) * (cw + gap), y = y0 + Math.floor(i / cols) * (ch + gap), at = boxRevealAt(B, i), q = e - at, R0 = RARITY[r.g], def = UNIT[r.t];
+    if (q >= 0 && i >= B.shown) { B.shown = i + 1; play(r.g >= 3 ? 'unlock' : r.g === 2 ? 'levelup' : 'tap', r.g >= 3 ? 0.6 : 0.4); if (r.g >= 3) S.flash = now; }
+    const flip = q < 0 ? 0 : Math.min(1, q / 0.18), sx = Math.abs(Math.cos(flip * Math.PI)), face = flip >= 0.5;
+    ctx.save(); ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(Math.max(0.04, sx), 1);
+    if (!face) {   // 뒷면: 등급 색 빛 (전설은 무지개)
+      const col = r.g === 4 ? `hsl(${(now * 300) % 360},100%,62%)` : R0.col;
+      drawGlow(col, 0, 0, cw * 0.7, r.g >= 2 ? 0.5 : 0.2);
+      ctx.fillStyle = 'rgba(20,16,6,.97)'; chamfer(-cw / 2, -ch / 2, cw, ch, 10); ctx.fill();
+      ctx.strokeStyle = r.g >= 2 ? col : 'rgba(255,210,74,.5)'; ctx.lineWidth = 2; ctx.stroke();
+      drawBp(0, 0, cw * 0.18, '#ffd24a');
+    } else {
+      if (q < 0.6) drawGlow('#ffffff', 0, 0, cw, (0.6 - q) * 1.2);
+      drawGlow(R0.col, 0, 0, cw * 0.8, r.g >= 2 ? 0.45 : 0.15);
+      ctx.fillStyle = 'rgba(8,18,44,.97)'; chamfer(-cw / 2, -ch / 2, cw, ch, 10); ctx.fill(); unitTint(-cw / 2, -ch / 2, cw, ch, def.col, 10, 0.7);
+      ctx.strokeStyle = R0.col; ctx.lineWidth = r.g >= 3 ? 3 : 2; ctx.stroke();
+      const k = n > 1 ? 1 : 2;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = FK(11 * k); ctx.fillStyle = R0.col; ctx.fillText(R0.name, 0, -ch / 2 + 13 * k);
+      drawUnitArt(r.t, 1, 0, -ch * 0.14, Math.min(cw * 0.75 / def.iw, ch * 0.36 / def.ih), 1, null);
+      ctx.font = FK(12 * k); ctx.fillStyle = '#fff'; ctx.fillText(def.name, 0, ch * 0.16);
+      if (r.core) { coreLabel(0, ch * 0.31, '+' + fmt(r.core), 12 * k, 'center'); }
+      else { drawBp(-16 * k, ch * 0.31, 6 * k, R0.col); ctx.font = FT(14 * k, 900); ctx.textAlign = 'left'; ctx.fillStyle = R0.col; ctx.fillText('+' + r.c, -6 * k, ch * 0.31 + 1); }
+      ctx.textAlign = 'center';
+      if (r.craft) { ctx.font = FK(10 * k); ctx.fillStyle = '#5affc8'; ctx.fillText('제작 가능!', 0, ch / 2 - 9 * k); }
+      else if (r.fresh) { ctx.font = FT(10 * k, 900); ctx.fillStyle = '#ff6a8a'; ctx.fillText('NEW', 0, ch / 2 - 9 * k); }
+    }
+    ctx.restore();
+  });
+  if (best >= 3 && S.flash && now - S.flash < 0.4) { ctx.fillStyle = `rgba(255,240,200,${(0.4 - (now - S.flash)) * 1.2})`; ctx.fillRect(0, 0, W, H); }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = FK(15); ctx.fillStyle = 'rgba(200,225,255,.75)';
+  ctx.fillText(e < boxRevealEnd(B) ? '눌러서 한 번에 보기' : '눌러서 닫기', W / 2, H - 60);
+  BUTTONS.push({ x: 0, y: 0, w: W, h: H, act: 'boxNext' });
 }
 
 // 기체 소개 카드 (해금 팝업 겸용)
@@ -979,6 +1167,9 @@ function drawCard() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = FK(32); outlineText(def.name + (mkOf(t2) ? `  Mk.${mkOf(t2)}` : ''), W / 2, y + 232, mkOf(t2) ? '#ffe9a8' : '#fff', 5);
   ctx.font = FK(16); ctx.fillStyle = def.col; ctx.fillText(def.role + (def.shape === 1 ? ', 1칸' : ''), W / 2, y + 262);
+  { const R0 = rarityOf(t2); ctx.font = FK(14); const rw = ctx.measureText(R0.name).width + 18, rx = x + w - 24 - rw, ry = y + 50;   // 등급
+    ctx.fillStyle = 'rgba(4,10,24,.95)'; chamfer(rx, ry, rw, 24, 6); ctx.fill(); ctx.strokeStyle = R0.col; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.fillStyle = R0.col; ctx.fillText(R0.name, rx + rw / 2, ry + 13); }
   drawShapeIcon(t2, x + w - 52, y + 250, 11, def.col);
   { const fz = c.inGame && c.u.fuse ? FUSE_BY[c.u.fuse] : fuseFor(t2);   // 특수 합체 짝 (금색 한 줄)
     if (fz) {
@@ -1035,7 +1226,7 @@ function drawCard() {
   });
   // 버튼
   const by = y + h - 58;
-  if (!c.inGame && own) drawResearch(t2, x + 24, y + 776, w - 48, 88, y);
+  if (!c.inGame) drawResearch(t2, x + 24, y + 764, w - 48, 102);
   if (c.inGame) {
     ctx.font = FK(17); ctx.textAlign = 'center'; ctx.fillStyle = '#bfefff';
     ctx.fillText(`지금 Lv${c.u.lv}, HP ${Math.max(0, Math.ceil(c.u.hp))}/${c.u.maxHp}, 전투 일시정지 중`, W / 2, by - 28);
@@ -1044,12 +1235,9 @@ function drawCard() {
     if (inDeck) button(x + 30, by, 190, 46, '편성에서 빼기', 'undeploy', 'ghost', { type: t2 });
     else if (PROG.deck.length < DECK_N) button(x + 30, by, 190, 46, '편성하기', 'deploy', 'primary', { type: t2 });
     else button(x + 30, by, 190, 46, '교체하기', 'swapOpen', 'gold', { type: t2 });
-  } else if (def.unlock.shop) {
-    const can = PROG.credits >= def.unlock.shop;
-    button(x + 30, by, 190, 46, can ? `◆ ${def.unlock.shop} 구매` : `◆ ${def.unlock.shop} 필요`, 'buy', can ? 'gold' : 'danger', { type: t2 });
-  } else {
-    ctx.font = FK(16); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,200,140,.9)';
-    ctx.fillText(`스테이지 ${def.unlock.stage}을 깨면 해금돼요`, x + 125, by + 25);
+  } else if (def.unlock.stage && !PROG.stars[def.unlock.stage]) {   // 스테이지로 받는 기체: 일반, 고급은 통째로, 희귀 이상은 설계도 절반
+    ctx.font = FK(15); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,200,140,.9)';
+    ctx.fillText(UNIT_RARITY[t2] <= 1 ? `스테이지 ${def.unlock.stage}을 깨면 받아요` : `스테이지 ${def.unlock.stage}: 설계도 절반`, x + 125, by + 25);
   }
   button(x + w - 220, by, 190, 46, '닫기', 'closecard', 'ghost');
   if (c.swap && !c.inGame) {   // 편성이 꽉 찼을 때: 누구와 바꿀지 고른다
@@ -1088,50 +1276,62 @@ function drawCard() {
     });
     ctx.font = FK(13); ctx.fillStyle = 'rgba(200,220,245,.8)'; ctx.fillText('판 위 칸 바닥과 테두리 색이 바뀌어요', W / 2, py + ph - 20);
   }
-  if (UI.toast && UI.toast.until > t) { ctx.font = FK(16); ctx.textAlign = 'center'; outlineText(UI.toast.text, W / 2, y + 766, '#ffb0b0', 4); }
+  if (UI.toast && UI.toast.until > t) { ctx.font = FK(16); ctx.textAlign = 'center'; const tw = ctx.measureText(UI.toast.text).width + 28; ctx.fillStyle = 'rgba(30,6,12,.95)'; chamfer(W / 2 - tw / 2, y + 736, tw, 30, 8); ctx.fill(); outlineText(UI.toast.text, W / 2, y + 751, '#ffb0b0', 4); }
   // 카드 오른쪽 위 코어 계기
   coreLabel(x + w - 22, y + 30, UI.coreShown, 14, 'right');
   drawUpgradeFx(t2, W / 2, y + 140, x + w - 60, y + 30, cdt);
 }
 
-// 연구소 패널: Mk 배지, 10칸 진행 막대, 지금→다음 효과, 강화 버튼
-function drawResearch(t2, px, py, pw, ph, cardY) {
-  const mk = mkOf(t2), cost = mkCost(t2), can = PROG.credits >= cost, max = mk >= MK_MAX, now = performance.now() / 1000;
+// 강화 패널: Mk 배지, 20칸 막대 (5칸마다 이정표), 설계도 막대, 지금→다음 효과, 강화 버튼. 안 가진 기체는 제작 패널
+function drawResearch(t2, px, py, pw, ph) {
+  const own = isOwned(t2), mk = mkOf(t2), R0 = rarityOf(t2), max = own && mk >= MK_MAX, now = performance.now() / 1000;
+  const cost = own ? mkCost(t2) : 0, need = bpNeed(t2), have = bpOf(t2), bpOk = have >= need, coreOk = PROG.credits >= cost, can = !max && bpOk && coreOk;
   const fx = UI.upFx && UI.upFx.type === t2 ? now - UI.upFx.t0 : 9;
   ctx.fillStyle = 'rgba(40,28,6,.55)'; chamfer(px, py, pw, ph, 12); ctx.fill();
   ctx.strokeStyle = 'rgba(255,210,74,.55)'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = FU(10); ctx.fillStyle = 'rgba(255,210,120,.85)';
-  ctx.fillText('// RESEARCH LAB / 연구소', px + 14, py + 13);
-  // Mk 배지
-  const bx = px + 44, bY = py + 52, pulse = fx < 0.8 ? 1 + Math.max(0, 0.8 - fx) * 0.6 : 1;
-  drawGlow('#ffd24a', bx, bY, 34 * pulse, 0.35 + (fx < 0.8 ? 0.5 : 0));
-  ctx.fillStyle = max ? '#ffd24a' : 'rgba(30,20,4,.95)'; hexPath(bx, bY, 26 * pulse); ctx.fill();
-  ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.textAlign = 'center'; ctx.font = FU(9); ctx.fillStyle = max ? '#2a1600' : '#ffd24a'; ctx.fillText('MK', bx, bY - 10);
-  ctx.font = FT(18, 900); ctx.fillStyle = max ? '#2a1600' : '#fff'; ctx.fillText(String(mk), bx, bY + 7);
-  // 진행 막대
-  const sx = px + 84, sw = pw - 84 - 140, segW = sw / MK_MAX;
-  for (let k = 0; k < MK_MAX; k++) {
-    const on = k < mk, fresh = on && k === mk - 1 && fx < 1.2, x0 = sx + k * segW;
-    ctx.fillStyle = on ? ((k + 1) % 3 === 0 ? '#ffb347' : '#ffd24a') : 'rgba(255,255,255,.08)';
-    ctx.beginPath(); ctx.moveTo(x0 + 3, py + 30); ctx.lineTo(x0 + segW - 1, py + 30); ctx.lineTo(x0 + segW - 3, py + 42); ctx.lineTo(x0 + 1, py + 42); ctx.closePath(); ctx.fill();
-    if (fresh) drawGlow('#fff2b0', x0 + segW / 2, py + 36, 22, (1.2 - fx) * 1.5);
-    if ((k + 1) % 3 === 0) { ctx.fillStyle = 'rgba(255,180,80,.7)'; ctx.fillRect(x0 + segW / 2 - 1, py + 44, 2, 4); }
+  ctx.fillText(own ? '// UPGRADE / 강화' : '// CRAFT / 제작', px + 14, py + 13);
+  const ns = own && nextStone(t2);
+  if (ns) { ctx.textAlign = 'right'; ctx.font = FK(12); ctx.fillStyle = '#ffd24a'; ctx.fillText(`다음 Mk.${ns.mk} ${ns.name}`, px + pw - 146, py + 13); }
+  const bx = px + 44, bY = py + 56, pulse = fx < 0.8 ? 1 + Math.max(0, 0.8 - fx) * 0.6 : 1;
+  if (own) {   // Mk 배지
+    drawGlow('#ffd24a', bx, bY, 34 * pulse, 0.35 + (fx < 0.8 ? 0.5 : 0));
+    ctx.fillStyle = max ? '#ffd24a' : 'rgba(30,20,4,.95)'; hexPath(bx, bY, 26 * pulse); ctx.fill();
+    ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.font = FU(9); ctx.fillStyle = max ? '#2a1600' : '#ffd24a'; ctx.fillText('MK', bx, bY - 10);
+    ctx.font = FT(18, 900); ctx.fillStyle = max ? '#2a1600' : '#fff'; ctx.fillText(String(mk), bx, bY + 7);
+  } else { drawGlow(R0.col, bx, bY, 34, 0.3); drawBp(bx, bY, 22, R0.col); }
+  const sx = px + 84, sw = pw - 84 - 140;
+  if (own) {   // Mk 막대: 5칸마다 이정표 눈금
+    const segW = sw / MK_MAX;
+    for (let k = 0; k < MK_MAX; k++) {
+      const on = k < mk, fresh = on && k === mk - 1 && fx < 1.2, x0 = sx + k * segW, stone = (k + 1) % 5 === 0;
+      ctx.fillStyle = on ? (stone ? '#ffb347' : '#ffd24a') : 'rgba(255,255,255,.08)';
+      ctx.beginPath(); ctx.moveTo(x0 + 2, py + 28); ctx.lineTo(x0 + segW - 1, py + 28); ctx.lineTo(x0 + segW - 2, py + 38); ctx.lineTo(x0 + 1, py + 38); ctx.closePath(); ctx.fill();
+      if (fresh) drawGlow('#fff2b0', x0 + segW / 2, py + 33, 22, (1.2 - fx) * 1.5);
+      if (stone) { ctx.fillStyle = on ? '#ffd24a' : 'rgba(255,210,74,.35)'; hexPath(x0 + segW / 2, py + 44, 3); ctx.fill(); }
+    }
+  } else { ctx.font = FK(13); ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(230,240,255,.85)'; ctx.fillText(`설계도 ${R0.craft}장을 모으면 제작`, sx, py + 34); }
+  // 설계도 막대
+  if (!max) {
+    const q = Math.min(1, have / need), by0 = py + 60;
+    drawBp(sx + 8, by0, 7, R0.col);
+    ctx.fillStyle = 'rgba(255,255,255,.1)'; chamfer(sx + 20, by0 - 6, sw - 20, 12, 3); ctx.fill();
+    ctx.fillStyle = R0.col; ctx.fillRect(sx + 21, by0 - 5, (sw - 22) * q, 10);
+    ctx.textAlign = 'center'; ctx.font = FT(10, 900); outlineText(`${fmt(have)} / ${fmt(need)}`, sx + 10 + sw / 2, by0 + 1, bpOk ? '#fff' : '#ffd0d0', 3);
   }
   ctx.textAlign = 'left'; ctx.font = FK(14);
-  const pct = n => `+${n * 8}%`, hp = n => Math.floor(n / 3);
-  if (max) { ctx.fillStyle = '#ffe9a8'; ctx.fillText(`공격력 ${pct(mk)}, 체력 +${hp(mk)}, 연구 완료`, sx, py + 64); }
+  const pct = n => `+${Math.round(mkAtk(n) * 100)}%`;
+  if (!own) { ctx.font = FK(12); ctx.fillStyle = 'rgba(255,220,160,.85)'; ctx.fillText('보급 상자, 교환소, 스테이지 보상', sx, py + 84); }
+  else if (max) { ctx.fillStyle = '#ffe9a8'; ctx.fillText(`공격력 ${pct(mk)}, 강화 완료`, sx, py + 84); }
   else {
-    ctx.fillStyle = 'rgba(230,240,255,.85)'; ctx.fillText(`공격력 ${pct(mk)}`, sx, py + 64);
+    ctx.fillStyle = 'rgba(230,240,255,.85)'; ctx.fillText(`공격력 ${pct(mk)}`, sx, py + 84);
     const w1 = ctx.measureText(`공격력 ${pct(mk)} `).width;
-    ctx.fillStyle = '#5affc8'; ctx.fillText(`→ ${pct(mk + 1)}${(mk + 1) % 3 === 0 ? `  체력 +${hp(mk + 1)}` : ''}`, sx + w1, py + 64);
+    ctx.fillStyle = '#5affc8'; ctx.fillText(`→ ${pct(mk + 1)}`, sx + w1, py + 84);
   }
-  // 강화 버튼
-  const bw = 124, bh = 56, bxx = px + pw - bw - 10, byy = py + ph / 2 - bh / 2 + 6;
-  if (max) {
-    ctx.font = FK(18); ctx.textAlign = 'center'; outlineText('MAX', bxx + bw / 2, byy + bh / 2, '#ffd24a', 4);
-    return;
-  }
+  // 강화, 제작 버튼
+  const bw = 124, bh = 56, bxx = px + pw - bw - 10, byy = py + ph / 2 - bh / 2 + 8;
+  if (max) { ctx.font = FK(18); ctx.textAlign = 'center'; outlineText('MAX', bxx + bw / 2, byy + bh / 2, '#ffd24a', 4); return; }
   const glow = can ? 0.35 + 0.25 * Math.sin(now * 5) : 0;
   if (can) {
     drawGlow('#ffd24a', bxx + bw / 2, byy + bh / 2, bw * 0.7, glow, 0.5);
@@ -1142,10 +1342,10 @@ function drawResearch(t2, px, py, pw, ph, cardY) {
   ctx.strokeStyle = can ? '#fff6c8' : 'rgba(255,255,255,.2)'; ctx.lineWidth = 1.5; ctx.stroke();
   if (can) { ctx.save(); chamfer(bxx, byy, bw, bh, 12); ctx.clip(); const sh = ((now * 160) % (bw + 80)) - 40; const g2 = ctx.createLinearGradient(bxx + sh - 30, 0, bxx + sh + 30, 0); g2.addColorStop(0, 'rgba(255,255,255,0)'); g2.addColorStop(0.5, 'rgba(255,255,255,.45)'); g2.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g2; ctx.fillRect(bxx, byy, bw, bh); ctx.restore(); }
   ctx.font = FK(19); ctx.textAlign = 'center'; ctx.fillStyle = can ? '#2a1600' : 'rgba(255,255,255,.5)';
-  ctx.fillText('강화', bxx + bw / 2, byy + 17);
-  coreLabel(bxx + bw / 2, byy + 39, cost, 12, 'center', can ? '#2a1600' : '#ff9a9a');
-  if (!can) { ctx.font = FK(11); ctx.fillStyle = '#ff9a9a'; ctx.textAlign = 'center'; ctx.fillText(`${fmt(cost - PROG.credits)} 부족`, bxx + bw / 2, byy + bh + 9); }
-  BUTTONS.push({ x: bxx, y: byy, w: bw, h: bh, act: 'upgrade', type: t2 });
+  ctx.fillText(own ? '강화' : '제작', bxx + bw / 2, byy + (own ? 17 : bh / 2));
+  if (own) coreLabel(bxx + bw / 2, byy + 39, cost, 12, 'center', can ? '#2a1600' : coreOk ? '#dff4ff' : '#ff9a9a');
+  if (!can) { ctx.font = FK(11); ctx.fillStyle = '#ff9a9a'; ctx.textAlign = 'center'; ctx.fillText(!bpOk ? `설계도 ${fmt(need - have)} 부족` : `코어 ${fmt(cost - PROG.credits)} 부족`, bxx + bw / 2, byy + bh + 9); }
+  BUTTONS.push({ x: bxx, y: byy, w: bw, h: bh, act: own ? 'upgrade' : 'craft', type: t2 });
 }
 // 강화 연출: 코어가 계기에서 기체로 빨려 들어가고, 번쩍, 스캔 링, 육각 파편, "Mk.N 달성!"
 function drawUpgradeFx(t2, ax, ay, cx, cy, dt) {
@@ -1190,8 +1390,11 @@ function drawUpgradeFx(t2, ax, ay, cx, cy, dt) {
     const a = q > 1.2 ? Math.max(0, 1 - (q - 1.2) * 3) : 1;
     ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, ay + 54 - q * 20); ctx.scale(sc, sc);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = FT(30, 900); glitchText(f.max ? 'RESEARCH COMPLETE' : `MK.${f.mk}`, 0, -14, f.max ? '#ffffff' : col, 6, q < 0.3 ? (0.3 - q) * 30 : 0);
-    ctx.font = FK(22); outlineText(f.max ? '연구 완료! 공격력 +80%, 체력 +3' : `강화 성공! 공격력 +8%${f.milestone ? ', 체력 +1' : ''}`, 0, 20, '#5affc8', 5);
+    ctx.font = FT(30, 900); glitchText(f.max ? 'MAX UPGRADE' : `MK.${f.mk}`, 0, -14, f.max ? '#ffffff' : col, 6, q < 0.3 ? (0.3 - q) * 30 : 0);
+    ctx.font = FK(22); outlineText(f.stone ? `${f.stone.name}!` : `강화 성공! 공격력 +${f.mk > 10 ? 4 : 8}%`, 0, 20, '#5affc8', 5);
+    if (f.stone) { ctx.font = FK(15); outlineText(f.stone.desc, 0, 46, '#ffe9a8', 4); }
+    if (f.p1) { const k = Math.min(1, q / 0.8), v = Math.round(f.p0 + (f.p1 - f.p0) * (1 - Math.pow(1 - k, 3)));   // 전투력이 다다닥 오른다
+      ctx.font = FT(18, 900); outlineText(`전투력 ${fmt(f.p0)} → ${fmt(v)}`, 0, f.stone ? 72 : 48, '#ffffff', 4); }
     ctx.restore();
   }
   ctx.save(); ctx.globalCompositeOperation = 'lighter';

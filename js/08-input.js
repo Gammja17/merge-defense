@@ -94,23 +94,57 @@ function doAction(b) {
     }
     case 'swapWith': { const i = PROG.deck.indexOf(b.old); if (i >= 0 && !PROG.deck.includes(b.type)) { PROG.deck[i] = b.type; save(); play('confirm', 0.5); } UI.card = null; return; }
     case 'undeploy': PROG.deck = PROG.deck.filter(t => t !== b.type); save(); UI.card = null; return;
-    case 'buy': {
-      const price = UNIT[b.type].unlock.shop;
-      if (PROG.credits < price) { toast('코어가 부족해요. 전투에서 코어를 모으세요'); return; }
-      PROG.credits -= price; PROG.owned.push(b.type); unlockUnit(b.type); save();
+    case 'craft': {   // 설계도로 제작
+      const need = rarityOf(b.type).craft;
+      if (isOwned(b.type)) return;
+      if (bpOf(b.type) < need) { toast(`설계도가 ${need - bpOf(b.type)}장 부족해요. 보급 상자와 스테이지에서 모아요`); denied(); return; }
+      PROG.bp[b.type] -= need; PROG.owned.push(b.type); unlockUnit(b.type); save();
       UI.card = null; UI.pendingReveal = { type: b.type, at: performance.now() / 1000 };
       return;
     }
     case 'upgrade': {
-      const cost = mkCost(b.type);
+      const cost = mkCost(b.type), need = bpNeed(b.type);
       if (mkOf(b.type) >= MK_MAX) return;
-      if (PROG.credits < cost) { toast(`코어가 ${fmt(cost - PROG.credits)} 부족해요. 전투에서 모으세요`); return; }
-      PROG.credits -= cost; PROG.mk[b.type] = mkOf(b.type) + 1; save();
-      const mk = mkOf(b.type);
-      if (mk >= MK_MAX) ach('mk_max');
-      UI.upFx = { type: b.type, mk, t0: performance.now() / 1000, milestone: mk % 3 === 0, max: mk >= MK_MAX };
-      play('upgrade', 0.45); setTimeout(() => { play('levelup', 0.6); play('boom_low', 0.35, 1.4); if (mk % 3 === 0) play('unlock', 0.4); }, 440);
+      if (bpOf(b.type) < need) { toast(`설계도가 ${need - bpOf(b.type)}장 부족해요. 보급 상자와 스테이지에서 모아요`); denied(); return; }
+      if (PROG.credits < cost) { toast(`코어가 ${fmt(cost - PROG.credits)} 부족해요. 전투에서 모으세요`); denied(); return; }
+      const p0 = levelStat(b.type, 1).v;
+      PROG.credits -= cost; PROG.bp[b.type] -= need; PROG.mk[b.type] = mkOf(b.type) + 1; save();
+      const mk = mkOf(b.type), stone = MK_STONES.find(m => m.mk === mk);
+      if (mk >= 10) ach('mk_max');   // 예전 연구 완료(Mk.10)와 같은 때
+      UI.upFx = { type: b.type, mk, t0: performance.now() / 1000, milestone: !!stone, stone, max: mk >= MK_MAX, p0, p1: levelStat(b.type, 1).v };
+      play('upgrade', 0.45); setTimeout(() => { play('levelup', 0.6); play('boom_low', 0.35, 1.4); if (stone) play('unlock', 0.4); }, 440);
       return;
+    }
+    case 'gacha': S = { mode: 'gacha' }; UI.card = null; UI.box = null; UI.odds = false; play('open', 0.4); return;
+    case 'boxOdds': UI.odds = !UI.odds; play('tap', 0.4); return;
+    case 'boxPull': {
+      if (UI.box) return;
+      const free = b.n === 1 && b.free, price = free ? 0 : b.n === 10 ? GEM_10 : GEM_1;
+      if (free && PROG.freeBox === dayKey()) return;
+      if ((PROG.gems || 0) < price) { toast(`다이아가 ${fmt(price - (PROG.gems || 0))} 부족해요`); denied(); return; }
+      PROG.gems -= price; if (free) PROG.freeBox = dayKey();
+      UI.box = { res: pullBox(b.n), t0: performance.now() / 1000, shown: 0 }; save();
+      play('capbreak', 0.6); return;
+    }
+    case 'boxNext': {   // 결과: 한 장씩 넘기고, 다 보면 닫는다
+      const B = UI.box; if (!B) return;
+      const e = performance.now() / 1000 - B.t0;
+      if (e < boxRevealEnd(B)) {   // 아직 뒤집는 중이면 한 번에 다 보여 준다 (소리는 가장 좋은 것 하나만)
+        const g = Math.max(...B.res.slice(B.shown).map(r => r.g), -1);
+        if (g >= 0) play(g >= 3 ? 'unlock' : g === 2 ? 'levelup' : 'tap', 0.5);
+        B.t0 -= boxRevealEnd(B) - e; B.shown = B.res.length; return;
+      }
+      UI.box = null; return;
+    }
+    case 'shopBuy': {   // 교환소
+      const day = dayKey(), o = shopOffers(day)[b.i];
+      if (PROG.shopDay !== day) { PROG.shopDay = day; PROG.shopGot = []; }
+      if (PROG.shopGot.includes(b.i)) return;
+      if (o.core && PROG.credits < o.core) { toast(`코어가 ${fmt(o.core - PROG.credits)} 부족해요`); denied(); return; }
+      if (o.gem && (PROG.gems || 0) < o.gem) { toast(`다이아가 ${fmt(o.gem - (PROG.gems || 0))} 부족해요`); denied(); return; }
+      if (o.core) PROG.credits -= o.core; if (o.gem) PROG.gems -= o.gem;
+      PROG.shopGot.push(b.i); const r = addBp(o.t, o.c); save();
+      toast(r.core ? `코어 +${fmt(r.core)} (이미 Mk.${MK_MAX})` : `${UNIT[o.t].name} 설계도 +${o.c}`); play('coin', 0.5); return;
     }
     case 'endless':
       if (!endlessOpen()) return;
@@ -194,7 +228,7 @@ cv.addEventListener('pointerdown', ev => {
     setTimeout(() => { if (UI.hold === hold) { UI.hold = null; doAction({ act: 'card', type: b.type }); } }, 450);
     return;
   }
-  if (UI.reveal || UI.enemyIntro || UI.settings || UI.card || UI.shop || S.paused || ['map', 'hangar', 'records', 'win', 'lose', 'perk'].includes(S.mode)) { if (b) { if (b.act !== 'slider') play(b.act === 'closecard' || b.act === 'closesettings' || b.act === 'closeshop' ? 'close' : 'click', 0.35); doAction(b); } return; }
+  if (UI.reveal || UI.enemyIntro || UI.settings || UI.card || UI.shop || S.paused || ['map', 'hangar', 'gacha', 'records', 'win', 'lose', 'perk'].includes(S.mode)) { if (b) { if (b.act !== 'slider') play(b.act === 'closecard' || b.act === 'closesettings' || b.act === 'closeshop' ? 'close' : 'click', 0.35); doAction(b); } return; }
   if (b) { play('click', 0.35); doAction(b); return; }
   if (UI.aim) { if (p.y < LINE_Y && S.mode === 'play') useCmd('orbit', p.x, p.y); else UI.aim = null; return; }
   const c = cellAt(p.x, p.y), k = resAt(p.x, p.y);

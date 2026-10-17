@@ -143,6 +143,34 @@ function coreLabel(x, y, value, size = 16, align = 'left', color = '#bff6ff') {
   else outlineText(txt, x0 + r * 2 + gap, y + 1, color, 3);
 }
 
+// 다이아: 위가 넓은 보석 모양
+function drawGem(x, y, r, alpha = 1) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y);
+  const g = ctx.createLinearGradient(0, -r, 0, r); g.addColorStop(0, '#ffd6ff'); g.addColorStop(0.5, '#ff6ad8'); g.addColorStop(1, '#a03aff');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-r, -r * 0.35); ctx.lineTo(-r * 0.5, -r * 0.85); ctx.lineTo(r * 0.5, -r * 0.85); ctx.lineTo(r, -r * 0.35); ctx.lineTo(0, r); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = Math.max(1, r * 0.12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-r, -r * 0.35); ctx.lineTo(r, -r * 0.35); ctx.moveTo(-r * 0.3, -r * 0.35); ctx.lineTo(0, r); ctx.lineTo(r * 0.3, -r * 0.35); ctx.stroke();
+  ctx.restore();
+}
+function gemLabel(x, y, value, size = 16, align = 'left', color = '#ffd6ff') {
+  ctx.font = FT(size, 900);
+  const txt = typeof value === 'number' ? fmt(value) : value, tw = ctx.measureText(txt).width, r = size * 0.55, gap = size * 0.45;
+  const total = r * 2 + gap + tw, x0 = align === 'left' ? x : align === 'right' ? x - total : x - total / 2;
+  drawGem(x0 + r, y, r);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  if (color.startsWith('#2') || color.startsWith('#0')) { ctx.fillStyle = color; ctx.fillText(txt, x0 + r * 2 + gap, y + 1); }
+  else outlineText(txt, x0 + r * 2 + gap, y + 1, color, 3);
+}
+// 설계도: 등급 색 종이에 격자 두 줄
+function drawBp(x, y, r, col) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-0.12);
+  ctx.fillStyle = 'rgba(8,20,48,.95)'; chamfer(-r, -r * 0.75, r * 2, r * 1.5, r * 0.3); ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, r * 0.16); ctx.stroke();
+  ctx.globalAlpha = 0.7; ctx.lineWidth = Math.max(1, r * 0.08); ctx.beginPath();
+  for (const k of [-0.33, 0.33]) { ctx.moveTo(-r * 0.7, r * k * 0.9); ctx.lineTo(r * 0.7, r * k * 0.9); ctx.moveTo(r * k * 1.2, -r * 0.5); ctx.lineTo(r * k * 1.2, r * 0.5); }
+  ctx.stroke(); ctx.restore();
+}
+
 const ENGINE_COL = { artillery: '#ff8a2a', jammer: '#e0ff3a', mother: '#3affc0', grunt: '#7dff7a', tank: '#a9b4ff', minion: '#ff7a5a', rusher: '#ffb35a', shield: '#6ad0ff', sniper: '#ff5ad8', gunship: '#ff4a4a', bomber: '#ffb040', phase: '#bff4ff', grav: '#c89bff' };
 
 const STARS = [];
@@ -512,7 +540,8 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   }
   }
   if (u.buffSpd > 0 && u.cells) drawGlow('#48ffd8', x + 22, y - 26, 6, 0.8);
-  const rank = Math.floor(mkNow(u.type) / 3);
+  const rank = Math.floor(mkNow(u.type) / 5);
+  if (rank >= 4 && SET().fx) drawGlow('#ffd24a', x, y, 40 * (wide > 1 ? 1.6 : 1), 0.16 + 0.06 * Math.sin(performance.now() / 300));   // Mk.20 금빛 기체
   if (rank > 0) {
     const cx0 = x - (wide > 1 ? 58 : 26), cy0 = y + 14;
     ctx.globalAlpha = alpha; ctx.fillStyle = '#ffd24a'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 1;

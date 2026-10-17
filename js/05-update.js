@@ -700,8 +700,8 @@ function endStage(win) {
   if (S.stage.endless) {
     const score = S.score;
     S.baseEarned = 20 + S.wave * 20 + Math.floor(S.wave / 10) * 100;   // 웨이브마다 20, 10웨이브마다 도달 보너스 100
-    if (S.daily && S.daily.weekly) { if (PROG.weeklyPaid !== S.daily.day) { S.baseEarned *= 3; PROG.weeklyPaid = S.daily.day; S.dailyBonus = '이번 주 첫 판 ×3'; } }   // 주간 도전: 그 주 첫 판은 3배
-    else if (S.daily && PROG.dailyPaid !== S.daily.day) { S.baseEarned *= 2; PROG.dailyPaid = S.daily.day; S.dailyBonus = '오늘 첫 판 ×2'; }   // 오늘의 도전: 그날 첫 판은 2배
+    if (S.daily && S.daily.weekly) { if (PROG.weeklyPaid !== S.daily.day) { S.baseEarned *= 3; PROG.weeklyPaid = S.daily.day; S.dailyBonus = '이번 주 첫 판 ×3'; addGems(100); } }   // 주간 도전: 그 주 첫 판은 3배, 다이아 100
+    else if (S.daily && PROG.dailyPaid !== S.daily.day) { S.baseEarned *= 2; PROG.dailyPaid = S.daily.day; S.dailyBonus = '오늘 첫 판 ×2'; addGems(30); }   // 오늘의 도전: 그날 첫 판은 2배, 다이아 30
     S.earned = S.baseEarned + S.cores; S.endT = performance.now() / 1000;
     PROG.credits += S.earned;
     S.lastBoard = gridUnits().sort((a, b) => b.lv - a.lv).map(u => u.type + Math.min(u.lv, 8)).join(','); UI.lbMsg = '';
@@ -726,14 +726,23 @@ function endStage(win) {
   S.baseEarned = (first ? 90 : 30) + S.stars * 25 + S.stage.s * 25;
   S.earned = S.baseEarned + S.cores; S.endT = performance.now() / 1000;
   PROG.credits += S.earned;
+  if (S.stars === 3 && (PROG.stars[n] || 0) < 3) addGems(10);   // 별 3개 첫 달성
+  if (first && S.stage.boss) addGems(100);   // 구역 보스 첫 클리어
   if ((PROG.stars[n] || 0) < S.stars) PROG.stars[n] = S.stars;
+  // 깰 때마다 설계도 한 묶음 (첫 클리어는 두 묶음). 묶음 크기는 뽑기의 절반
+  for (let k = 0; k < (first ? 2 : 1); k++) { const t = unitOfRarity(rollRarity(STAGE_ODDS)); S.bpGot.push(addBp(t, Math.ceil(rarityOf(t).pack / 2))); }
   if (n === 1) ach('first_clear');
   if (n % 5 === 0 && n <= 30) ach('boss_' + n / 5);   // 7, 8구역 보스 도전 과제는 아직 SKEAM에 없음
   if (S.stars === 3) ach('three_star');
   if (Array.from({ length: STAGE_COUNT }, (_, i) => PROG.stars[i + 1]).every(v => v === 3)) ach('all_stars');
   save();
   // 이 스테이지로 풀리는 기체가 있으면 소개 카드
-  if (first) { const t = UNIT_ORDER.find(k => UNIT[k].unlock.stage === n); if (t) { unlockUnit(t); UI.pendingReveal = { type: t, at: performance.now() / 1000 + S.introDur }; } }
+  // 이 스테이지가 주던 기체: 일반, 고급은 바로 가짐. 희귀 이상은 제작 설계도의 절반
+  if (first) { const t = UNIT_ORDER.find(k => UNIT[k].unlock.stage === n); if (t && !isOwned(t)) {
+    if (UNIT_RARITY[t] <= 1) { PROG.owned.push(t); unlockUnit(t); UI.pendingReveal = { type: t, at: performance.now() / 1000 + S.introDur }; }
+    else S.bpGot.unshift(addBp(t, Math.ceil(rarityOf(t).craft / 2)));
+  } }
+  save();
   play('clear_fx', 0.6);
 }
 

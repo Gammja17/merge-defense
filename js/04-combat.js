@@ -747,10 +747,19 @@ function claimCap(c) {
     addText(c.x, c.y - 30, `기지 +${S.hp - before}, 기체 +1 수리`, '#8dff9a', 22);
     play('shieldUp', 0.35);
   } else {
-    let placed = 0, reserved = 0, lost = 0;
+    let placed = 0, reserved = 0, lost = 0, elite = 0;
+    const ec = UNIT[rw.type].shape === 1 && !rw.gold ? eliteChance(rw.type) : 0;   // 정예 출고 (Mk.5, Mk.15)
     for (let k = 0; k < rw.n; k++) {
-      const r = giveUnit(rw.type, rw.lv, c.x, c.y, col);
+      const up = rw.lv < 5 && Math.random() < ec; if (up) elite++;
+      const r = giveUnit(rw.type, rw.lv + (up ? 1 : 0), c.x, c.y, col);
       if (r === 'placed') placed++; else if (r === 'reserve') reserved++; else lost++;
+    }
+    if (elite) { addText(c.x, c.y - 54, `정예 출고! Lv+1${elite > 1 ? ' ×' + elite : ''}`, '#ffd24a', 18); play('up_fx', 0.35); }
+    if (rw.gold && !S.daily && !S.stage.training && Math.random() < GOLD_BP) {   // 황금 캡슐: 가끔 설계도
+      const t = unitOfRarity(rollRarity(GOLD_ODDS)), got = addBp(t, Math.ceil(rarityOf(t).pack / 2));
+      S.bpGot.push(got); save();
+      addText(c.x, c.y + 40, got.core ? `코어 +${fmt(got.core)}` : `${rarityOf(t).name} 설계도 +${got.c}`, rarityOf(t).col, 20);
+      play('coin', 0.5);
     }
     const name = UNIT[rw.type].name + (rw.lv > 1 ? ` Lv${rw.lv}` : '');
     addText(c.x, c.y - 30, `${name} +${placed + reserved}`, '#7fe0ff', 20);

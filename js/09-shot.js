@@ -48,6 +48,13 @@ function setupShot(k) {
   } else if (k === 'hangar') {
     S = { mode: 'hangar' }; UI.card = { type: 'b' };
     UI.upFx = { type: 'b', mk: 5, t0: performance.now() / 1000 - 0.35, milestone: false, max: false }; PROG.mk.b = 5;
+  } else if (k === 'gacha' || k === 'box' || k === 'box1') {   // 보급 상자 화면, 10번 결과, 1번 결과
+    S = { mode: 'gacha' }; PROG.gems = 1250; PROG.pity = 37; PROG.owned = UNIT_ORDER.filter(t => UNIT_RARITY[t] < 2);
+    if (k !== 'gacha') { UI.box = { res: pullBox(k === 'box' ? 10 : 1), t0: performance.now() / 1000 - 9, shown: 99 }; }
+  } else if (k === 'craft' || k === 'hangar2') {   // 제작 전 기체 카드, 설계도가 섞인 격납고
+    S = { mode: 'hangar' }; PROG.owned = UNIT_ORDER.filter(t => UNIT_RARITY[t] < 2); PROG.deck = ['f', 't', 'e', 'c', 'a'];
+    PROG.bp = { f: 40, t: 12, q: 2, v: 5, b: 3, h: 6, e: 9 }; PROG.mk = { f: 6, t: 3, e: 1 };
+    if (k === 'craft') UI.card = { type: 'v' };
   } else if (k === 'endless') {
     PROG.deck = ['f', 't', 'e', 'b', 'c'];
     startStage(0, true); shotArmy(army); S.wave = 8; startWave(9); shotRun(60 * 12);

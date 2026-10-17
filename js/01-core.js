@@ -173,7 +173,7 @@ const boardList = b => (b || '').split(',').filter(x => /^[a-z][1-8]$/.test(x) &
 // ── 저장 (이 브라우저에만) ────────────────────────────────
 const SAVE_KEY = 'mergeDefense.v1';
 const DEFAULT_SETTINGS = { sfxVol: 0.8, bgmVol: 0.7, shake: true, fx: true, nums: true, speed: 1 };
-function freshProg() { return { stars: {}, seen: {}, deck: ['f', 't'], owned: [], credits: 0, mk: {}, colors: {}, records: [], settings: { ...DEFAULT_SETTINGS } }; }
+function freshProg() { return { stars: {}, seen: {}, deck: ['f', 't'], owned: [], credits: 0, mk: {}, bp: {}, gems: 0, pity: 0, colors: {}, records: [], settings: { ...DEFAULT_SETTINGS } }; }
 let PROG = freshProg();
 try {
   const s = JSON.parse(localStorage.getItem(SAVE_KEY));
@@ -184,13 +184,16 @@ try {
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(PROG)); } catch (e) {} }
 const unlocked = n => n === 1 || (PROG.stars[n - 1] || 0) > 0;
 const endlessOpen = () => (PROG.stars[5] || 0) > 0;
-// 연구소: 기체 종류별 영구 강화 Mk.0~10
-const MK_MAX = 10;
+// 기체 강화: 제작하면 Mk.0, 설계도와 코어로 Mk.20까지
+const MK_MAX = 20;
 const mkOf = t => (PROG.mk && PROG.mk[t]) || 0;
-// 오늘의 도전은 모두 같은 조건: 연구 강화를 빼고 겨룬다
-const mkNow = t => S.daily ? 0 : mkOf(t);
-const mkMul = t => 1 + 0.08 * mkNow(t);
-const mkCost = t => Math.round(100 * Math.pow(1.5, mkOf(t)));
+// 오늘의 도전만 모두 같은 조건: Mk를 빼고 겨룬다 (주간 도전, 무한 방어선은 Mk 반영)
+const mkNow = t => S.daily && !S.daily.weekly ? 0 : mkOf(t);
+// 공격력: Mk.10까지 단계마다 +8%, 그 뒤로는 +4% (Mk.20이면 2.2배. 너무 부풀지 않게)
+const mkAtk = m => 0.08 * Math.min(m, 10) + 0.04 * Math.max(0, m - 10);
+const mkMul = t => 1 + mkAtk(mkNow(t));
+// 코어: Mk.10까지는 예전 비용 그대로, 그 뒤로는 1.25배씩
+const mkCost = t => { const m = mkOf(t); return Math.round(100 * Math.pow(1.5, Math.min(m, 9)) * Math.pow(1.25, Math.max(0, m - 9))); };
 const SET = () => PROG.settings;
 // SKEAM 업적: SKEAM 안에서 돌 때만 알린다. 같은 업적을 또 알려도 한 번만 센다. 촬영 모드에서는 알리지 않는다
 const ach = id => { if (!SHOT && window.SKEAM) SKEAM.unlock(id); };
