@@ -2,7 +2,7 @@
 //   python tools/bundle.py js /tmp/game.js
 //   node tools/dev/sim.js /tmp/game.js '{"bots":["smart"],"reps":2,"from":1,"to":30}'   캠페인: 스테이지별 결과 (숫자 = 이긴 판의 남은 방어막, L3 = 웨이브 3에서 짐)
 //   node tools/dev/sim.js /tmp/game.js '{"endless":4}'                                   무한 방어선: 몇 웨이브까지 버티는지
-// 설정: bots(smart, idle; 피하기는 없어서 nododge는 smart와 같다), reps, from, to, deck, endless, growth, mk(연구 단계), nofocus, fleetDeck(함대 성격에 맞춰 편성), only(스테이지 번호 목록), bossWall(구역 보스 체력 배수), mkExpect(구역별 기대 Mk 바꾸기)
+// 설정: bots(smart, idle; 피하기는 없어서 nododge는 smart와 같다), reps, from, to, deck, endless, growth, mk(연구 단계), nofocus, fleetDeck(함대 성격에 맞춰 편성), only(스테이지 번호 목록), bossWall(구역 보스 체력 배수), bossTry(보스에 진 횟수 고정), mkExpect(구역별 기대 Mk 바꾸기)
 // 스테이지 1은 튜토리얼 때문에 늘 L1로 나오니 무시한다
 const fs = require('fs');
 const any = () => new Proxy(function () {}, { get: (t, k) => k === Symbol.toPrimitive ? () => 0 : (k === 'width' || k === 'height' ? 64 : k === 'measureText' ? () => ({ width: 40 }) : any()), apply: () => any(), set: () => true });
@@ -51,6 +51,7 @@ const FLEET_DECK = { heavy: ['f', 't', 's', 'g', 'l', 'b', 'm'], swarm: ['f', 't
 function fleetDeck(n) { const st = stageInfo(n), ok = t => UNIT[t].unlock === 'base' || (UNIT[t].unlock.stage && UNIT[t].unlock.stage < n); return FLEET_DECK[st.fleet || 'none'].filter(ok).slice(0, 5); }
 function run(n, bot) {
   if (cfg.fleetDeck) PROG.deck = fleetDeck(n);
+  if (cfg.bossTry != null) { PROG.bossTry = { [n]: cfg.bossTry }; delete PROG.stars[n]; }   // 보스 약화 단계 고정
   startStage(n); GS.runs++;
   for (let i = 0; i < 60 * 480 && S.mode !== 'win' && S.mode !== 'lose'; i++) {
     fakeNow += 16.7;

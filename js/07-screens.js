@@ -774,7 +774,7 @@ function drawEnd() {
   drawXp(90, 548, W - 180);
   let dy = drawRewards(W / 2, 584) ? 40 : 0;   // 받은 설계도, 다이아가 있으면 한 줄 내린다
   if (!win && S.bossEase) {   // 보스 약화: 다음 도전에서 약해진다
-    ctx.font = FK(15); ctx.textAlign = 'center'; outlineText(`다음 도전: 보스 함대 ${Math.round(S.bossEase * 100)}% 약화`, W / 2, 576 + dy, '#5affc8', 3); dy += 30;
+    ctx.font = FK(15); ctx.textAlign = 'center'; outlineText(`다음 도전: 보스 체력 -${Math.round(S.bossEase * 100)}%${bossTries(S.stage.n) >= BOSS_CALM ? ', 치명 기믹 없음' : bossTries(S.stage.n) === BOSS_CALM - 1 ? ' (한 번 더 지면 치명 기믹 없음)' : ''}`, W / 2, 576 + dy, '#5affc8', 3); dy += 30;
   }
   const primary = win ? (st.n < STAGE_COUNT ? ['다음 스테이지', 'next'] : ['지도로', 'map']) : ['다시 하기', 'retry'];
   button(W / 2 - 110, 590 + dy, 220, 50, primary[0], primary[1], 'primary');
@@ -1780,7 +1780,7 @@ function drawPrep() {
   ctx.font = FK(16); ctx.fillStyle = col; ctx.fillText(st ? `${st.sector.name}${st.boss ? ', 보스' : ''}, ${st.waves}웨이브` : '무한 방어선', W / 2, y + 66);
   if (K) { ctx.font = FK(15); outlineText(`${K.name}: ${K.sub}`, W / 2, y + 90, K.col, 3); }
   else if (st && st.sector.ruleName) { ctx.font = FK(15); outlineText(`규칙: ${st.sector.ruleName}`, W / 2, y + 90, st.sector.color, 3); }
-  if (st && st.boss && bossEaseOf(P.n) > 0 && !PROG.stars[P.n]) { ctx.font = FK(15); outlineText(`보스 약화 ${Math.round(bossEaseOf(P.n) * 100)}% (질 때마다 5%, 최대 25%)`, W / 2, y + 113, '#5affc8', 3); }
+  if (st && st.boss && bossEaseOf(P.n) > 0 && !PROG.stars[P.n]) { ctx.font = FK(15); outlineText(`보스 약화: 체력 -${Math.round(bossEaseOf(P.n) * 100)}%${bossTries(P.n) >= BOSS_CALM ? ', 치명 기믹 없음' : ''}`, W / 2, y + 113, '#5affc8', 3); }
   const FL = st && st.fleet ? FLEETS[st.fleet] : null;   // 함대 성격: 기호와 한 줄 (어떤 기체가 맞는지는 말하지 않는다)
   if (FL) { ctx.font = FK(15); const txt = `${FL.name}: ${FL.desc}`, tw = ctx.measureText(txt).width; drawFleetIcon(st.fleet, W / 2 - tw / 2 - 14, y + 112, 8); ctx.textAlign = 'left'; outlineText(txt, W / 2 - tw / 2, y + 113, FL.col, 3); ctx.textAlign = 'center'; }
   { const run = PROG.run, n = st && run && run.s === st.s && run.n === P.n - 1 ? run.perks.filter(id => id !== 'gift' && id !== 'fixall').length : 0;   // 구역 런: 이어지는 강화

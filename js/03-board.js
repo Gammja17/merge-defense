@@ -135,10 +135,13 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 // 플레이어 모형(하루 30분 무과금 = 오늘의 도전 한 판 + 캠페인 네 판)으로 맞춘 값: 보통 칸은 그 구역에 올 때의 Mk보다 조금 위 (함대에 맞춘 편성이면 넘는다),
 // 구역 보스는 3구역부터 벽 (처음엔 단단하고, 질 때마다 약해진다). 이러면 다 깨는 데 25일쯤, 한 보스에서 오래 막히지 않는다
 const MK_EXPECT = [0, 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6];   // 10강 기준 (한 단계 +12%). 하루 30분 무과금이 그 구역에 올 때 가진 Mk (플레이어 모형)
-const BOSS_WALL = [1, 1, 2, 2.5, 3, 3, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5];   // 구역 보스 본체 체력 배수 (3구역부터 벽. 시뮬: 봇은 체력에 둔해서 3배여도 첫 도전 절반쯤 이김)
-// 보스 약화: 아직 못 깬 구역 보스에 질 때마다 그 스테이지 적이 5%씩 약해진다 (다섯 번까지, 깨면 처음으로)
-const BOSS_EASE = 0.05, BOSS_EASE_MAX = 5;
-const bossEaseOf = n => BOSS_EASE * Math.min(BOSS_EASE_MAX, (PROG.bossTry && PROG.bossTry[n]) || 0);
+// 플레이어 모형과 시뮬로 맞춘 값: 구역 보스 첫 도전이 15%쯤 (19, 20구역은 12%, 10%). 봇은 보스 체력에 둔해서 쉬운 보스는 배수가 크다 (최대 20배)
+let BOSS_WALL = [1, 1, 20, 16.4, 9.8, 14.3, 20, 20, 6.8, 11.4, 11.4, 6.8, 20, 20, 20, 20, 20, 20, 8.4, 9.5];   // 구역 보스 본체 체력 배수 (3구역부터 벽. 시뮬: 봇은 체력에 둔해서 3배여도 첫 도전 절반쯤 이김)
+// 보스 약화: 아직 못 깬 구역 보스에 질 때마다 보스 체력이 5%씩 줄고 (여덟 번까지), 여섯 번 지면 치명 기믹을 안 쓴다. 깨면 처음으로
+const BOSS_EASE = 0.05, BOSS_EASE_MAX = 8, BOSS_CALM = 6;
+const bossTries = n => (PROG.bossTry && PROG.bossTry[n]) || 0;
+const bossEaseOf = n => BOSS_EASE * Math.min(BOSS_EASE_MAX, bossTries(n));
+const bossCalm = () => S.stage && S.stage.boss && !S.stage.endless && bossTries(S.stage.n) >= BOSS_CALM;
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s] * (1 + mkAtk(MK_EXPECT[S.stage.s] || 0));
 // 캠페인 보스(중간 보스 포함) 체력: 원래는 고정값. 기대 Mk만큼 올리고, 구역 보스 본체는 벽만큼 더 (보스 칸 잔챙이는 보통 수준 그대로)
 const bossMul = () => S.stage.training ? 1 : 1 + mkAtk(MK_EXPECT[S.stage.s] || 0);
@@ -174,7 +177,8 @@ function bossGimmick(b, when) {
   S.debuff = S.debuff || {};
   const keys = Object.keys(GIMMICK).filter(k => k !== 'shatter'), lethal = keys.filter(k => GIMMICK[k].lethal), annoy = keys.filter(k => !GIMMICK[k].lethal);
   const pick = list => list[Math.floor(Math.random() * list.length)];
-  const todo = when === 'rage' ? ['shatter', pick(annoy)] : when === 'mini' ? [pick(keys)] : [pick(lethal), pick(annoy)];
+  const calm = bossCalm();   // 보스 약화 3단계: 치명 기믹(봉쇄, 강등, 분해 ...) 없이 짜증 기믹만
+  const todo = when === 'rage' ? (calm ? [pick(annoy)] : ['shatter', pick(annoy)]) : when === 'mini' ? [pick(calm ? annoy : keys)] : calm ? [pick(annoy)] : [pick(lethal), pick(annoy)];
   todo.forEach((k, i) => later(i * 0.9, () => {
     if (b.dead || S.mode !== 'play') return;
     let g = GIMMICK[k];
