@@ -720,7 +720,12 @@ function endStage(win) {
   }
   gainXp(win ? S.stage.waves * 10 + 50 : (S.wave - 1) * 10);   // 캠페인: 깬 웨이브 × 10, 이기면 +50
   PROG.run = win && !S.stage.training && S.stage.i < 4 ? { s: S.stage.s, n: S.stage.n, perks: S.perks.slice() } : null;   // 구역 런: 이기면 강화를 기억, 지거나 구역 보스를 깨면 지움
-  if (!win) { save(); play('vo_fail', 0.7); S.glitch = 0.6; return; }
+  if (!win) {   // 져도 버틴 웨이브만큼 코어와 전투 수집은 받는다. 못 깬 구역 보스면 다음 도전에서 약해진다
+    S.baseEarned = S.stage.training ? 0 : (S.wave - 1) * 15; S.earned = S.baseEarned + S.cores; PROG.credits += S.earned;
+    if (S.stage.boss && !PROG.stars[S.stage.n]) { PROG.bossTry = PROG.bossTry || {}; PROG.bossTry[S.stage.n] = (PROG.bossTry[S.stage.n] || 0) + 1; S.bossEase = bossEaseOf(S.stage.n); }
+    save(); play('vo_fail', 0.7); S.glitch = 0.6; return;
+  }
+  if (PROG.bossTry && PROG.bossTry[S.stage.n]) delete PROG.bossTry[S.stage.n];
   S.stars = S.hp >= 8 ? 3 : S.hp >= 4 ? 2 : 1;
   const n = S.stage.n, first = !PROG.stars[n];
   S.baseEarned = (first ? 90 : 30) + S.stars * 25 + S.stage.s * 25;

@@ -489,7 +489,7 @@ function buildWave(st, w) {
   const midBoss = st.n >= 3 && !st.endless && w === midWave(st);
   if (midBoss) {
     const bs = SECTORS.slice(0, st.s + 1).map(x => x.boss), k = bs[Math.floor(R() * bs.length)];
-    ev.push({ t: 4, k, mini: MID_HP[st.i] * ENEMY[st.sector.boss].hp / ENEMY[k].hp });
+    ev.push({ t: 4, k, mini: MID_HP[st.i] * ENEMY[st.sector.boss].hp / ENEMY[k].hp * (st.boss ? 0.6 : 1) });   // 구역 보스 칸: 벽은 보스 본체에 (중간 보스에서 막히면 보스도 못 보고 진다)
   }
   if (kind === 'base' && st.s >= 3 && !bossWave && w === 3 && !midBoss && (st.i === 0 || R() < 0.4)) ev.push({ t: 7, k: 'artillery' });   // 적 본성부터: 중간 보스 포격 순양함
   if (kind === 'siege' && ((w === 3 && !midBoss) || last)) ev.push({ t: 5, k: 'artillery' });

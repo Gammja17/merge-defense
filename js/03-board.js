@@ -128,8 +128,17 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 
 // ── 스폰 ──────────────────────────────────────────────────
 // 구역마다 기대 Mk: 그쯤이면 이만큼 강화했으리라 보고 적 체력을 그만큼 올린다 (Mk가 너무 부풀지 않게. 강화를 덜 했으면 그 구역이 벽이 된다)
-const MK_EXPECT = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5];   // 절반만: 나머지는 함대에 맞춘 편성(전략)으로 메꾼다
+// 플레이어 모형(하루 30분 무과금 = 오늘의 도전 한 판 + 캠페인 네 판)으로 맞춘 값: 보통 칸은 그 구역에 올 때의 Mk보다 조금 위 (함대에 맞춘 편성이면 넘는다),
+// 구역 보스는 3구역부터 벽 (처음엔 단단하고, 질 때마다 약해진다). 이러면 다 깨는 데 25일쯤, 한 보스에서 오래 막히지 않는다
+const MK_EXPECT = [0, 3, 4, 5, 6, 7, 8, 8, 9, 9];
+const BOSS_WALL = [1, 1, 2, 2.5, 3, 3, 3.5, 3.5, 3.5, 3.5];   // 구역 보스 본체 체력 배수 (3구역부터 벽. 시뮬: 봇은 체력에 둔해서 3배여도 첫 도전 절반쯤 이김)
+// 보스 약화: 아직 못 깬 구역 보스에 질 때마다 그 스테이지 적이 5%씩 약해진다 (다섯 번까지, 깨면 처음으로)
+const BOSS_EASE = 0.05, BOSS_EASE_MAX = 5;
+const bossEaseOf = n => BOSS_EASE * Math.min(BOSS_EASE_MAX, (PROG.bossTry && PROG.bossTry[n]) || 0);
 const stageMul = () => (1 + IN_SECTOR * Math.min(S.stage.i, 3)) * SECTOR_MUL[S.stage.s] * (1 + mkAtk(MK_EXPECT[S.stage.s] || 0));
+// 캠페인 보스(중간 보스 포함) 체력: 원래는 고정값. 기대 Mk만큼 올리고, 구역 보스 본체는 벽만큼 더 (보스 칸 잔챙이는 보통 수준 그대로)
+const bossMul = () => S.stage.training ? 1 : 1 + mkAtk(MK_EXPECT[S.stage.s] || 0);
+const bossWall = () => S.stage.boss && !S.stage.endless ? (BOSS_WALL[S.stage.s] || 1) * (1 - bossEaseOf(S.stage.n)) : 1;
 let ENDLESS_GROWTH = 1.29, ENDLESS_BASE = 1.1, ENDLESS_BOSS = 0.17;   // 초반 세기 (칸 강화가 빠져 1.35 → 1.1), 성장은 30웨이브쯤이 예전과 비슷하게. 보스는 그 웨이브 적 체력에 맞춘다
 const hpMul = () => S.stage.endless ? ENDLESS_BASE * Math.pow(ENDLESS_GROWTH, S.wave - 1) * PACE[cyclePos(S.wave) - 1] * Math.pow(1.25, S.mut.filter(m => m === 'armor').length) : (WAVE_BASE + WAVE_GROWTH * (wavePw(S.stage, S.wave) - 1)) * stageMul();
 const AFFIX = { fast: ['가속', '#ff9a3a'], armor: ['장갑', '#7fd4ff'], split: ['분열', '#8dff9a'], bomb: ['자폭', '#ff4a8a'] }, AFFIX_KEYS = Object.keys(AFFIX);
@@ -193,7 +202,7 @@ function sealCells(n, from) {
 }
 function spawnEnemy(k, x, y) {
   const d = ENEMY[k];
-  const hp = d.hp * (d.boss ? BOSS_MUL * (S.stage.endless ? ENDLESS_BOSS * hpMul() : 1) : hpMul());
+  const hp = d.hp * (d.boss ? BOSS_MUL * (S.stage.endless ? ENDLESS_BOSS * hpMul() : bossMul()) : hpMul());
   const sh = d.shield ? d.shield * hp : mutOn('shield') && !d.boss && k !== 'rock' && k !== 'splitS' ? 0.3 * hp : 0;
   const e = { k, x, y, hp, maxHp: hp, shield: sh, maxShield: sh, downT: 0, pending: 0, r: d.r, speed: d.speed,
               vx: 0, rot: 0, spin: d.spin ? d.spin * (Math.random() < 0.5 ? -1 : 1) : 0, t: 0, flash: 0,
@@ -257,6 +266,7 @@ function runEvent(ev) {
         if (ev.x) b.cx = ev.x;
         if (ev.hpMul) for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) b[k] *= ev.hpMul;   // 보스 둘이 함께 나올 때
         if (ev.mini) { const f = ev.mini === true ? 0.4 : ev.mini; for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) b[k] *= f; b.mini = true; }   // 중간 보스로 나온 보스 (체력을 줄여서)
+        else { const f = bossWall(); if (f !== 1) for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) b[k] *= f; }   // 구역 보스 벽 (질 때마다 약해짐)
         if (ev.rage) bossRage(b);
         if (!SHOT && !S.tut && !ev.quiet) later(2.6, () => { if (!b.dead && S.mode === 'play') bossGimmick(b, b.mini ? 'mini' : 'spawn'); });   // 보스, 중간 보스: 나타나면 기믹
         if (!S.boss || S.boss.dead) S.boss = b;
