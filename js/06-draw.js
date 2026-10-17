@@ -553,8 +553,8 @@ function drawUnit(u, x, y, alpha = 1, big = 1, onPad = false) {
   }
   }
   if (u.buffSpd > 0 && u.cells) drawGlow('#48ffd8', x + 22, y - 26, 6, 0.8);
-  const rank = Math.floor(mkNow(u.type) / 5);
-  if (rank >= 4 && SET().fx) drawGlow('#ffd24a', x, y, 40 * (wide > 1 ? 1.6 : 1), 0.16 + 0.06 * Math.sin(performance.now() / 300));   // Mk.20 금빛 기체
+  const rank = Math.floor(mkNow(u.type) / 2);   // 이정표 (Mk 짝수) 하나마다 작은 육각
+  if (rank >= 5 && SET().fx) drawGlow('#ffd24a', x, y, 40 * (wide > 1 ? 1.6 : 1), 0.16 + 0.06 * Math.sin(performance.now() / 300));   // Mk.10 금빛 기체
   if (rank > 0) {
     const cx0 = x - (wide > 1 ? 58 : 26), cy0 = y + 14;
     ctx.globalAlpha = alpha; ctx.fillStyle = '#ffd24a'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 1;

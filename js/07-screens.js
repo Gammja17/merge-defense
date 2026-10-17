@@ -35,6 +35,12 @@ function draw(dt) {
   drawFieldStuff();
   for (const c of S.caps) { const gh = capGhost(c); if (gh) ctx.globalAlpha = 0.3; drawCap(c); if (gh) ctx.globalAlpha = 1; }
   for (const e of S.enemies) drawEnemy(e);
+  if (ruleOn('fog')) {   // 안개: 사거리 선까지 뿌옇게 (레이더 기지가 있으면 얇아진다)
+    const fy = rangeY(), g = ctx.createLinearGradient(0, 0, 0, fy + 40);
+    g.addColorStop(0, 'rgba(120,170,165,.82)'); g.addColorStop(Math.max(0, (fy - 30) / (fy + 40)), 'rgba(110,160,155,.7)'); g.addColorStop(1, 'rgba(110,160,155,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, fy + 40);
+    ctx.font = FK(13); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillStyle = 'rgba(220,255,250,.8)'; ctx.fillText(S.radar ? '안개 (레이더로 걷힘)' : '안개', W - 10, fy - 4);
+  }
   drawStrikes();
 
   ctx.drawImage(DECK, 0, LINE_Y - 10);
@@ -44,6 +50,12 @@ function draw(dt) {
   drawAuras();
   drawAttacks();
   for (const u of gridUnits()) { const p = unitPos(u); drawUnit(u, p.x, p.y, drag && drag.unit === u && drag.moved ? 0.3 : 1, 1, true); }
+  if (S.blackWarn && S.blackWarn.t > 0) {   // 정전 경고: 곧 멈출 줄
+    const p0 = cellPos(S.blackWarn.row * COLS), a = 0.35 + 0.3 * Math.sin(performance.now() / 60);
+    ctx.fillStyle = `rgba(255,232,90,${a * 0.35})`; ctx.fillRect(GRID_X, p0.y - CH / 2, COLS * CW, CH);
+    ctx.strokeStyle = `rgba(255,232,90,${a})`; ctx.lineWidth = 3; ctx.strokeRect(GRID_X + 2, p0.y - CH / 2 + 2, COLS * CW - 4, CH - 4);
+    ctx.font = FK(16); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; outlineText('정전 경고', W / 2, p0.y, '#ffe85a', 4);
+  }
   for (const u of gridUnits()) if (u.ice > 0) {
     const b = unitBox(u), a = Math.min(1, u.ice * 2);
     ctx.fillStyle = `rgba(170,235,255,${0.35 * a})`; chamfer(b.x, b.y, b.w, b.h, 9); ctx.fill();
@@ -790,7 +802,7 @@ function drawMap() {
   ctx.font = FT(14); ctx.textAlign = 'left'; ctx.fillStyle = '#ffe9a8';
   ctx.fillText(`${total} / ${STAGE_COUNT * 3}`, 44, 85);
   coreLabel(W - 72, 85, UI.coreShown, 15, 'right');
-  gemLabel(122, 85, PROG.gems || 0, 14, 'left');
+  gemLabel(44 + ctx.measureText(`${total} / ${STAGE_COUNT * 3}`).width + 18, 85, PROG.gems || 0, 14, 'left');
   { const L = lvlOf(PROG.xp || 0), tt = titleOf(), bw = 130;   // 계정 레벨과 칭호, 다음 레벨까지 막대
     ctx.textAlign = 'center'; ctx.font = FT(14, 900); ctx.fillStyle = '#ffd24a';
     const lw = ctx.measureText(`Lv ${L.lvl}`).width; ctx.font = FK(13); const tw = tt ? ctx.measureText(tt).width + 8 : 0;
@@ -1288,7 +1300,7 @@ function drawCard() {
   drawUpgradeFx(t2, W / 2, y + 140, x + w - 60, y + 30, cdt);
 }
 
-// 강화 패널: Mk 배지, 20칸 막대 (5칸마다 이정표), 설계도 막대, 지금→다음 효과, 강화 버튼. 안 가진 기체는 제작 패널
+// 강화 패널: Mk 배지, 10칸 막대 (2칸마다 이정표), 설계도 막대, 지금→다음 효과, 강화 버튼. 안 가진 기체는 제작 패널
 function drawResearch(t2, px, py, pw, ph) {
   const own = isOwned(t2), mk = mkOf(t2), R0 = rarityOf(t2), max = own && mk >= MK_MAX, now = performance.now() / 1000;
   const cost = own ? mkCost(t2) : 0, need = bpNeed(t2), have = bpOf(t2), bpOk = have >= need, coreOk = PROG.credits >= cost, can = !max && bpOk && coreOk;
@@ -1308,10 +1320,10 @@ function drawResearch(t2, px, py, pw, ph) {
     ctx.font = FT(18, 900); ctx.fillStyle = max ? '#2a1600' : '#fff'; ctx.fillText(String(mk), bx, bY + 7);
   } else { drawGlow(R0.col, bx, bY, 34, 0.3); drawBp(bx, bY, 22, R0.col); }
   const sx = px + 84, sw = pw - 84 - 140;
-  if (own) {   // Mk 막대: 5칸마다 이정표 눈금
+  if (own) {   // Mk 막대: 2칸마다 이정표 눈금
     const segW = sw / MK_MAX;
     for (let k = 0; k < MK_MAX; k++) {
-      const on = k < mk, fresh = on && k === mk - 1 && fx < 1.2, x0 = sx + k * segW, stone = (k + 1) % 5 === 0;
+      const on = k < mk, fresh = on && k === mk - 1 && fx < 1.2, x0 = sx + k * segW, stone = (k + 1) % 2 === 0;
       ctx.fillStyle = on ? (stone ? '#ffb347' : '#ffd24a') : 'rgba(255,255,255,.08)';
       ctx.beginPath(); ctx.moveTo(x0 + 2, py + 28); ctx.lineTo(x0 + segW - 1, py + 28); ctx.lineTo(x0 + segW - 2, py + 38); ctx.lineTo(x0 + 1, py + 38); ctx.closePath(); ctx.fill();
       if (fresh) drawGlow('#fff2b0', x0 + segW / 2, py + 33, 22, (1.2 - fx) * 1.5);
@@ -1397,10 +1409,10 @@ function drawUpgradeFx(t2, ax, ay, cx, cy, dt) {
     ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, ay + 54 - q * 20); ctx.scale(sc, sc);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = FT(30, 900); glitchText(f.max ? 'MAX UPGRADE' : `MK.${f.mk}`, 0, -14, f.max ? '#ffffff' : col, 6, q < 0.3 ? (0.3 - q) * 30 : 0);
-    ctx.font = FK(22); outlineText(f.stone ? `${f.stone.name}!` : `강화 성공! 공격력 +${f.mk > 10 ? 4 : 8}%`, 0, 20, '#5affc8', 5);
+    ctx.font = FK(22); outlineText(f.stone ? `${f.stone.name}!` : '강화 성공! 공격력 +12%', 0, 20, '#5affc8', 5);
     if (f.stone) { ctx.font = FK(15); outlineText(f.stone.desc, 0, 46, '#ffe9a8', 4); }
     if (f.p1) { const k = Math.min(1, q / 0.8), v = Math.round(f.p0 + (f.p1 - f.p0) * (1 - Math.pow(1 - k, 3)));   // 전투력이 다다닥 오른다
-      ctx.font = FT(18, 900); outlineText(`전투력 ${fmt(f.p0)} → ${fmt(v)}`, 0, f.stone ? 72 : 48, '#ffffff', 4); }
+      ctx.font = FT(18, 900); outlineText(`전투력 ${fmt(f.p0)} → ${fmt(v)}`, 0, -50, '#ffffff', 4); }   // MK 글자 위 (아래는 기체 이름)
     ctx.restore();
   }
   ctx.save(); ctx.globalCompositeOperation = 'lighter';

@@ -254,11 +254,34 @@ function updateEnemy(e, dt) {
   }
 }
 
+// 구역 규칙 타이머: 정전(한 줄 기체가 3초 멈춤, 1초 전에 경고), 운석(칸 하나가 6초 막힘)
+function updateRules(dt) {
+  if (ruleOn('blackout')) {
+    S.blackT = (S.blackT == null ? 8 : S.blackT) - dt;
+    if (S.blackT <= 0) {
+      S.blackT = 11 + Math.random() * 3;
+      const row = Math.floor(Math.random() * openRows());
+      S.blackWarn = { row, t: 1 }; play('deny', 0.3);
+      later(1, () => {
+        S.blackWarn = null;
+        const us = gridUnits().filter(u => u.cells.some(c => Math.floor(c / COLS) === row));
+        for (const u of us) { u.ice = Math.max(u.ice || 0, 3); }
+        const p = cellPos(row * COLS + 2); addText(W / 2, p.y - 30, '정전!', '#ffe85a', 22, 0.9); hintOnce('blackout', '경고가 뜬 줄은 잠깐 멈춰요');
+      });
+    }
+    if (S.blackWarn) S.blackWarn.t -= dt;
+  }
+  if (ruleOn('meteor')) {
+    S.metT = (S.metT == null ? 6 : S.metT) - dt;
+    if (S.metT <= 0) { S.metT = 8 + Math.random() * 3; breakCells(1, 6); play('boom_low', 0.3); hintOnce('meteorCell', '운석이 떨어진 칸은 잠깐 못 써요'); }
+  }
+}
 // 기체들의 지속 효과 (레이더 버프, 수리, 방패 재생, 드론)
 function updateAuras(dt) {
   const us = gridUnits();
   for (const u of allUnits()) { u.buffSpd = 0; u.buffDmg = 0; }
   S.shatter = us.some(u => (u.type === 'c' && u.lv >= 4) || u.fuse === 'zero');
+  S.radar = us.some(u => u.type === 'x');   // 안개 구역: 레이더 기지가 있으면 안개가 걷힌다
   S.scan = us.some(u => u.type === 'x' && u.lv >= 4);
   const global = us.some(u => u.type === 'x' && u.lv >= 5);
   for (const r of us) if (r.type === 'x') {
@@ -393,6 +416,7 @@ function update(dt) {
   if (S.mode === 'win' || S.mode === 'lose' || S.mode === 'perk') return;
   if (S.debuff) for (const k in S.debuff) S.debuff[k] = Math.max(0, S.debuff[k] - dt);
   if (S.later && S.later.length) { for (const l of S.later) l.t -= dt; const due = S.later.filter(l => l.t <= 0); S.later = S.later.filter(l => l.t > 0); for (const l of due) l.fn(); }
+  if (S.mode === 'play') updateRules(dt);
 
   if (S.mode === 'break') {
     S.breakT -= dt;
@@ -485,7 +509,7 @@ function update(dt) {
       if (!u.jamBy || u.jamBy.dead || u.jamBy.hacked > 0) { u.jam = 0; const p = unitPos(u); addText(p.x, p.y - 24, '교란 해제', '#e8ff6a', 16, 0.8); }
       else { u.jam -= dt; continue; }
     }
-    RANGE_Y = FIRE_Y;
+    RANGE_Y = rangeY();
     u.cd -= dt * (1 + u.buffSpd) * pkSpd();
     if (u.cd <= 0) {
       const cd = u.type === 'k' ? [7, 6, 5, 4.5, 4][lvIdx(u.lv)] * Math.pow(0.75, tier(u)) : u.type === 'n' ? [2.5, 2.5, 2.2, 2, 1.8][lvIdx(u.lv)] : UNIT[u.type].cd;
@@ -495,7 +519,7 @@ function update(dt) {
       u.sk -= dt;
       if (u.sk <= 0) u.sk = unitSkill(u) ? SKILL_CD[u.type] * Math.pow(0.75, tier(u)) : 0.3;
     }
-    RANGE_Y = FIRE_Y;
+    RANGE_Y = rangeY();
   }
   CUR_U = null;
 

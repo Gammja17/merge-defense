@@ -64,6 +64,10 @@ function sideCap(c) {
   hintOnce('side', '캡슐이 옆에서 와요');
 }
 const stageRule = () => S.stage && !S.stage.endless ? S.stage.sector.rule : null;
+const hasRule = (r, id) => r === id || (Array.isArray(r) && r.includes(id));
+const ruleOn = id => hasRule(stageRule(), id);
+// 구역 11~20 규칙: 안개(가까이 와야 쏨, 레이더가 걷음), 급류(캡슐이 빨리 떨어짐), 역풍(탄이 느림)
+const rangeY = () => ruleOn('fog') ? FIRE_Y + (S.radar ? 60 : 170) : FIRE_Y;
 function unplace(u) {
   if (u.cells) for (const c of u.cells) if (S.slots[c] === u) S.slots[c] = null;
   u.cells = null;
@@ -130,8 +134,8 @@ const cellDist = (a, b) => Math.max(Math.abs(Math.floor(a / COLS) - Math.floor(b
 // 구역마다 기대 Mk: 그쯤이면 이만큼 강화했으리라 보고 적 체력을 그만큼 올린다 (Mk가 너무 부풀지 않게. 강화를 덜 했으면 그 구역이 벽이 된다)
 // 플레이어 모형(하루 30분 무과금 = 오늘의 도전 한 판 + 캠페인 네 판)으로 맞춘 값: 보통 칸은 그 구역에 올 때의 Mk보다 조금 위 (함대에 맞춘 편성이면 넘는다),
 // 구역 보스는 3구역부터 벽 (처음엔 단단하고, 질 때마다 약해진다). 이러면 다 깨는 데 25일쯤, 한 보스에서 오래 막히지 않는다
-const MK_EXPECT = [0, 3, 4, 5, 6, 7, 8, 8, 9, 9];
-const BOSS_WALL = [1, 1, 2, 2.5, 3, 3, 3.5, 3.5, 3.5, 3.5];   // 구역 보스 본체 체력 배수 (3구역부터 벽. 시뮬: 봇은 체력에 둔해서 3배여도 첫 도전 절반쯤 이김)
+const MK_EXPECT = [0, 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6];   // 10강 기준 (한 단계 +12%). 하루 30분 무과금이 그 구역에 올 때 가진 Mk (플레이어 모형)
+const BOSS_WALL = [1, 1, 2, 2.5, 3, 3, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5];   // 구역 보스 본체 체력 배수 (3구역부터 벽. 시뮬: 봇은 체력에 둔해서 3배여도 첫 도전 절반쯤 이김)
 // 보스 약화: 아직 못 깬 구역 보스에 질 때마다 그 스테이지 적이 5%씩 약해진다 (다섯 번까지, 깨면 처음으로)
 const BOSS_EASE = 0.05, BOSS_EASE_MAX = 5;
 const bossEaseOf = n => BOSS_EASE * Math.min(BOSS_EASE_MAX, (PROG.bossTry && PROG.bossTry[n]) || 0);
@@ -252,11 +256,11 @@ function runEvent(ev) {
         const a = makeCap(ev.r[0], 150, mul), b = makeCap(ev.r[1], W - 150, mul);
         a.pair = b; b.pair = a;
         hintOnce('pair', '묶인 캡슐은 하나만 얻어요');
-        if (stageRule() === 'side') { sideCap(a); sideCap(b); }
+        if (ruleOn('side')) { sideCap(a); sideCap(b); }
       } else {
         const rw = ((S.pk.goldCap && Math.random() < S.pk.goldCap) || (S.pk.lastStand && S.hp <= 3)) && ev.r.type ?   // 황금 손, 배수진
            (() => { const d = battleDeck().filter(t => UNIT[t].shape === 1); return { type: d[Math.floor(Math.random() * d.length)] || 'f', lv: 3, n: 1, gold: true }; })() : ev.r;   // 황금 손
-        const c = makeCap(rw, rx(), mul); if (stageRule() === 'side') sideCap(c);
+        const c = makeCap(rw, rx(), mul); if (ruleOn('side')) sideCap(c);
       }
       break;
     }
@@ -276,7 +280,7 @@ function runEvent(ev) {
         const x = 110 + Math.random() * (W - 220);
         for (const [dx, dy] of [[0, 0], [-46, -40], [46, -40]]) { const g = spawnEnemy('grunt', x + dx, -50 + dy); g.hp = g.maxHp = g.maxHp * 0.45; }
         S.fx.push({ kind: 'warp', x, y: 24, t: 0, life: 0.45 });
-      } else if (stageRule() === 'twin' && ev.k !== 'grunt' && !ENEMY[ev.k].atk && ev.k !== 'mother') {   // 쌍성계: 큰 적이 둘씩 나란히 (하나하나는 조금 약하게)
+      } else if (ruleOn('twin') && ev.k !== 'grunt' && !ENEMY[ev.k].atk && ev.k !== 'mother') {   // 쌍성계: 큰 적이 둘씩 나란히 (하나하나는 조금 약하게)
         const x = 100 + Math.random() * (W - 200);
         for (const dx of [-52, 52]) { const e = spawnEnemy(ev.k, x + dx, -50); for (const k of ['hp', 'maxHp', 'shield', 'maxShield']) e[k] *= 0.65; S.fx.push({ kind: 'warp', x: e.x, y: 24, t: 0, life: 0.35 }); }
         hintOnce('twin', '큰 적이 둘씩 와요');
@@ -287,7 +291,7 @@ function makeCap(rw, x, mul) {
   if (S.debuff && S.debuff.hardcap > 0) mul *= 1.5;   // 단단한 캡슐 기믹
   let hits = Math.max(1, !rw.type ? Math.round((rw.item === 'bomb' || rw.item === 'up' ? 16 : 12) * mul * S.pk.cap) : Math.round(UNIT[rw.type].cost * rw.n * [1, 3.2, 5.5][Math.min(rw.lv, 3) - 1] * mul * S.pk.cap));
   const mh = hits;
-  const c = { rw: { ...rw }, x, y: -40, hits, maxHits: mh, pending: 0, r: 34, speed: 34, pair: null, bob: Math.random() * 6, carrier: null };
+  const c = { rw: { ...rw }, x, y: -40, hits, maxHits: mh, pending: 0, r: 34, speed: ruleOn('caprush') ? 54 : 34, pair: null, bob: Math.random() * 6, carrier: null };
   if (rw.grow) { c.grow = rw.grow; c.step = Math.max(3, Math.round(UNIT[rw.type].cost * (rw.grow === 'lv' ? 2 : 1) * mul * S.pk.cap)); c.gh = 0; c.base = rw.grow === 'n' ? rw.n : rw.lv; c.hits = c.maxHits = 9999; c.speed = 30; hintOnce('grow', '쏠수록 늘어나는 캡슐'); }
   if (rw.spin) hintOnce('spin', '깨는 순간의 기체가 나와요');
   S.caps.push(c);

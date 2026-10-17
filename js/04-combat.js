@@ -205,7 +205,8 @@ function shoot(type, x, y, dmg, lv, fan = 0, tgt = null, extra = null) {
   tgt.pending += isCap ? cp : dmg;
   const ang = Math.atan2(tgt.y - y, tgt.x - x) + fan;
   const def = UNIT[type] || UNIT.f;
-  const s = { type, x, y, vx: Math.cos(ang) * def.sp, vy: Math.sin(ang) * def.sp, sp: def.sp, turn: def.turn, tgt, dmg, lv, isCap, cp };
+  const sp = def.sp * (ruleOn('wind') ? 0.55 : 1);   // 역풍: 날아가는 탄이 느리다 (빔, 번개, 레일은 그대로)
+  const s = { type, x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, sp, turn: def.turn, tgt, dmg, lv, isCap, cp };
   if (extra) Object.assign(s, extra);
   s.ut = DMG_BY; if (CUR_U && CUR_U.fuse) s.fz = CUR_U.fuse; S.shots.push(s);
   return s;
@@ -596,6 +597,7 @@ function killEnemy(e) {
   e.dead = true;
   if (S.pk.killRush) S.killRushT = 2;
   if (S.pk.vamp && S.mode === 'play') { S.vampN = (S.vampN || 0) + 1; if (S.vampN >= Math.ceil(25 / S.pk.vamp)) { S.vampN = 0; if (S.hp < S.maxHp) { S.hp++; addText(W / 2, LINE_Y - 30, '흡수 방벽 +1', '#6dff8a', 18); } } }
+  if (ruleOn('split') && S.mode === 'play' && !e.boss && !e.noSplit && !['minion', 'rock', 'splitS'].includes(e.k) && Math.random() < 0.35) for (const dx of [-26, 26]) { const m = spawnEnemy('minion', e.x + dx, e.y); m.noSplit = true; m.vx = dx * 2; }   // 분열 성단: 가끔 작은 적 둘로
   if (e.aff === 'split' && S.mode === 'play') for (const dx of [-22, 22]) { const m = spawnEnemy('grunt', e.x + dx, e.y); m.hp = m.maxHp = m.maxHp * 0.5; }   // 정예 분열: 둘로 갈라진다
   if (e.aff === 'bomb' && S.mode === 'play') {   // 정예 자폭: 가장 가까운 기체가 3초 동안 얼어붙는다
     let bu = null, bd = 1e9; for (const u of gridUnits()) { const p = unitPos(u), d = Math.hypot(p.x - e.x, p.y - e.y); if (d < bd) { bd = d; bu = u; } }

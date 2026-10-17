@@ -37,7 +37,7 @@ const IMG_NAMES = ['f1','f2','f3','tbase','t1','t2','t3','laser','hit','missile'
   'u_s','u_e','u_d','u_k','u_c','u_a','u_g','u_m','u_x','u_h','u_n','u_v','u_r','u_b',
   ...['p_ring','p_orb','p_fire','p_smoke1','p_smoke2','p_smokering','p_light','p_flare','p_star','p_star2','p_muzzle','p_spark','p_bolt','p_trace','p_scorch','p_twirl','ex1','ex2','ex3','ex4'].map(n => 'fx/' + n),
   ...[...'ftsgmedcabrhnxvkwlqy'].flatMap(t => [1, 2, 3, 4, 5, 6, 7, 8].map(k => 'units/' + t + k)),
-  ...['grunt','tank','rusher','shield','minion','heal','thief','sniper','gunship','bomber','elite','rock1','rock2','split','splitS','boss1','boss2','boss3','boss4','phase','grav','boss5','boss6'].map(n => 'enemies/' + n)];
+  ...['grunt','tank','rusher','shield','minion','heal','thief','sniper','gunship','bomber','elite','rock1','rock2','split','splitS','boss1','boss2','boss3','boss4','phase','grav','boss5','boss6','boss20'].map(n => 'enemies/' + n)];
 const IMG = {};
 function loadImages() {
   return Promise.all(IMG_NAMES.map(n => new Promise(res => {
@@ -79,6 +79,9 @@ function buildTints() {
   makeTint('enemies/boss4', '#9ab8d8', 'enemies/boss7', 0.55);
   makeTint('enemies/boss6', '#ff4ad8', 'enemies/boss8', 0.45);
   makeTint('enemies/boss2', '#ffd24a', 'enemies/boss9', 0.5);
+  // 11~19구역 보스 변종 (20구역 공허 황제는 진짜 그림)
+  [['boss1', '#9ad0c8', 11], ['boss3', '#ffe85a', 12], ['boss2', '#6dff8a', 13], ['boss6', '#5ae8ff', 14], ['boss5', '#ff8ad8', 15], ['boss2', '#ffa04a', 16], ['boss4', '#c8e0ff', 17], ['boss6', '#ff5a5a', 18], ['boss4', '#8a6aff', 19]]
+    .forEach(([b, c, n]) => makeTint('enemies/' + b, c, 'enemies/boss' + n, 0.5));
   makeTint('u_b', '#4ab8ff', 'u_b2', 0.3, true);
   makeTint('u_c', '#6af0ff', 'u_c2', 0.45);
   makeTint('u_v', '#b86bff', 'u_v2', 0.45);
@@ -184,16 +187,16 @@ try {
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(PROG)); } catch (e) {} }
 const unlocked = n => n === 1 || (PROG.stars[n - 1] || 0) > 0;
 const endlessOpen = () => (PROG.stars[5] || 0) > 0;
-// 기체 강화: 제작하면 Mk.0, 설계도와 코어로 Mk.20까지
-const MK_MAX = 20;
+// 기체 강화: 제작하면 Mk.0, 설계도와 코어로 Mk.10까지 (짝수마다 눈에 보이는 변화)
+const MK_MAX = 10;
 const mkOf = t => (PROG.mk && PROG.mk[t]) || 0;
 // 오늘의 도전만 모두 같은 조건: Mk를 빼고 겨룬다 (주간 도전, 무한 방어선은 Mk 반영)
 const mkNow = t => S.daily && !S.daily.weekly ? 0 : mkOf(t);
-// 공격력: Mk.10까지 단계마다 +8%, 그 뒤로는 +4% (Mk.20이면 2.2배. 너무 부풀지 않게)
-const mkAtk = m => 0.08 * Math.min(m, 10) + 0.04 * Math.max(0, m - 10);
+// 공격력: 단계마다 +12% (Mk.10이면 2.2배. 너무 부풀지 않게)
+const mkAtk = m => 0.12 * m;
 const mkMul = t => 1 + mkAtk(mkNow(t));
-// 코어: Mk.10까지는 예전 비용 그대로, 그 뒤로는 1.25배씩
-const mkCost = t => { const m = mkOf(t); return Math.round(100 * Math.pow(1.5, Math.min(m, 9)) * Math.pow(1.25, Math.max(0, m - 9))); };
+// 코어: 단계마다 1.85배 (Mk.0→1은 200, Mk.9→10은 4만쯤)
+const mkCost = t => Math.round(200 * Math.pow(1.85, mkOf(t)));
 const SET = () => PROG.settings;
 // SKEAM 업적: SKEAM 안에서 돌 때만 알린다. 같은 업적을 또 알려도 한 번만 센다. 촬영 모드에서는 알리지 않는다
 const ach = id => { if (!SHOT && window.SKEAM) SKEAM.unlock(id); };
